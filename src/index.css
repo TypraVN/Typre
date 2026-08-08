@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --font-heading: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #fff;
+}
+
+html.dark body {
+  background: #1f1f1f;
+}
+
+/*
+ * Khung code vẫn cuộn được (chiều cao cố định để layout không nhảy) nhưng ẩn
+ * thanh cuộn cho gọn mắt — con trỏ tự kéo khung theo, xem CodeEditorDisplay.
+ */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes caret-blink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+.animate-caret-blink {
+  animation: caret-blink 1s step-end infinite;
+}
+
+/* Chuyển trang / đổi bài: fade + nhích lên nhẹ */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Bảng kết quả: nảy lên rõ hơn 1 chút cho cảm giác "hiện ra" */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 200ms ease-out both;
+}
+
+.animate-pop-in {
+  animation: pop-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Tôn trọng cài đặt hệ thống: ai tắt animation thì không chạy gì cả */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-pop-in {
+    animation: none;
+  }
+
+  .animate-caret-blink {
+    animation: none;
+    opacity: 1;
+  }
+}
