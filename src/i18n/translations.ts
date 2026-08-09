@@ -28,7 +28,8 @@ export const translations = {
   wpmOutOfRange: 'WPM outside valid range (1–300), cannot be ranked',
   leaderboardEmpty: 'no entries yet',
   leaderboardLoading: 'loading...',
-  leaderboardOffline: 'Leaderboard is not configured. See supabase/README.md to enable it.',
+  leaderboardOffline:
+    'Leaderboard and accounts are off because the Supabase keys are missing. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then rebuild — see supabase/README.md.',
   yourBest: 'your best',
   homeTooltip: 'Back to start, reset session',
   hintRestart: 'restart',
