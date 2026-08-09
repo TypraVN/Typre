@@ -35,7 +35,9 @@ export const csharpSnippets: Snippet[] = [
     id: 'cs-try-catch',
     language: 'csharp',
     title: 'Try/catch',
-    code: `try\n{\n    Process(file);\n}\ncatch (IOException ex)\n{\n    Log(ex.Message);\n}`,
+    // Cả khối try/catch kiểu Allman là 8 dòng, vượt khung code 260px (tối đa 7).
+    // Giữ riêng phần catch: vẫn đúng cú pháp cần luyện, không phải để catch rỗng.
+    code: `catch (IOException ex)\n{\n    Log(ex.Message);\n    throw;\n}`,
   },
   {
     id: 'cs-interface',

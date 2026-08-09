@@ -192,7 +192,7 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
       if (status === 'finished' || cursor >= text.length) return;
       beginIfIdle();
 
-      const expected = target[cursor];
+      const expected = text[cursor];
       const correct = char === expected;
       const nextCursor = cursor + 1;
 
@@ -208,14 +208,14 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
       setCursor(nextCursor);
       finishIfDone(nextCursor);
     },
-    [status, cursor, target, beginIfIdle, finishIfDone, registerMistake, playFeedback],
+    [status, cursor, text, beginIfIdle, finishIfDone, registerMistake, playFeedback],
   );
 
   const typeEnter = useCallback(() => {
     if (status === 'finished' || cursor >= text.length) return;
     beginIfIdle();
 
-    const expected = target[cursor];
+    const expected = text[cursor];
     const correct = expected === '\n';
 
     const updates: Array<{ index: number; value: CharStatus }> = [
@@ -224,7 +224,7 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
 
     let nextCursor = cursor + 1;
     if (correct) {
-      while (nextCursor < target.length && target[nextCursor] === ' ') {
+      while (nextCursor < text.length && text[nextCursor] === ' ') {
         updates.push({ index: nextCursor, value: 'auto' });
         nextCursor += 1;
       }
@@ -241,14 +241,14 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
 
     setCursor(nextCursor);
     finishIfDone(nextCursor);
-  }, [status, cursor, target, beginIfIdle, finishIfDone, registerMistake, playFeedback]);
+  }, [status, cursor, text, beginIfIdle, finishIfDone, registerMistake, playFeedback]);
 
   const typeTab = useCallback(() => {
     if (status === 'finished' || cursor >= text.length) return;
     beginIfIdle();
 
     let runEnd = cursor;
-    while (runEnd < target.length && target[runEnd] === ' ') runEnd += 1;
+    while (runEnd < text.length && text[runEnd] === ' ') runEnd += 1;
 
     if (runEnd > cursor) {
       setCharStatuses((prev) => {
@@ -264,7 +264,7 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
       return;
     }
 
-    const expected = target[cursor];
+    const expected = text[cursor];
     setCharStatuses((prev) => {
       const next = [...prev];
       next[cursor] = 'incorrect';
@@ -277,7 +277,7 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
     const nextCursor = cursor + 1;
     setCursor(nextCursor);
     finishIfDone(nextCursor);
-  }, [status, cursor, target, beginIfIdle, finishIfDone, registerMistake, playFeedback]);
+  }, [status, cursor, text, beginIfIdle, finishIfDone, registerMistake, playFeedback]);
 
   const backspace = useCallback(() => {
     if (status === 'finished' || cursor === 0) return;
@@ -351,7 +351,9 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
   }, [charStatuses, startedAt, finishedAt, now, status, samples]);
 
   return {
-    target,
+    // Trả về nội dung ĐANG gõ (đã gồm các bài nối thêm), không phải bài mở đầu —
+    // khung code phải vẽ đúng cái người dùng đang gõ.
+    target: text,
     charStatuses,
     cursor,
     status,

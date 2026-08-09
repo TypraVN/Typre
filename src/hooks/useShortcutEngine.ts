@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ShortcutItem } from '../data/shortcuts'
+import { shuffle } from '../lib/shuffle'
 
 interface KeyLike {
   key: string
@@ -32,17 +33,19 @@ function isChordShortcut(keys: string[]): boolean {
   return keys.some((k) => MODIFIER_TOKENS.includes(k))
 }
 
-function pickRandom<T>(list: T[]): T {
-  return list[Math.floor(Math.random() * list.length)]
-}
-
-function pickRandomExcept(list: ShortcutItem[], excludeId: string): ShortcutItem {
-  const pool = list.length > 1 ? list.filter((s) => s.id !== excludeId) : list
-  return pickRandom(pool)
-}
-
 export function useShortcutEngine(shortcuts: ShortcutItem[]) {
-  const [current, setCurrent] = useState<ShortcutItem>(() => pickRandom(shortcuts))
+  /**
+   * Thứ tự đã trộn + vị trí đang đứng, thay vì rút dần khỏi một "túi" dùng chung:
+   * đi hết bộ phím tắt rồi mới hỏi lại.
+   *
+   * **Không** rút mục mới bên trong hàm updater của setState — React có thể gọi
+   * updater nhiều lần (StrictMode gọi 2 lần), mỗi lượt sẽ ngốn 2 mục và làm lọt mục,
+   * dẫn tới hỏi trùng ngay trong vòng đầu. State thuần thế này thì gọi lại bao nhiêu
+   * lần cũng ra cùng kết quả.
+   */
+  const [order, setOrder] = useState<ShortcutItem[]>(() => shuffle(shortcuts))
+  const [index, setIndex] = useState(0)
+  const current = order[index] ?? shortcuts[0]
   const [progress, setProgress] = useState(0)
   const [feedback, setFeedback] = useState<Feedback>('idle')
   const [score, setScore] = useState({ correct: 0, wrong: 0 })
@@ -50,9 +53,26 @@ export function useShortcutEngine(shortcuts: ShortcutItem[]) {
   const chord = isChordShortcut(current.keys)
 
   const next = useCallback(() => {
-    setCurrent((prev) => pickRandomExcept(shortcuts, prev.id))
+    if (index + 1 < order.length) {
+      setIndex(index + 1)
+    } else {
+      // Hết vòng: trộn lại. Chỗ duy nhất còn có thể trùng là mục cuối vòng trước gặp
+      // mục đầu vòng sau — nếu trùng thì đẩy nó xuống cuối.
+      const reshuffled = shuffle(shortcuts)
+      if (reshuffled.length > 1 && reshuffled[0].id === current.id) {
+        reshuffled.push(reshuffled.shift() as ShortcutItem)
+      }
+      setOrder(reshuffled)
+      setIndex(0)
+    }
     setProgress(0)
     setFeedback('idle')
+  }, [index, order.length, shortcuts, current.id])
+
+  // Đổi bộ phím tắt (VS Code ↔ Vim) thì thứ tự cũ không còn đúng danh sách nữa.
+  useEffect(() => {
+    setOrder(shuffle(shortcuts))
+    setIndex(0)
   }, [shortcuts])
 
   useEffect(() => {

@@ -1,4 +1,5 @@
 import type { Snippet, SnippetLanguage } from '../types'
+import { drawFromBag } from '../../lib/shuffle'
 import { javascriptSnippets } from './javascript'
 import { typescriptSnippets } from './typescript'
 import { csharpSnippets } from './csharp'
@@ -13,22 +14,38 @@ import { htmlSnippets } from './html'
 import { cssSnippets } from './css'
 import { jsonSnippets } from './json'
 import { specialCharSnippets } from './specialChars'
+// Bài khai báo hàng loạt (mục tiêu ~50 bài/ngôn ngữ) để riêng: file viết tay giữ nguyên,
+// thêm bao nhiêu cũng không đụng vào phần đã có.
+import { javascriptBulk } from './bulk/javascript'
+import { typescriptBulk } from './bulk/typescript'
+import { pythonBulk } from './bulk/python'
+import { csharpBulk } from './bulk/csharp'
+import { javaBulk } from './bulk/java'
+import { goBulk } from './bulk/go'
+import { sqlBulk } from './bulk/sql'
+import { bashBulk } from './bulk/bash'
+import { cppBulk } from './bulk/cpp'
+import { rustBulk } from './bulk/rust'
+import { htmlBulk } from './bulk/html'
+import { cssBulk } from './bulk/css'
+import { jsonBulk } from './bulk/json'
+import { textBulk } from './bulk/text'
 
 export const SNIPPETS: Record<SnippetLanguage, Snippet[]> = {
-  javascript: javascriptSnippets,
-  typescript: typescriptSnippets,
-  csharp: csharpSnippets,
-  python: pythonSnippets,
-  java: javaSnippets,
-  go: goSnippets,
-  sql: sqlSnippets,
-  bash: bashSnippets,
-  cpp: cppSnippets,
-  rust: rustSnippets,
-  html: htmlSnippets,
-  css: cssSnippets,
-  json: jsonSnippets,
-  text: specialCharSnippets,
+  javascript: [...javascriptSnippets, ...javascriptBulk],
+  typescript: [...typescriptSnippets, ...typescriptBulk],
+  csharp: [...csharpSnippets, ...csharpBulk],
+  python: [...pythonSnippets, ...pythonBulk],
+  java: [...javaSnippets, ...javaBulk],
+  go: [...goSnippets, ...goBulk],
+  sql: [...sqlSnippets, ...sqlBulk],
+  bash: [...bashSnippets, ...bashBulk],
+  cpp: [...cppSnippets, ...cppBulk],
+  rust: [...rustSnippets, ...rustBulk],
+  html: [...htmlSnippets, ...htmlBulk],
+  css: [...cssSnippets, ...cssBulk],
+  json: [...jsonSnippets, ...jsonBulk],
+  text: [...specialCharSnippets, ...textBulk],
 }
 
 /**
@@ -42,28 +59,7 @@ export const SNIPPETS: Record<SnippetLanguage, Snippet[]> = {
  */
 const bags: Partial<Record<SnippetLanguage, Snippet[]>> = {}
 
-function shuffled(list: Snippet[]): Snippet[] {
-  const pool = [...list]
-  // Fisher-Yates: mọi thứ tự đều có xác suất như nhau.
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[pool[i], pool[j]] = [pool[j], pool[i]]
-  }
-  return pool
-}
-
 export function getRandomSnippet(language: SnippetLanguage, excludeId?: string): Snippet {
-  let bag = bags[language]
-
-  if (!bag || bag.length === 0) {
-    bag = shuffled(SNIPPETS[language])
-    // Chỗ duy nhất còn có thể trùng là ranh giới giữa hai túi: bài cuối túi trước và
-    // bài đầu túi sau. Nếu trùng thì đẩy nó xuống cuối túi mới.
-    if (excludeId && bag.length > 1 && bag[0].id === excludeId) {
-      bag.push(bag.shift() as Snippet)
-    }
-    bags[language] = bag
-  }
-
-  return bag.shift() as Snippet
+  const bag = (bags[language] ??= [])
+  return drawFromBag(bag, SNIPPETS[language], excludeId)
 }
