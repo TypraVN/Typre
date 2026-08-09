@@ -1,7 +1,7 @@
 import { getSupabase, supabaseConfig } from './supabase'
 import type { Session, User } from '@supabase/supabase-js'
 
-export type OAuthProvider = 'google' | 'facebook' | 'github'
+export type OAuthProvider = 'google' | 'github'
 
 export interface AppUser {
   id: string
@@ -35,7 +35,7 @@ export function toAppUser(user: User): AppUser {
 }
 
 // Thứ tự này là thứ tự hiển thị nút trên màn đăng nhập.
-export const SUPPORTED_PROVIDERS: OAuthProvider[] = ['google', 'facebook', 'github']
+export const SUPPORTED_PROVIDERS: OAuthProvider[] = ['google', 'github']
 
 let providersPromise: Promise<OAuthProvider[]> | null = null
 

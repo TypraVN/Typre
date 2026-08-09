@@ -54,7 +54,6 @@ export const translations = {
   next: 'Next',
   or: 'Or:',
   continueWithGoogle: 'Continue with Google',
-  continueWithFacebook: 'Continue with Facebook',
   continueWithGithub: 'Continue with GitHub',
   providerNotEnabled: 'not enabled yet',
   close: 'Close',

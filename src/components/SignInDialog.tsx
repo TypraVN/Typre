@@ -28,7 +28,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const PROVIDER_LABEL: Record<OAuthProvider, keyof Translation> = {
   google: 'continueWithGoogle',
-  facebook: 'continueWithFacebook',
   github: 'continueWithGithub',
 }
 

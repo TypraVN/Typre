@@ -18,6 +18,9 @@ dist-ssr
 .env.*.local
 !.env.example
 
+# Client secret Google tải về (OAuth) — tuyệt đối không commit
+client_secret_*.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

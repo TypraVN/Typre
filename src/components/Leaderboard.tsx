@@ -27,6 +27,19 @@ const FILTER_BTN =
 const FILTER_BTN_ACTIVE =
   'w-full px-3 py-1.5 text-sm text-left rounded cursor-pointer transition-colors duration-150 bg-orange-500/15 text-orange-600 dark:text-orange-400 font-medium'
 
+/**
+ * Thời gian cố ý làm dạng "segmented control" nằm ngang, KHÁC hẳn danh sách dọc của
+ * ngôn ngữ: hai nhóm cạnh nhau cùng một kiểu nút thì đọc như một danh sách dài liền
+ * mạch và người dùng tưởng "time 60" cũng là một ngôn ngữ.
+ */
+const TIME_BTN =
+  'flex-1 py-1 text-sm text-center rounded-md cursor-pointer transition-colors duration-150 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+const TIME_BTN_ACTIVE =
+  'flex-1 py-1 text-sm text-center rounded-md cursor-pointer transition-colors duration-150 bg-white dark:bg-zinc-700 text-orange-600 dark:text-orange-400 font-medium shadow-sm'
+
+const GROUP_LABEL =
+  'px-3 text-[11px] font-mono font-bold text-orange-600 dark:text-orange-500 uppercase tracking-widest'
+
 /** Màu huy chương cho 3 hạng đầu, còn lại dùng màu chữ thường. */
 function rankColor(rank: number): string {
   if (rank === 1) return 'text-yellow-500 dark:text-yellow-400'
@@ -112,11 +125,9 @@ export function Leaderboard({
   return (
     <div className="w-full max-w-4xl flex flex-col sm:flex-row gap-6">
       {/* Sidebar filter */}
-      <aside className="sm:w-40 shrink-0 flex flex-col gap-4">
+      <aside className="sm:w-40 shrink-0 flex flex-col gap-5">
         <div className="flex flex-col gap-1">
-          <div className="px-3 text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">
-            {t.langFilterLabel}
-          </div>
+          <div className={`${GROUP_LABEL} mb-1`}>{t.langFilterLabel}</div>
           {languages.map((lang) => (
             <button
               key={lang}
@@ -129,20 +140,20 @@ export function Leaderboard({
           ))}
         </div>
 
-        <div className="flex flex-col gap-1">
-          <div className="px-3 text-xs font-mono text-zinc-500 uppercase tracking-wider mb-1">
-            {t.timeFilterLabel}
+        <div className="flex flex-col gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+          <div className={GROUP_LABEL}>{t.timeFilterLabel}</div>
+          <div className="flex gap-0.5 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-800/70">
+            {timeLimits.map((tl) => (
+              <button
+                key={tl}
+                type="button"
+                onClick={() => setTimeLimit(tl)}
+                className={timeLimit === tl ? TIME_BTN_ACTIVE : TIME_BTN}
+              >
+                {tl}s
+              </button>
+            ))}
           </div>
-          {timeLimits.map((tl) => (
-            <button
-              key={tl}
-              type="button"
-              onClick={() => setTimeLimit(tl)}
-              className={timeLimit === tl ? FILTER_BTN_ACTIVE : FILTER_BTN}
-            >
-              time {tl}
-            </button>
-          ))}
         </div>
       </aside>
 
