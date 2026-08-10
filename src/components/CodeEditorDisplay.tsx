@@ -27,6 +27,12 @@ const INCORRECT: Record<UiMode, { color: string; backgroundColor: string }> = {
   light: { color: '#b91c1c', backgroundColor: 'rgba(239,68,68,0.25)' },
 }
 
+/**
+ * Chiều cao dòng chốt cứng (không dùng `leading-relaxed` 29.25px) để chiều cao khung
+ * luôn là bội số nguyên của dòng — lẻ nửa dòng ở mép dưới trông y như chữ bị tràn.
+ */
+const LINE_HEIGHT = 28
+
 function Caret() {
   return <span className="absolute inset-y-0 -left-px w-[2px] bg-orange-400 animate-caret-blink" />
 }
@@ -79,18 +85,17 @@ export const CodeEditorDisplay = forwardRef<HTMLDivElement, CodeEditorDisplayPro
      * scrollIntoView) để chỉ cuộn trong khung, không kéo cả trang.
      */
     useEffect(() => {
-      const box = boxRef.current
       const caret = cursorRef.current
-      if (!box || !caret) return
+      if (!caret) return
 
-      const boxRect = box.getBoundingClientRect()
+      // Cuộn TRONG khung, không kéo cả trang (đó là lý do tự tính scrollTop thay vì
+      // gọi scrollIntoView — hàm đó cuộn luôn cả trang).
+      // Khung ôm sát nội dung nên bình thường không có gì để cuộn. Chỉ khi màn quá hẹp
+      // làm dòng dài tự xuống dòng và khung cao hơn cửa sổ thì mới kéo con trỏ vào tầm
+      // nhìn — `nearest` để không giật trang ở trường hợp thường.
       const caretRect = caret.getBoundingClientRect()
-      const margin = 24
-
-      if (caretRect.top < boxRect.top + margin) {
-        box.scrollTop -= boxRect.top + margin - caretRect.top
-      } else if (caretRect.bottom > boxRect.bottom - margin) {
-        box.scrollTop += caretRect.bottom - (boxRect.bottom - margin)
+      if (caretRect.top < 0 || caretRect.bottom > window.innerHeight) {
+        caret.scrollIntoView({ block: 'nearest' })
       }
     }, [cursor])
 
@@ -100,6 +105,7 @@ export const CodeEditorDisplay = forwardRef<HTMLDivElement, CodeEditorDisplayPro
         tabIndex={0}
         onKeyDown={onKeyDown}
         style={{
+          lineHeight: `${LINE_HEIGHT}px`,
           backgroundColor: CODE_BG[uiMode],
           // TẮT ligature. JetBrains Mono gộp `=>` thành `⇒`, `!=` thành `≠`...
           // App vẽ từng ký tự 1 span nên ligature làm ký tự hiển thị sai lệch khi
@@ -108,7 +114,9 @@ export const CodeEditorDisplay = forwardRef<HTMLDivElement, CodeEditorDisplayPro
           fontVariantLigatures: 'none',
           fontFeatureSettings: '"liga" 0, "calt" 0, "clig" 0, "dlig" 0',
         }}
-        className="font-mono text-lg leading-relaxed whitespace-pre-wrap outline-none rounded-lg p-4 h-[260px] overflow-y-auto no-scrollbar animate-fade-in"
+        // Không đặt chiều cao: khung ôm sát bài đang gõ (tối đa 4 dòng) nên không thừa
+        // khoảng trống, không cuộn, và không có dòng nào bị giấu dưới mép.
+        className="font-mono text-lg whitespace-pre-wrap outline-none rounded-lg p-4 animate-fade-in"
       >
         {code.split('').map((char, i) => {
           const status = charStatuses[i]

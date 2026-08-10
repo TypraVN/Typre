@@ -126,30 +126,8 @@ function App() {
   const [frozenStats, setFrozenStats] = useState<TypingStats | null>(null)
   const [capsLockOn, setCapsLockOn] = useState(false)
 
-  /** Thời gian còn lại, đọc từ trong callback nối bài (tính sau, nên phải qua ref). */
-  const remainingRef = useRef(0)
-  /** Bài cuối cùng đã đưa vào lượt này — để túi trộn không lặp lại ngay. */
-  const lastSnippetIdRef = useRef(snippet.id)
-
-  const {
-    target: typedText,
-    charStatuses,
-    cursor,
-    status,
-    stats,
-    mistakeCounts,
-    handleKeyDown,
-    reset,
-  } = useTypingEngine(snippet.code, {
-    // Gõ hết bài mà đồng hồ còn chạy thì nối bài kế tiếp và gõ tiếp — hết GIỜ mới
-    // chấm điểm, để wpm phản ánh đúng mốc 15/30/60s thay vì dừng ở bài đầu tiên.
-    onExhausted: () => {
-      if (remainingRef.current <= 0) return null
-      const next = getRandomSnippet(language, lastSnippetIdRef.current)
-      lastSnippetIdRef.current = next.id
-      return next.code
-    },
-  })
+  const { charStatuses, cursor, status, stats, mistakeCounts, handleKeyDown, reset } =
+    useTypingEngine(snippet.code)
 
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
@@ -173,7 +151,6 @@ function App() {
   const markStarted = useHistoryStore((s) => s.markStarted)
 
   const remaining = Math.max(0, timeLimit - stats.elapsedSeconds)
-  remainingRef.current = remaining
   const sessionOver = status === 'finished' || remaining === 0
   const displayStats = frozenStats ?? stats
   const sessionTopMistakes = Object.entries(mistakeCounts)
@@ -188,7 +165,6 @@ function App() {
   /** Gõ lại đúng bài đang mở. */
   const restartSame = () => {
     reset()
-    lastSnippetIdRef.current = snippet.id
     setFrozenStats(null)
     recordedRef.current = false
     containerRef.current?.focus()
@@ -229,7 +205,6 @@ function App() {
     recordedRef.current = false
     setFrozenStats(null)
     // Lượt mới bắt đầu lại từ bài này; các bài nối thêm của lượt trước không còn tính.
-    lastSnippetIdRef.current = snippet.id
     containerRef.current?.focus()
   }, [snippet, timeLimit])
 
@@ -411,7 +386,10 @@ function App() {
       {/* Luôn chiếm sẵn chiều cao dù chưa bật Caps Lock: nếu chỉ render khi bật thì
           banner sẽ đẩy layout (nhảy khung), còn nếu dùng `fixed` với toạ độ cứng thì
           lại đè lên đồng hồ mỗi khi layout đổi. */}
-      <div className="h-10 flex items-center justify-center shrink-0">
+      {/* Hàng này luôn chiếm sẵn chiều cao dù chưa bật Caps Lock, để lúc bật/tắt không
+          đẩy khung gõ nhảy lên xuống. `items-end` đẩy badge xuống sát đáy hàng cho
+          tách khỏi header. */}
+      <div className="h-16 flex items-end justify-center shrink-0">
         {capsLockOn && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded border border-yellow-500/50 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 text-sm font-mono animate-fade-in">
             <TriangleAlert className="w-4 h-4" />
@@ -434,10 +412,15 @@ function App() {
                 {formatTime(remaining)}
               </div>
 
+              {/* Chừa sẵn chỗ cho bài cao nhất (4 dòng × 28px + padding) rồi canh giữa
+                  khung trong đó: khung ôm sát nội dung nên bài 1 dòng và bài 4 dòng cao
+                  khác nhau, không chừa chỗ thì mỗi lần đổi bài là cả trang nhảy. Vùng
+                  chừa này vô hình vì nền khung code trùng nền trang. */}
+              <div className="min-h-[144px] flex items-center justify-center">
               <CodeEditorDisplay
                 key={snippet.id}
                 ref={containerRef}
-                code={typedText}
+                code={snippet.code}
                 language={SHIKI_LANG[snippet.language]}
                 theme={theme}
                 uiMode={uiMode}
@@ -445,6 +428,7 @@ function App() {
                 cursor={cursor}
                 onKeyDown={handleKeyDown}
               />
+              </div>
 
               <div className="flex gap-6 font-mono text-sm text-zinc-500 dark:text-zinc-400">
                 <span>

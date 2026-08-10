@@ -60,20 +60,11 @@ function computeConsistency(samples: number[]): number {
   return Math.max(0, Math.min(100, (1 - cv) * 100));
 }
 
-interface EngineOptions {
-  /**
-   * Gọi khi gõ hết bài hiện tại. Trả về code của bài kế tiếp để gõ liền mạch
-   * (đồng hồ + số liệu chạy tiếp), hoặc `null` để kết thúc lượt.
-   */
-  onExhausted?: () => string | null;
-}
-
-export function useTypingEngine(target: string, options: EngineOptions = {}) {
-  /**
-   * Nội dung ĐANG gõ. Khác `target` (bài mở đầu) vì có thể dài thêm khi nối bài mới:
-   * giữ thành state riêng để việc nối bài không đi qua prop — prop đổi là reset cả lượt.
-   */
-  const [text, setText] = useState(target);
+/**
+ * Một lượt gõ = ĐÚNG MỘT bài. Gõ hết bài là chốt lượt và hiện kết quả ngay, không tự
+ * nối bài kế tiếp; muốn gõ nữa thì người dùng tự bấm "next snippet".
+ */
+export function useTypingEngine(target: string) {
   const [charStatuses, setCharStatuses] = useState<CharStatus[]>(() => buildInitialStatuses(target));
   const [cursor, setCursor] = useState(0);
   const [status, setStatus] = useState<EngineStatus>('idle');
@@ -88,12 +79,6 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
    * vì backspace xoá dấu vết: gõ sai rồi sửa vẫn phải tính là đã gõ.
    */
   const typedTotalRef = useRef(0);
-  /**
-   * Số ký tự đúng/sai của các bài ĐÃ XONG trong cùng lượt. `charStatuses` chỉ mô tả
-   * bài đang hiện, nên không cộng dồn ở đây thì mỗi lần sang bài mới wpm và accuracy
-   * sẽ tính lại từ đầu.
-   */
-  const completedRef = useRef({ correct: 0, incorrect: 0 });
   /** Tốc độ (ký tự/giây) của từng giây, để tính độ đều tay. */
   const perSecondRef = useRef<number[]>([]);
   const lastTickRef = useRef({ at: 0, typed: 0 });
@@ -108,12 +93,7 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
     [soundEnabled],
   );
 
-  // Ref để `finishIfDone` không phải phụ thuộc vào callback do App tạo lại mỗi render.
-  const onExhaustedRef = useRef(options.onExhausted);
-  onExhaustedRef.current = options.onExhausted;
-
   const reset = useCallback(() => {
-    setText(target);
     setCharStatuses(buildInitialStatuses(target));
     setCursor(0);
     setStatus('idle');
@@ -121,7 +101,6 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
     setFinishedAt(null);
     setMistakeCounts({});
     typedTotalRef.current = 0;
-    completedRef.current = { correct: 0, incorrect: 0 };
     perSecondRef.current = [];
     lastTickRef.current = { at: 0, typed: 0 };
     setSamples([]);
@@ -130,6 +109,7 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
   useEffect(() => {
     reset();
   }, [target, reset]);
+
 
   useEffect(() => {
     if (status !== 'typing') return;
@@ -158,29 +138,15 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
 
   const finishIfDone = useCallback(
     (nextCursor: number) => {
-      if (nextCursor < text.length) return;
+      if (nextCursor < target.length) return;
 
-      // Còn bài để gõ tiếp thì THAY bài, không nối thêm vào cuối: khung code cao cố
-      // định nên nối dồn sẽ đẩy phần trên ra ngoài tầm nhìn, người gõ không thấy hết
-      // bài của mình. Đồng hồ, số liệu và chuỗi mẫu tốc độ vẫn chạy tiếp như thường.
-      const next = onExhaustedRef.current?.();
-      if (next) {
-        // Chốt số đã gõ của bài vừa xong vào bộ đếm cộng dồn TRƯỚC khi xoá trạng thái,
-        // không thì wpm/accuracy tụt về 0 mỗi lần sang bài mới.
-        completedRef.current.correct += charStatuses.filter((s) => s === 'correct').length;
-        completedRef.current.incorrect += charStatuses.filter((s) => s === 'incorrect').length;
-
-        setText(next);
-        setCharStatuses(buildInitialStatuses(next));
-        setCursor(0);
-        return;
-      }
-
+      // Gõ hết bài là CHỐT LƯỢT ngay, kể cả khi đồng hồ còn thời gian. Muốn gõ bài
+      // nữa thì người dùng tự bấm "next snippet".
       setStatus('finished');
       setFinishedAt(Date.now());
       if (soundEnabled) playFinish();
     },
-    [text.length, charStatuses, soundEnabled],
+    [target.length, soundEnabled],
   );
 
   const beginIfIdle = useCallback(() => {
@@ -199,10 +165,10 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
 
   const typeChar = useCallback(
     (char: string) => {
-      if (status === 'finished' || cursor >= text.length) return;
+      if (status === 'finished' || cursor >= target.length) return;
       beginIfIdle();
 
-      const expected = text[cursor];
+      const expected = target[cursor];
       const correct = char === expected;
       const nextCursor = cursor + 1;
 
@@ -218,14 +184,14 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
       setCursor(nextCursor);
       finishIfDone(nextCursor);
     },
-    [status, cursor, text, beginIfIdle, finishIfDone, registerMistake, playFeedback],
+    [status, cursor, target, beginIfIdle, finishIfDone, registerMistake, playFeedback],
   );
 
   const typeEnter = useCallback(() => {
-    if (status === 'finished' || cursor >= text.length) return;
+    if (status === 'finished' || cursor >= target.length) return;
     beginIfIdle();
 
-    const expected = text[cursor];
+    const expected = target[cursor];
     const correct = expected === '\n';
 
     const updates: Array<{ index: number; value: CharStatus }> = [
@@ -234,7 +200,7 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
 
     let nextCursor = cursor + 1;
     if (correct) {
-      while (nextCursor < text.length && text[nextCursor] === ' ') {
+      while (nextCursor < target.length && target[nextCursor] === ' ') {
         updates.push({ index: nextCursor, value: 'auto' });
         nextCursor += 1;
       }
@@ -251,14 +217,14 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
 
     setCursor(nextCursor);
     finishIfDone(nextCursor);
-  }, [status, cursor, text, beginIfIdle, finishIfDone, registerMistake, playFeedback]);
+  }, [status, cursor, target, beginIfIdle, finishIfDone, registerMistake, playFeedback]);
 
   const typeTab = useCallback(() => {
-    if (status === 'finished' || cursor >= text.length) return;
+    if (status === 'finished' || cursor >= target.length) return;
     beginIfIdle();
 
     let runEnd = cursor;
-    while (runEnd < text.length && text[runEnd] === ' ') runEnd += 1;
+    while (runEnd < target.length && target[runEnd] === ' ') runEnd += 1;
 
     if (runEnd > cursor) {
       setCharStatuses((prev) => {
@@ -274,7 +240,7 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
       return;
     }
 
-    const expected = text[cursor];
+    const expected = target[cursor];
     setCharStatuses((prev) => {
       const next = [...prev];
       next[cursor] = 'incorrect';
@@ -287,7 +253,7 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
     const nextCursor = cursor + 1;
     setCursor(nextCursor);
     finishIfDone(nextCursor);
-  }, [status, cursor, text, beginIfIdle, finishIfDone, registerMistake, playFeedback]);
+  }, [status, cursor, target, beginIfIdle, finishIfDone, registerMistake, playFeedback]);
 
   const backspace = useCallback(() => {
     if (status === 'finished' || cursor === 0) return;
@@ -335,11 +301,9 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
   );
 
   const stats: TypingStats = useMemo(() => {
-    // Cộng cả các bài đã xong trong lượt này, không chỉ bài đang hiện trên màn hình.
-    const correctCount =
-      completedRef.current.correct + charStatuses.filter((s) => s === 'correct').length;
-    const incorrectCount =
-      completedRef.current.incorrect + charStatuses.filter((s) => s === 'incorrect').length;
+    // Nối bài nên `charStatuses` đã bao trọn cả lượt, không cần bộ đếm cộng dồn riêng.
+    const correctCount = charStatuses.filter((s) => s === 'correct').length;
+    const incorrectCount = charStatuses.filter((s) => s === 'incorrect').length;
     const attempted = correctCount + incorrectCount;
 
     const endTime = status === 'finished' ? finishedAt : now;
@@ -364,9 +328,7 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
   }, [charStatuses, startedAt, finishedAt, now, status, samples]);
 
   return {
-    // Trả về nội dung ĐANG gõ (đã gồm các bài nối thêm), không phải bài mở đầu —
-    // khung code phải vẽ đúng cái người dùng đang gõ.
-    target: text,
+    target,
     charStatuses,
     cursor,
     status,
