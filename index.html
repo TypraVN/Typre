@@ -13,16 +13,89 @@
       }
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Typre — practice typing code in 14 languages</title>
+    <meta
+      name="description"
+      content="Typing practice built for programmers: real code in JavaScript, TypeScript, C#, Python, Rust, Go, SQL and more. Measures WPM, accuracy and consistency, tracks the characters you keep missing, and ranks you on a leaderboard."
+    />
+    <!-- Chỉ có một trang thật; mọi thứ khác là hash route nên không cần canonical riêng. -->
+    <link rel="canonical" href="https://www.typre.dev/" />
+    <meta name="theme-color" content="#1f1f1f" />
+
+    <!-- Facebook / Zalo / Discord -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Typre" />
+    <meta property="og:url" content="https://www.typre.dev/" />
+    <meta property="og:title" content="Typre — practice typing code in 14 languages" />
+    <meta
+      property="og:description"
+      content="Typing practice built for programmers: brackets, symbols and real code in 14 languages. WPM, accuracy, consistency and a leaderboard."
+    />
+    <!-- Ảnh vuông 208x208 nên dùng thẻ `summary`; muốn ô lớn thì thay bằng ảnh
+         1200x630 rồi đổi twitter:card thành summary_large_image. -->
+    <meta property="og:image" content="https://www.typre.dev/og.png" />
+    <meta property="og:image:width" content="208" />
+    <meta property="og:image:height" content="208" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Typre — practice typing code in 14 languages" />
+    <meta
+      name="twitter:description"
+      content="Typing practice built for programmers: brackets, symbols and real code in 14 languages."
+    />
+    <meta name="twitter:image" content="https://www.typre.dev/og.png" />
+
+    <!-- Google hiểu đây là ứng dụng web miễn phí, không phải bài viết. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Typre",
+        "url": "https://www.typre.dev/",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any",
+        "description": "Typing practice for programmers: real code in 14 languages, WPM and accuracy tracking, and a leaderboard.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <title>Typre</title>
   </head>
   <body>
-    <div id="root"></div>
+    <!--
+      Nội dung tĩnh trong #root: app là SPA nên HTML gốc rỗng hoàn toàn, con bot nào
+      không chạy JavaScript (và cả trình đọc màn hình trước khi app mount) sẽ thấy
+      một trang trắng. React `createRoot` xoá sạch chỗ này ngay khi mount nên người
+      dùng thật không bao giờ thấy nó.
+    -->
+    <div id="root">
+      <main>
+        <h1>Typre — practice typing code</h1>
+        <p>
+          Typing practice built for programmers. Instead of prose, you type real code:
+          brackets, operators, semicolons and indentation — the characters that actually
+          slow you down while programming.
+        </p>
+        <h2>14 languages</h2>
+        <p>
+          JavaScript, TypeScript, C#, Python, Java, Go, SQL, Bash, C/C++, Rust, HTML, CSS,
+          JSON, and a special-characters drill. Over 700 snippets, each 1–4 lines, served in
+          shuffled order so you never repeat one before finishing a full round.
+        </p>
+        <h2>What it measures</h2>
+        <p>
+          WPM, CPM, accuracy, raw speed and consistency over 15, 30 or 60 second runs, plus
+          the characters you miss most often. Sign in to submit scores to the leaderboard.
+        </p>
+        <h2>IDE shortcuts</h2>
+        <p>A separate drill for VS Code and Vim keyboard shortcuts.</p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

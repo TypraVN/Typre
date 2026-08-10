@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  App chỉ có MỘT địa chỉ thật. Các màn khác (bảng xếp hạng, phím tắt, trang profile)
+  đều nằm sau hash `#/...`, mà hash thì bot không coi là URL riêng — nên liệt kê thêm
+  cũng vô nghĩa.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.typre.dev/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
