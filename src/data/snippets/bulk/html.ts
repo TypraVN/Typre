@@ -17,7 +17,7 @@ export const htmlBulk = defineSnippets('html', 'html-x', [
   `<ul>\n    <li>javascript</li>\n    <li>rust</li>\n</ul>`,
   `<ol start="3">\n    <li>third</li>\n</ol>`,
   `<dl>\n    <dt>wpm</dt>\n    <dd>words per minute</dd>\n</dl>`,
-  `<table>\n    <thead>\n        <tr><th>rank</th></tr>\n    </thead>\n</table>`,
+  `<thead>\n    <tr><th>rank</th></tr>\n</thead>`,
   `<tr>\n    <td>1</td>\n    <td>78 wpm</td>\n</tr>`,
   `<header class="flex items-center">\n</header>`,
   `<nav aria-label="main">\n    <a href="/">home</a>\n</nav>`,

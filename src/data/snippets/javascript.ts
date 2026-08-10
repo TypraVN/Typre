@@ -23,7 +23,7 @@ export const javascriptSnippets: Snippet[] = [
     id: 'js-class',
     language: 'javascript',
     title: 'Class definition',
-    code: `class Stack {\n  constructor() {\n    this.items = [];\n  }\n}`,
+    code: `class Stack {\n  #items = [];\n}`,
   },
   {
     id: 'js-destructure',
@@ -65,6 +65,6 @@ export const javascriptSnippets: Snippet[] = [
     id: 'js-try-catch',
     language: 'javascript',
     title: 'Try/catch',
-    code: `try {\n  JSON.parse(input);\n} catch (err) {\n  console.error('invalid json');\n}`,
+    code: `try {\n  JSON.parse(input);\n} catch { warn('invalid json'); }`,
   },
 ]

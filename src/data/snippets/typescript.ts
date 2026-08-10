@@ -5,7 +5,7 @@ export const typescriptSnippets: Snippet[] = [
     id: 'ts-interface',
     language: 'typescript',
     title: 'Interface',
-    code: `interface User {\n  id: number;\n  name: string;\n  isActive?: boolean;\n}`,
+    code: `interface User {\n  id: number;\n  name: string;\n}`,
   },
   {
     id: 'ts-generic-function',
@@ -23,7 +23,7 @@ export const typescriptSnippets: Snippet[] = [
     id: 'ts-enum',
     language: 'typescript',
     title: 'Enum',
-    code: `enum Role {\n  Admin,\n  Editor,\n  Viewer,\n}`,
+    code: `enum Role {\n  Admin,\n  Viewer,\n}`,
   },
   {
     id: 'ts-class-generic',

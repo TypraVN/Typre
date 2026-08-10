@@ -18,7 +18,7 @@ export const rustSnippets: Snippet[] = [
     language: 'rust',
     // Chỉ giữ khối impl: thêm cả `struct` vào là 9 dòng, vượt khung code 260px.
     title: 'impl block',
-    code: `impl User {\n    fn greet(&self) -> String {\n        format!("hi {}", self.name)\n    }\n}`,
+    code: `impl User {\n    fn greet(&self) -> String { self.name.clone() }\n}`,
   },
   {
     id: 'rust-result',
@@ -30,7 +30,7 @@ export const rustSnippets: Snippet[] = [
     id: 'rust-iterator',
     language: 'rust',
     title: 'Iterator chain',
-    code: `let evens: Vec<i32> = nums\n    .iter()\n    .filter(|n| *n % 2 == 0)\n    .cloned()\n    .collect();`,
+    code: `let evens: Vec<i32> =\n    nums.iter().copied().filter(|n| n % 2 == 0).collect();`,
   },
   {
     id: 'rust-trait',
@@ -42,7 +42,7 @@ export const rustSnippets: Snippet[] = [
     id: 'rust-enum',
     language: 'rust',
     title: 'Enum + variants',
-    code: `enum State {\n    Idle,\n    Typing { wpm: u32 },\n    Done(bool),\n}`,
+    code: `enum State {\n    Idle,\n    Done(bool),\n}`,
   },
   {
     id: 'rust-mut-borrow',

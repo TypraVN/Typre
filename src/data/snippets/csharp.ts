@@ -37,7 +37,7 @@ export const csharpSnippets: Snippet[] = [
     title: 'Try/catch',
     // Cả khối try/catch kiểu Allman là 8 dòng, vượt khung code 260px (tối đa 7).
     // Giữ riêng phần catch: vẫn đúng cú pháp cần luyện, không phải để catch rỗng.
-    code: `catch (IOException ex)\n{\n    Log(ex.Message);\n    throw;\n}`,
+    code: `catch (IOException ex)\n{\n    Log(ex.Message);\n}`,
   },
   {
     id: 'cs-interface',
@@ -55,7 +55,7 @@ export const csharpSnippets: Snippet[] = [
     id: 'cs-switch',
     language: 'csharp',
     title: 'Switch expression',
-    code: `string label = status switch\n{\n    1 => "Active",\n    _ => "Unknown",\n};`,
+    code: `string label = status switch\n{\n    _ => "Unknown",\n};`,
   },
   {
     id: 'cs-list-init',

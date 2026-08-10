@@ -59,7 +59,7 @@ export const bashSnippets: Snippet[] = [
     id: 'bash-case',
     language: 'bash',
     title: 'Case statement',
-    code: `case "$1" in\n  start) run_server ;;\n  stop)  kill_server ;;\n  *)     echo "usage: $0 {start|stop}" ;;\nesac`,
+    code: `case "$1" in\n  start) run_server ;;\n  *) echo "usage: $0 {start}" ;;\nesac`,
   },
   {
     id: 'bash-ssh-rsync',

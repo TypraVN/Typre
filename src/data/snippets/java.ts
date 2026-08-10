@@ -11,7 +11,7 @@ export const javaSnippets: Snippet[] = [
     id: 'java-class',
     language: 'java',
     title: 'Class + constructor',
-    code: `public class Point {\n    private final int x;\n\n    public Point(int x) {\n        this.x = x;\n    }\n}`,
+    code: `public class Point {\n    private final int x;\n}`,
   },
   {
     id: 'java-for-each',
@@ -29,7 +29,7 @@ export const javaSnippets: Snippet[] = [
     id: 'java-try-catch',
     language: 'java',
     title: 'Try/catch',
-    code: `try {\n    int value = Integer.parseInt(text);\n} catch (NumberFormatException e) {\n    e.printStackTrace();\n}`,
+    code: `try {\n    int value = Integer.parseInt(text);\n} catch (NumberFormatException e) { value = 0; }`,
   },
   {
     id: 'java-interface',
@@ -47,7 +47,7 @@ export const javaSnippets: Snippet[] = [
     id: 'java-record',
     language: 'java',
     title: 'Record',
-    code: `public record Point(int x, int y) {\n    double length() {\n        return Math.sqrt(x * x + y * y);\n    }\n}`,
+    code: `public record Score(String user, int wpm) {}`,
   },
   {
     id: 'java-optional',

@@ -13,7 +13,7 @@ export const cppSnippets: Snippet[] = [
     id: 'cpp-class',
     language: 'cpp',
     title: 'Class + constructor',
-    code: `class Point {\npublic:\n    Point(int x, int y) : x_(x), y_(y) {}\nprivate:\n    int x_, y_;\n};`,
+    code: `class Point {\npublic:\n    Point(int x, int y) : x_(x), y_(y) {}\n};`,
   },
   {
     id: 'cpp-template',
@@ -31,13 +31,13 @@ export const cppSnippets: Snippet[] = [
     id: 'cpp-map',
     language: 'cpp',
     title: 'Map iterate',
-    code: `std::map<std::string, int> ages;\nages["nhat"] = 28;\nfor (const auto& [name, age] : ages) {\n    total += age;\n}`,
+    code: `std::map<std::string, int> ages;\nages["nhat"] = 28;\ntotal += ages.size();`,
   },
   {
     id: 'c-printf-malloc',
     language: 'cpp',
     title: 'C: malloc + printf',
-    code: `int *buf = (int *)malloc(n * sizeof(int));\nif (buf == NULL) {\n    printf("out of memory\\n");\n    return -1;\n}`,
+    code: `int *buf = (int *)malloc(n * sizeof(int));\nif (buf == NULL) {\n    return -1;\n}`,
   },
   {
     id: 'c-struct-typedef',
@@ -49,7 +49,7 @@ export const cppSnippets: Snippet[] = [
     id: 'c-pointer-swap',
     language: 'cpp',
     title: 'C: swap by pointer',
-    code: `void swap(int *a, int *b) {\n    int tmp = *a;\n    *a = *b;\n    *b = tmp;\n}`,
+    code: `int tmp = *a;\n*a = *b;\n*b = tmp;`,
   },
   {
     id: 'c-bitwise',

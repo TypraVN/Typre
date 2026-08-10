@@ -62,14 +62,11 @@ function computeConsistency(samples: number[]): number {
 
 interface EngineOptions {
   /**
-   * Gọi khi gõ hết bài hiện tại. Trả về code của bài kế tiếp để nối vào và gõ liền
-   * mạch (đồng hồ + số liệu chạy tiếp), hoặc `null` để kết thúc lượt.
+   * Gọi khi gõ hết bài hiện tại. Trả về code của bài kế tiếp để gõ liền mạch
+   * (đồng hồ + số liệu chạy tiếp), hoặc `null` để kết thúc lượt.
    */
   onExhausted?: () => string | null;
 }
-
-/** Hai dòng trắng giữa hai bài: nhìn là biết chỗ ngắt, và phải bấm Enter hai lần. */
-const SNIPPET_SEPARATOR = '\n\n';
 
 export function useTypingEngine(target: string, options: EngineOptions = {}) {
   /**
@@ -91,6 +88,12 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
    * vì backspace xoá dấu vết: gõ sai rồi sửa vẫn phải tính là đã gõ.
    */
   const typedTotalRef = useRef(0);
+  /**
+   * Số ký tự đúng/sai của các bài ĐÃ XONG trong cùng lượt. `charStatuses` chỉ mô tả
+   * bài đang hiện, nên không cộng dồn ở đây thì mỗi lần sang bài mới wpm và accuracy
+   * sẽ tính lại từ đầu.
+   */
+  const completedRef = useRef({ correct: 0, incorrect: 0 });
   /** Tốc độ (ký tự/giây) của từng giây, để tính độ đều tay. */
   const perSecondRef = useRef<number[]>([]);
   const lastTickRef = useRef({ at: 0, typed: 0 });
@@ -118,6 +121,7 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
     setFinishedAt(null);
     setMistakeCounts({});
     typedTotalRef.current = 0;
+    completedRef.current = { correct: 0, incorrect: 0 };
     perSecondRef.current = [];
     lastTickRef.current = { at: 0, typed: 0 };
     setSamples([]);
@@ -156,13 +160,19 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
     (nextCursor: number) => {
       if (nextCursor < text.length) return;
 
-      // Còn bài để nối thì gõ tiếp, KHÔNG chốt lượt: đồng hồ, số liệu, chuỗi mẫu
-      // tốc độ đều đi tiếp như thể vẫn đang trong cùng một bài.
-      const more = onExhaustedRef.current?.();
-      if (more) {
-        const added = SNIPPET_SEPARATOR + more;
-        setText((prev) => prev + added);
-        setCharStatuses((prev) => [...prev, ...buildInitialStatuses(added)]);
+      // Còn bài để gõ tiếp thì THAY bài, không nối thêm vào cuối: khung code cao cố
+      // định nên nối dồn sẽ đẩy phần trên ra ngoài tầm nhìn, người gõ không thấy hết
+      // bài của mình. Đồng hồ, số liệu và chuỗi mẫu tốc độ vẫn chạy tiếp như thường.
+      const next = onExhaustedRef.current?.();
+      if (next) {
+        // Chốt số đã gõ của bài vừa xong vào bộ đếm cộng dồn TRƯỚC khi xoá trạng thái,
+        // không thì wpm/accuracy tụt về 0 mỗi lần sang bài mới.
+        completedRef.current.correct += charStatuses.filter((s) => s === 'correct').length;
+        completedRef.current.incorrect += charStatuses.filter((s) => s === 'incorrect').length;
+
+        setText(next);
+        setCharStatuses(buildInitialStatuses(next));
+        setCursor(0);
         return;
       }
 
@@ -170,7 +180,7 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
       setFinishedAt(Date.now());
       if (soundEnabled) playFinish();
     },
-    [text.length, soundEnabled],
+    [text.length, charStatuses, soundEnabled],
   );
 
   const beginIfIdle = useCallback(() => {
@@ -325,8 +335,11 @@ export function useTypingEngine(target: string, options: EngineOptions = {}) {
   );
 
   const stats: TypingStats = useMemo(() => {
-    const correctCount = charStatuses.filter((s) => s === 'correct').length;
-    const incorrectCount = charStatuses.filter((s) => s === 'incorrect').length;
+    // Cộng cả các bài đã xong trong lượt này, không chỉ bài đang hiện trên màn hình.
+    const correctCount =
+      completedRef.current.correct + charStatuses.filter((s) => s === 'correct').length;
+    const incorrectCount =
+      completedRef.current.incorrect + charStatuses.filter((s) => s === 'incorrect').length;
     const attempted = correctCount + incorrectCount;
 
     const endTime = status === 'finished' ? finishedAt : now;

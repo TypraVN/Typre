@@ -42,7 +42,7 @@ export const cppBulk = defineSnippets('cpp', 'cpp-x', [
   `enum class Mode { Idle, Run };`,
   `constexpr double kGravity = 9.81;`,
   `static_assert(sizeof(int) == 4, "need 32-bit int");`,
-  `try {\n    parse(line);\n} catch (const std::exception& e) {\n    std::cerr << e.what();\n}`,
+  `try {\n    parse(line);\n} catch (const std::exception& e) { log(e); }`,
   `#define MAX_ITEMS 128`,
-  `switch (mode) {\ncase Mode::Idle:\n    break;\ndefault:\n    run();\n}`,
+  `switch (mode) {\ncase Mode::Idle:\n    break;\n}`,
 ])

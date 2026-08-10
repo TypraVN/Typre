@@ -37,7 +37,7 @@ export const htmlSnippets: Snippet[] = [
     id: 'html-table',
     language: 'html',
     title: 'Table',
-    code: `<table>\n  <tr>\n    <th>Name</th>\n    <td>Alice</td>\n  </tr>\n</table>`,
+    code: `<tr>\n  <th>Name</th>\n  <td>Alice</td>\n</tr>`,
   },
   {
     id: 'html-input-types',
@@ -67,7 +67,7 @@ export const htmlSnippets: Snippet[] = [
     id: 'html-semantic',
     language: 'html',
     title: 'Semantic layout',
-    code: `<main>\n  <section id="hero">\n    <h1>Typre</h1>\n  </section>\n</main>`,
+    code: `<main>\n  <section id="hero">Typre</section>\n</main>`,
   },
   {
     id: 'html-entities',

@@ -53,13 +53,13 @@ export const goSnippets: Snippet[] = [
     id: 'go-defer',
     language: 'go',
     title: 'Defer + close',
-    code: `f, err := os.Open(path)\nif err != nil {\n    return err\n}\ndefer f.Close()`,
+    code: `f, err := os.Open(path)\nif err != nil {\n    return err\n}`,
   },
   {
     id: 'go-switch',
     language: 'go',
     title: 'Switch',
-    code: `switch v := x.(type) {\ncase string:\n    return v\ndefault:\n    return ""\n}`,
+    code: `switch v := x.(type) {\ncase string:\n    return v\n}`,
   },
   {
     id: 'go-slice-append',
@@ -71,6 +71,6 @@ export const goSnippets: Snippet[] = [
     id: 'go-waitgroup',
     language: 'go',
     title: 'WaitGroup',
-    code: `var wg sync.WaitGroup\nwg.Add(1)\ngo func() {\n    defer wg.Done()\n}()\nwg.Wait()`,
+    code: `go func() {\n    defer wg.Done()\n}()`,
   },
 ]
