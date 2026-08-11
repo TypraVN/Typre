@@ -30,6 +30,36 @@ import { htmlBulk } from './bulk/html'
 import { cssBulk } from './bulk/css'
 import { jsonBulk } from './bulk/json'
 import { textBulk } from './bulk/text'
+// Bài TRUNG BÌNH (~90-180 ký tự) dành cho mốc 30s.
+import { javascriptMedium } from './medium/javascript'
+import { typescriptMedium } from './medium/typescript'
+import { pythonMedium } from './medium/python'
+import { csharpMedium } from './medium/csharp'
+import { javaMedium } from './medium/java'
+import { goMedium } from './medium/go'
+import { sqlMedium } from './medium/sql'
+import { cppMedium } from './medium/cpp'
+import { rustMedium } from './medium/rust'
+import { bashMedium } from './medium/bash'
+import { htmlMedium } from './medium/html'
+import { cssMedium } from './medium/css'
+import { jsonMedium } from './medium/json'
+import { textMedium } from './medium/text'
+// Bài DÀI (~10-14 dòng) dành riêng cho mốc 60s.
+import { javascriptLong } from './long/javascript'
+import { typescriptLong } from './long/typescript'
+import { pythonLong } from './long/python'
+import { csharpLong } from './long/csharp'
+import { javaLong } from './long/java'
+import { goLong } from './long/go'
+import { sqlLong } from './long/sql'
+import { cppLong } from './long/cpp'
+import { rustLong } from './long/rust'
+import { bashLong } from './long/bash'
+import { htmlLong } from './long/html'
+import { cssLong } from './long/css'
+import { jsonLong } from './long/json'
+import { textLong } from './long/text'
 
 export const SNIPPETS: Record<SnippetLanguage, Snippet[]> = {
   javascript: [...javascriptSnippets, ...javascriptBulk],
@@ -57,9 +87,100 @@ export const SNIPPETS: Record<SnippetLanguage, Snippet[]> = {
  * Giữ ở module scope (không phải state trong React) để việc đổi ngôn ngữ qua lại,
  * hay component remount, không làm mất tiến độ của túi.
  */
-const bags: Partial<Record<SnippetLanguage, Snippet[]>> = {}
+/**
+ * Chia bài theo mốc thời gian. Người gõ ~40 wpm đi được khoảng 200 ký tự mỗi phút,
+ * nên 15s ≈ 50 ký tự, 30s ≈ 100, 60s ≈ 200+. Trước đây 15s và 30s rút CHUNG một túi
+ * mà trung vị cả kho chỉ 45 ký tự, nên mốc 30s toàn ra bài gõ 5 giây là xong.
+ */
+const SHORT_MAX_CHARS = 70
+const MEDIUM_MAX_CHARS = 200
 
-export function getRandomSnippet(language: SnippetLanguage, excludeId?: string): Snippet {
-  const bag = (bags[language] ??= [])
-  return drawFromBag(bag, SNIPPETS[language], excludeId)
+/**
+ * Bài dài viết riêng cho mốc 60s. Ngôn ngữ nào chưa có thì KHÔNG có key ở đây và
+ * `poolFor` tự rơi xuống bộ ngắn hơn — thiếu dữ liệu thì mất hay, chứ không vỡ app.
+ */
+const LONG_SNIPPETS: Partial<Record<SnippetLanguage, Snippet[]>> = {
+  javascript: javascriptLong,
+  typescript: typescriptLong,
+  python: pythonLong,
+  csharp: csharpLong,
+  java: javaLong,
+  go: goLong,
+  sql: sqlLong,
+  cpp: cppLong,
+  rust: rustLong,
+  bash: bashLong,
+  html: htmlLong,
+  css: cssLong,
+  json: jsonLong,
+  text: textLong,
+}
+
+/** Bài trung bình viết riêng cho mốc 30s, gộp thêm với bài dài sẵn có trong kho. */
+const MEDIUM_SNIPPETS: Partial<Record<SnippetLanguage, Snippet[]>> = {
+  javascript: javascriptMedium,
+  typescript: typescriptMedium,
+  python: pythonMedium,
+  csharp: csharpMedium,
+  java: javaMedium,
+  go: goMedium,
+  sql: sqlMedium,
+  cpp: cppMedium,
+  rust: rustMedium,
+  bash: bashMedium,
+  html: htmlMedium,
+  css: cssMedium,
+  json: jsonMedium,
+  text: textMedium,
+}
+
+type Bucket = 'short' | 'medium' | 'long'
+
+/** Mỗi ngôn ngữ ba rổ, chia sẵn một lần lúc nạp module. */
+const POOLS: Record<SnippetLanguage, Record<Bucket, Snippet[]>> = Object.fromEntries(
+  (Object.keys(SNIPPETS) as SnippetLanguage[]).map((lang) => {
+    const all = SNIPPETS[lang]
+    return [
+      lang,
+      {
+        short: all.filter((s) => s.code.length <= SHORT_MAX_CHARS),
+        medium: [
+          ...(MEDIUM_SNIPPETS[lang] ?? []),
+          // Bài sẵn có mà đủ dài cũng gom vào rổ 30s, khỏi phải viết lại.
+          ...all.filter(
+            (s) => s.code.length > SHORT_MAX_CHARS && s.code.length <= MEDIUM_MAX_CHARS,
+          ),
+        ],
+        long: LONG_SNIPPETS[lang] ?? [],
+      },
+    ]
+  }),
+) as Record<SnippetLanguage, Record<Bucket, Snippet[]>>
+
+/** Rổ mong muốn theo mốc thời gian; rổ rỗng thì lùi dần về rổ có bài. */
+function poolFor(language: SnippetLanguage, timeLimit: number): { key: string; items: Snippet[] } {
+  const pools = POOLS[language]
+  const wanted: Bucket[] =
+    timeLimit >= 60 ? ['long', 'medium', 'short'] : timeLimit >= 30 ? ['medium', 'short'] : ['short']
+
+  for (const bucket of wanted) {
+    if (pools[bucket].length > 0) return { key: `${language}-${bucket}`, items: pools[bucket] }
+  }
+  return { key: `${language}-all`, items: SNIPPETS[language] }
+}
+
+/**
+ * Mỗi rổ một TÚI RIÊNG (khoá theo `language-bucket`): dùng chung túi thì đổi qua lại
+ * 15s/60s sẽ làm rối thứ tự và sinh ra lặp bài sớm.
+ */
+const bags: Record<string, Snippet[]> = {}
+
+export function getRandomSnippet(
+  language: SnippetLanguage,
+  excludeId?: string,
+  timeLimit = 30,
+): Snippet {
+  const { key, items } = poolFor(language, timeLimit)
+  const bag = (bags[key] ??= [])
+  return drawFromBag(bag, items, excludeId)
 }

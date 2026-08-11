@@ -122,7 +122,10 @@ function App() {
     ? storedTimeLimit
     : DEFAULT_TIME_LIMIT
 
-  const [snippet, setSnippet] = useState(() => getRandomSnippet(usePreferencesStore.getState().language))
+  const [snippet, setSnippet] = useState(() => {
+    const prefs = usePreferencesStore.getState()
+    return getRandomSnippet(prefs.language, undefined, prefs.timeLimit)
+  })
   const [frozenStats, setFrozenStats] = useState<TypingStats | null>(null)
   const [capsLockOn, setCapsLockOn] = useState(false)
 
@@ -159,7 +162,17 @@ function App() {
 
   const pickNext = (lang: SnippetLanguage) => {
     setLanguage(lang)
-    setSnippet(getRandomSnippet(lang, snippet.id))
+    setSnippet(getRandomSnippet(lang, snippet.id, timeLimit))
+  }
+
+  /**
+   * Đổi mốc thời gian là phải đổi luôn bài, vì mỗi mốc rút từ một rổ độ dài khác nhau:
+   * giữ bài 1 dòng ở mốc 60s thì gõ 8 giây đã xong lượt, còn giữ bài 13 dòng ở mốc 15s
+   * thì không ai gõ kịp.
+   */
+  const chooseTimeLimit = (tl: number) => {
+    setTimeLimit(tl)
+    setSnippet(getRandomSnippet(language, snippet.id, tl))
   }
 
   /** Gõ lại đúng bài đang mở. */
@@ -182,7 +195,7 @@ function App() {
     reset()
     setFrozenStats(null)
     recordedRef.current = false
-    setSnippet(getRandomSnippet(language, snippet.id))
+    setSnippet(getRandomSnippet(language, snippet.id, timeLimit))
     containerRef.current?.focus()
   }
 
@@ -372,7 +385,7 @@ function App() {
                 <button
                   key={tl}
                   type="button"
-                  onClick={() => setTimeLimit(tl)}
+                  onClick={() => chooseTimeLimit(tl)}
                   className={timeLimit === tl ? TAB_BTN_ACTIVE : TAB_BTN}
                 >
                   {tl}s
