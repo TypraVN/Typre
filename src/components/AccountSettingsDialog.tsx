@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { KeyRound, TriangleAlert, User } from 'lucide-react'
 import { Modal } from './Modal'
+import { CopyLinkButton } from './CopyLinkButton'
 import {
   DISPLAY_NAME_MAX,
   USERNAME_RE,
@@ -206,8 +207,11 @@ export function AccountSettingsDialog({
                   <>
                     {t.usernameDesc}
                     {publicLink && (
-                      <div className="mt-1 font-mono text-xs text-orange-600 dark:text-orange-400 break-all">
-                        {publicLink}
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs text-orange-600 dark:text-orange-400 break-all">
+                          {publicLink}
+                        </span>
+                        <CopyLinkButton url={publicLink} t={t} />
                       </div>
                     )}
                   </>

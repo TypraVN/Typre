@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { Avatar } from './Avatar'
 import { Logo } from './Logo'
+import { CopyLinkButton } from './CopyLinkButton'
 import { getProfileByUsername, type Profile } from '../lib/profiles'
 import { fetchUserBests } from '../lib/leaderboard'
 import { formatJoinDate } from '../lib/stats'
@@ -85,6 +86,13 @@ export function PublicProfileView({ username, onBack, t }: PublicProfileViewProp
                   @{profile.username}
                   {joined && ` · ${t.joined} ${joined}`}
                 </div>
+                {/* Link lấy từ chính username thay vì `location.href`: người xem có thể
+                    tới đây từ URL viết hoa/khác dạng, copy nguyên xi là ra link lệch. */}
+                <CopyLinkButton
+                  url={`${window.location.origin}/#/u/${profile.username}`}
+                  t={t}
+                  className="mt-2"
+                />
               </div>
               {topWpm > 0 && (
                 <div className="ml-auto text-right">

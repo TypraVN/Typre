@@ -175,6 +175,20 @@ function poolFor(language: SnippetLanguage, timeLimit: number): { key: string; i
  */
 const bags: Record<string, Snippet[]> = {}
 
+/**
+ * Tra bài theo id trên CẢ BA rổ. Cần cho link thách đấu: link chỉ mang theo id, mà bài
+ * dài/vừa không nằm trong `SNIPPETS` nên tìm ở đó thôi là trượt.
+ */
+const BY_ID: Map<string, Snippet> = new Map(
+  (Object.keys(POOLS) as SnippetLanguage[])
+    .flatMap((lang) => [...POOLS[lang].short, ...POOLS[lang].medium, ...POOLS[lang].long])
+    .map((s) => [s.id, s]),
+)
+
+export function getSnippetById(id: string): Snippet | undefined {
+  return BY_ID.get(id)
+}
+
 export function getRandomSnippet(
   language: SnippetLanguage,
   excludeId?: string,

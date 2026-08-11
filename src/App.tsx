@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { Volume2, VolumeX, TriangleAlert, Sun, Moon } from 'lucide-react'
+import { Volume2, VolumeX, TriangleAlert, Sun, Moon, Swords } from 'lucide-react'
 import { Toast, ToastStack } from './components/Toast'
 import { useTypingEngine } from './hooks/useTypingEngine'
 import { CodeEditorDisplay } from './components/CodeEditorDisplay'
@@ -18,8 +18,14 @@ const NewPasswordDialog = lazy(() =>
 import { AuthButton } from './components/AuthButton'
 import { useAuth } from './hooks/useAuth'
 import { readAuthErrorFromUrl } from './lib/auth'
+import {
+  buildChallengeUrl,
+  clearChallengeHash,
+  readChallengeFromHash,
+  type Challenge,
+} from './lib/challenge'
 import { usePendingScoreSubmit } from './hooks/usePendingScoreSubmit'
-import { getRandomSnippet } from './data/snippets'
+import { getRandomSnippet, getSnippetById } from './data/snippets'
 import type { SnippetLanguage } from './data/types'
 import type { TypingStats } from './types/typing'
 import { vscodeShortcuts, vimShortcuts } from './data/shortcuts'
@@ -122,12 +128,27 @@ function App() {
     ? storedTimeLimit
     : DEFAULT_TIME_LIMIT
 
+  /**
+   * Lời thách đấu đọc MỘT LẦN lúc mount. Giữ nguyên trong suốt lượt để bảng Kết quả
+   * biết mà so điểm; bấm "next snippet" là bỏ (xem `goNext`).
+   */
+  const [challenge, setChallenge] = useState(() => {
+    const found = readChallengeFromHash()
+    if (!found) return null
+    // Link cũ trỏ bài đã bị xoá khỏi dataset thì bỏ qua, đừng để app trắng bài.
+    return getSnippetById(found.snippetId) ? found : null
+  })
+
   const [snippet, setSnippet] = useState(() => {
+    const fromChallenge = challenge && getSnippetById(challenge.snippetId)
+    if (fromChallenge) return fromChallenge
+
     const prefs = usePreferencesStore.getState()
     return getRandomSnippet(prefs.language, undefined, prefs.timeLimit)
   })
   const [frozenStats, setFrozenStats] = useState<TypingStats | null>(null)
   const [capsLockOn, setCapsLockOn] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   const { charStatuses, cursor, status, stats, mistakeCounts, handleKeyDown, reset } =
     useTypingEngine(snippet.code)
@@ -175,6 +196,28 @@ function App() {
     setSnippet(getRandomSnippet(language, snippet.id, tl))
   }
 
+  /**
+   * Copy link mở đúng bài này, đúng mốc này, kèm điểm vừa đạt làm mốc cần vượt.
+   * `navigator.clipboard` chỉ chạy trên https hoặc localhost — chỗ khác thì báo lỗi
+   * chứ không im lặng, để người dùng biết mà copy tay.
+   */
+  const copyChallengeLink = async () => {
+    const url = buildChallengeUrl({
+      language: snippet.language,
+      timeLimit,
+      snippetId: snippet.id,
+      target: displayStats.wpm,
+    })
+
+    try {
+      await navigator.clipboard.writeText(url)
+      setLinkCopied(true)
+      window.setTimeout(() => setLinkCopied(false), 2500)
+    } catch {
+      window.prompt(t.challengeCopyFailed, url)
+    }
+  }
+
   /** Gõ lại đúng bài đang mở. */
   const restartSame = () => {
     reset()
@@ -183,8 +226,9 @@ function App() {
     containerRef.current?.focus()
   }
 
-  /** Sang bài mới cùng ngôn ngữ. */
+  /** Sang bài mới cùng ngôn ngữ. Bỏ luôn lời thách đấu vì đã sang bài khác. */
   const goNext = () => {
+    setChallenge(null)
     pickNext(language)
     containerRef.current?.focus()
   }
@@ -202,6 +246,42 @@ function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', uiMode === 'dark')
   }, [uiMode])
+
+  /**
+   * Nhận lời thách đấu: ép ngôn ngữ + mốc thời gian cho khớp, nạp đúng bài, rồi DỌN
+   * HASH — không dọn thì reload hay bấm "next snippet" xong tải lại là quay về bài cũ,
+   * trông như app kẹt ở một bài.
+   */
+  const applyChallenge = (next: Challenge) => {
+    const target = getSnippetById(next.snippetId)
+    if (!target) return
+
+    setChallenge(next)
+    setSnippet(target)
+    setLanguage(next.language)
+    setTimeLimit(next.timeLimit)
+    setFrozenStats(null)
+    recordedRef.current = false
+    clearChallengeHash()
+  }
+
+  useEffect(() => {
+    if (challenge) applyChallenge(challenge)
+
+    /**
+     * Người đang mở sẵn app mà bấm link thách đấu thì trình duyệt CHỈ đổi hash, không
+     * tải lại trang — đọc lúc mount thôi là không bao giờ thấy lời thách đó.
+     */
+    const onHashChange = () => {
+      const next = readChallengeFromHash()
+      if (next) applyChallenge(next)
+    }
+
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+    // Chỉ gắn một lần; `applyChallenge` chỉ dùng setter nên không cần vào deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Focus lại khung gõ khi nó VỪA hiện ra. Gọi focus() ngay trong hàm reset không
   // ăn: lúc bấm "reset" từ bảng kết quả, khung gõ chưa mount nên ref còn null.
@@ -421,9 +501,17 @@ function App() {
             <>
               <div
                 className={`font-mono text-2xl font-bold tabular-nums transition-colors duration-300 ${countdownColor(remaining)}`}
+                data-testid="clock"
               >
                 {formatTime(remaining)}
               </div>
+
+              {challenge && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded border border-orange-500/50 bg-orange-500/10 text-orange-600 dark:text-orange-400 text-sm font-mono animate-fade-in">
+                  <Swords className="w-4 h-4" />
+                  {t.challengeBanner} <span className="font-bold">{challenge.target} wpm</span>
+                </div>
+              )}
 
               {/* Chừa sẵn chỗ cho bài cao nhất (4 dòng × 28px + padding) rồi canh giữa
                   khung trong đó: khung ôm sát nội dung nên bài 1 dòng và bài 4 dòng cao
@@ -483,12 +571,35 @@ function App() {
                 <span title={t.consistencyHint}>consistency: {displayStats.consistency}%</span>
               </div>
 
-              <div className="flex gap-3">
+              {challenge && (
+                <div
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded border font-mono text-sm ${
+                    displayStats.wpm > challenge.target
+                      ? 'border-green-600/40 bg-green-500/10 text-green-700 dark:text-green-400'
+                      : 'border-zinc-300 dark:border-zinc-600 text-zinc-500 dark:text-zinc-400'
+                  }`}
+                >
+                  <Swords className="w-4 h-4" />
+                  {displayStats.wpm > challenge.target
+                    ? t.challengeWon
+                    : `${t.challengeLost} ${challenge.target} wpm`}
+                </div>
+              )}
+
+              <div className="flex flex-wrap justify-center gap-3">
                 <button type="button" onClick={restartSame} className={ACTION_BTN_ON_CARD}>
                   {t.reset}
                 </button>
                 <button type="button" onClick={goNext} className={ACTION_BTN_ON_CARD}>
                   {t.nextSnippet}
+                </button>
+                <button
+                  type="button"
+                  onClick={copyChallengeLink}
+                  className={`${ACTION_BTN_ON_CARD} flex items-center gap-1.5`}
+                >
+                  <Swords className="w-4 h-4" />
+                  {linkCopied ? t.challengeCopied : t.challengeFriend}
                 </button>
               </div>
 
