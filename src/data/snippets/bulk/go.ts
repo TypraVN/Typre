@@ -42,4 +42,8 @@ export const goBulk = defineSnippets('go', 'go-x', [
   `resp, err := http.Get(url)\ndefer resp.Body.Close()`,
   `var errNotFound = errors.New("not found")`,
   `if errors.Is(err, errNotFound) {\n    return nil\n}`,
+  `fmt.Println(len(scores), cap(scores))`,
+  `defer cancel()`,
+  `nums := make([]int, 0, 10)`,
+  `total := Sum(values[:3])`,
 ])

@@ -45,4 +45,11 @@ export const cssBulk = defineSnippets('css', 'css-x', [
   `:root {\n    --radius: 12px;\n    --gap: 1rem;\n}`,
   `.rounded {\n    border-radius: var(--radius, 8px);\n}`,
   `@supports (backdrop-filter: blur(4px)) {\n    .glass { backdrop-filter: blur(4px); }\n}`,
+  `.hidden { display: none; }`,
+  `img { max-width: 100%; height: auto; }`,
+  `* { box-sizing: border-box; }`,
+  `html { color-scheme: dark light; }`,
+  `a { color: inherit; text-decoration: none; }`,
+  `.mt-2 { margin-top: 0.5rem; }`,
+  `.stack > * + * { margin-block-start: 1rem; }`,
 ])

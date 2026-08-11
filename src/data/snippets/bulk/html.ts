@@ -44,4 +44,9 @@ export const htmlBulk = defineSnippets('html', 'html-x', [
   `<svg viewBox="0 0 24 24">\n    <path d="M4 12h16" />\n</svg>`,
   `<!-- caret blinks at the cursor -->`,
   `<br />\n<hr />`,
+  `<img src="/logo.svg" alt="Typre logo" width="32" />`,
+  `<span class="badge">new</span>`,
+  `<output for="speed">60 wpm</output>`,
+  `<button type="reset">Clear</button>`,
+  `<abbr title="words per minute">wpm</abbr>`,
 ])

@@ -301,7 +301,7 @@ export function useTypingEngine(target: string) {
   );
 
   const stats: TypingStats = useMemo(() => {
-    // Nối bài nên `charStatuses` đã bao trọn cả lượt, không cần bộ đếm cộng dồn riêng.
+    // Một lượt = một bài, nên `charStatuses` đã bao trọn cả lượt: không cần bộ đếm cộng dồn.
     const correctCount = charStatuses.filter((s) => s === 'correct').length;
     const incorrectCount = charStatuses.filter((s) => s === 'incorrect').length;
     const attempted = correctCount + incorrectCount;

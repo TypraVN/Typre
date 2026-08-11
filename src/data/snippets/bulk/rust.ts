@@ -46,4 +46,9 @@ export const rustBulk = defineSnippets('rust', 'rs-x', [
   `#[test]\nfn it_works() {\n    assert_eq!(2 + 2, 4);\n}`,
   `let shared = Arc::new(Mutex::new(0));`,
   `tokio::spawn(async move {\n    worker(rx).await;\n});`,
+  `let mut buffer = String::with_capacity(64);`,
+  `println!("{:?}", values.first());`,
+  `let count = text.chars().count();`,
+  `values.retain(|v| *v > 0);`,
+  `let sum: i32 = values.iter().sum();`,
 ])

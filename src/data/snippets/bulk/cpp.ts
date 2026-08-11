@@ -45,4 +45,9 @@ export const cppBulk = defineSnippets('cpp', 'cpp-x', [
   `try {\n    parse(line);\n} catch (const std::exception& e) { log(e); }`,
   `#define MAX_ITEMS 128`,
   `switch (mode) {\ncase Mode::Idle:\n    break;\n}`,
+  `auto size = static_cast<int>(values.size());`,
+  `std::swap(a, b);`,
+  `std::string_view view{text};`,
+  `constexpr int kMaxWpm = 300;`,
+  `values.shrink_to_fit();`,
 ])

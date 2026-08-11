@@ -42,4 +42,11 @@ export const pythonBulk = defineSnippets('python', 'py-x', [
   `reversed_text = text[::-1]`,
   `clean = raw.strip().lower().replace(" ", "_")`,
   `if re.match(r"^\\d{3}-\\d{4}$", phone):\n    save(phone)`,
+  `print(f"{wpm} wpm at {accuracy:.1f}%")`,
+  `rows = sorted(rows, key=len, reverse=True)`,
+  `total = sum(s["wpm"] for s in scores)`,
+  `Path("out.txt").write_text("done")`,
+  `assert wpm > 0, "wpm must be positive"`,
+  `values = list(range(0, 100, 5))`,
+  `name = name.strip().casefold()`,
 ])

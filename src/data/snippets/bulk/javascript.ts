@@ -50,4 +50,8 @@ export const javascriptBulk = defineSnippets('javascript', 'js-x', [
   `str.padStart(2, "0");`,
   `Number.parseFloat(input).toFixed(2);`,
   `Array.from({ length: 5 }, (_, i) => i * 2);`,
+  `const ids = new Set(rows.map((r) => r.id));`,
+  `queueMicrotask(() => render(state));`,
+  `console.table(scores.slice(0, 5));`,
+  `element.scrollIntoView({ block: "nearest" });`,
 ])

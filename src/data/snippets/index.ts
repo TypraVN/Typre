@@ -1,5 +1,6 @@
 import type { Snippet, SnippetLanguage } from '../types'
 import { drawFromBag } from '../../lib/shuffle'
+import { loadBagIds, saveBagIds } from '../../lib/bagStore'
 import { javascriptSnippets } from './javascript'
 import { typescriptSnippets } from './typescript'
 import { csharpSnippets } from './csharp'
@@ -189,6 +190,9 @@ export function getSnippetById(id: string): Snippet | undefined {
   return BY_ID.get(id)
 }
 
+/** Rổ nào đã đọc localStorage rồi — chỉ hydrate một lần cho mỗi rổ. */
+const hydrated = new Set<string>()
+
 export function getRandomSnippet(
   language: SnippetLanguage,
   excludeId?: string,
@@ -196,5 +200,27 @@ export function getRandomSnippet(
 ): Snippet {
   const { key, items } = poolFor(language, timeLimit)
   const bag = (bags[key] ??= [])
-  return drawFromBag(bag, items, excludeId)
+
+  if (!hydrated.has(key)) {
+    hydrated.add(key)
+    const savedIds = loadBagIds(key)
+
+    if (savedIds !== null) {
+      const byId = new Map(items.map((snippet) => [snippet.id, snippet]))
+      // Bỏ id lạ: kho bài có thể đã thêm/xoá giữa hai lần mở app, và id cũ không còn
+      // tồn tại thì không được đẩy `undefined` vào túi.
+      for (const id of savedIds) {
+        const snippet = byId.get(id)
+        if (snippet !== undefined) bag.push(snippet)
+      }
+    }
+  }
+
+  const picked = drawFromBag(bag, items, excludeId)
+  saveBagIds(
+    key,
+    bag.map((snippet) => snippet.id),
+  )
+
+  return picked
 }
