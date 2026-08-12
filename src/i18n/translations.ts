@@ -39,6 +39,12 @@ export const translations = {
   dateCol: 'date',
   langFilterLabel: 'language',
   timeFilterLabel: 'time',
+  periodFilterLabel: 'period',
+  periodAll: 'all time',
+  periodWeek: 'this week',
+  periodToday: 'today',
+  periodViewMissing:
+    'Weekly and daily boards need one more migration: run supabase/add-leaderboard-periods.sql, then reload.',
   yourRank: 'your rank',
   unranked: 'unranked',
   playerCount: 'players',
@@ -135,6 +141,11 @@ export const translations = {
   dayStreak: 'day streak',
   xpToNextLevel: 'to next level',
   xpLocalNote: 'XP is counted on this device only',
+
+  // Luyện điểm yếu
+  weakSpots: 'weak spots',
+  weakSpotsTargeting: 'targeting:',
+  weakSpotsNoData: 'Type a few runs first — weak spots come from the characters you actually mistype.',
 
   // Account settings
   tabAccount: 'account',

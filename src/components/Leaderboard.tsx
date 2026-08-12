@@ -3,7 +3,10 @@ import { Crown, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   fetchLeaderboardPage,
   fetchMyRank,
+  MISSING_PERIOD_VIEW,
   PAGE_SIZE,
+  PERIODS,
+  type Period,
   type ScoreRow,
 } from '../lib/leaderboard'
 import { isLeaderboardEnabled } from '../lib/supabase'
@@ -40,6 +43,11 @@ const TIME_BTN_ACTIVE =
 const GROUP_LABEL =
   'px-3 text-[11px] font-mono font-bold text-orange-600 dark:text-orange-500 uppercase tracking-widest'
 
+const PERIOD_BTN =
+  'w-full px-2 py-1 text-sm text-left rounded-md cursor-pointer transition-colors duration-150 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+const PERIOD_BTN_ACTIVE =
+  'w-full px-2 py-1 text-sm text-left rounded-md cursor-pointer transition-colors duration-150 bg-white dark:bg-zinc-700 text-orange-600 dark:text-orange-400 font-medium shadow-sm'
+
 /** Màu huy chương cho 3 hạng đầu, còn lại dùng màu chữ thường. */
 function rankColor(rank: number): string {
   if (rank === 1) return 'text-yellow-500 dark:text-yellow-400'
@@ -63,6 +71,7 @@ export function Leaderboard({
 }: LeaderboardProps) {
   const [language, setLanguage] = useState<SnippetLanguage>(defaultLanguage)
   const [timeLimit, setTimeLimit] = useState<number>(defaultTimeLimit)
+  const [period, setPeriod] = useState<Period>('all')
   const [page, setPage] = useState(0)
 
   const [rows, setRows] = useState<ScoreRow[]>([])
@@ -77,7 +86,7 @@ export function Leaderboard({
   // Đổi filter thì về trang 1, nếu không sẽ ở trang 3 của bảng chỉ có 1 trang.
   useEffect(() => {
     setPage(0)
-  }, [language, timeLimit])
+  }, [language, timeLimit, period])
 
   useEffect(() => {
     if (!isLeaderboardEnabled) return
@@ -85,7 +94,7 @@ export function Leaderboard({
     setLoading(true)
     setError(null)
 
-    fetchLeaderboardPage(language, timeLimit, page).then((res) => {
+    fetchLeaderboardPage(language, timeLimit, page, period).then((res) => {
       if (cancelled) return
       setRows(res.rows)
       setTotal(res.total)
@@ -96,7 +105,7 @@ export function Leaderboard({
     return () => {
       cancelled = true
     }
-  }, [language, timeLimit, page])
+  }, [language, timeLimit, page, period])
 
   useEffect(() => {
     if (!isLeaderboardEnabled || !currentUser) {
@@ -104,13 +113,13 @@ export function Leaderboard({
       return
     }
     let cancelled = false
-    fetchMyRank(language, timeLimit, currentUser.id).then((res) => {
+    fetchMyRank(language, timeLimit, currentUser.id, period).then((res) => {
       if (!cancelled) setMyRank(res)
     })
     return () => {
       cancelled = true
     }
-  }, [language, timeLimit, currentUser])
+  }, [language, timeLimit, currentUser, period])
 
   if (!isLeaderboardEnabled) {
     return (
@@ -126,7 +135,25 @@ export function Leaderboard({
     <div className="w-full max-w-4xl flex flex-col sm:flex-row gap-6">
       {/* Sidebar filter */}
       <aside className="sm:w-40 shrink-0 flex flex-col gap-5">
-        <div className="flex flex-col gap-1">
+        {/* Khoảng thời gian đứng đầu vì nó đổi ý nghĩa của cả bảng, không chỉ lọc bớt.
+            Dạng khay dọc — khác cả danh sách trần của ngôn ngữ và khay ngang của mốc. */}
+        <div className="flex flex-col gap-2">
+          <div className={GROUP_LABEL}>{t.periodFilterLabel}</div>
+          <div className="flex flex-col gap-0.5 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-800/70">
+            {PERIODS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriod(p)}
+                className={p === period ? PERIOD_BTN_ACTIVE : PERIOD_BTN}
+              >
+                {p === 'all' ? t.periodAll : p === 'week' ? t.periodWeek : t.periodToday}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1 pt-4 border-t border-zinc-200 dark:border-zinc-800">
           <div className={`${GROUP_LABEL} mb-1`}>{t.langFilterLabel}</div>
           {languages.map((lang) => (
             <button
@@ -204,7 +231,9 @@ export function Leaderboard({
         {loading && <div className="text-center text-zinc-500 py-10">{t.leaderboardLoading}</div>}
 
         {!loading && error && (
-          <div className="text-center text-red-500 dark:text-red-400 py-10">{error}</div>
+          <div className="text-center text-red-500 dark:text-red-400 py-10">
+            {error === MISSING_PERIOD_VIEW ? t.periodViewMissing : error}
+          </div>
         )}
 
         {!loading && !error && rows.length === 0 && (
@@ -212,7 +241,10 @@ export function Leaderboard({
         )}
 
         {!loading && !error && rows.length > 0 && (
-          <table key={`${language}-${timeLimit}-${page}`} className="w-full animate-fade-in">
+          <table
+            key={`${period}-${language}-${timeLimit}-${page}`}
+            className="w-full animate-fade-in"
+          >
             <thead>
               <tr className="text-zinc-500 text-xs">
                 <th className="py-2 pr-3 text-left font-normal w-10">#</th>
