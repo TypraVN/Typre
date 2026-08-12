@@ -1,5 +1,14 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { Volume2, VolumeX, TriangleAlert, Sun, Moon, Swords, Target } from 'lucide-react'
+import {
+  Volume2,
+  VolumeX,
+  TriangleAlert,
+  Sun,
+  Moon,
+  Swords,
+  Target,
+  ClipboardPaste,
+} from 'lucide-react'
 import { Toast, ToastStack } from './components/Toast'
 import { useTypingEngine } from './hooks/useTypingEngine'
 import { CodeEditorDisplay } from './components/CodeEditorDisplay'
@@ -13,6 +22,10 @@ const Leaderboard = lazy(() =>
   import('./components/Leaderboard').then((m) => ({ default: m.Leaderboard })),
 )
 import { SubmitScore } from './components/SubmitScore'
+// Chỉ tải khi người dùng mở ô dán code — không nhét textarea vào bundle đầu.
+const CustomCodeDialog = lazy(() =>
+  import('./components/CustomCodeDialog').then((m) => ({ default: m.CustomCodeDialog })),
+)
 // Chỉ cần khi người dùng vào từ link đặt lại mật khẩu — không nhét vào bundle đầu.
 const NewPasswordDialog = lazy(() =>
   import('./components/NewPasswordDialog').then((m) => ({ default: m.NewPasswordDialog })),
@@ -29,6 +42,8 @@ import {
 import { usePendingScoreSubmit } from './hooks/usePendingScoreSubmit'
 import { getRandomSnippet, getSnippetById, getWeakSpotSnippet } from './data/snippets'
 import { topWeakChars, weightsFor } from './lib/weakSpots'
+import { buildCustomSnippet } from './lib/customSnippet'
+import { useCustomCodeStore } from './store/useCustomCodeStore'
 import type { SnippetLanguage } from './data/types'
 import type { TypingStats } from './types/typing'
 import { vscodeShortcuts, vimShortcuts } from './data/shortcuts'
@@ -150,6 +165,12 @@ function App() {
 
     const prefs = usePreferencesStore.getState()
 
+    // Đang luyện code của mình thì reload phải quay lại đúng code đó, không rơi về kho.
+    const custom = useCustomCodeStore.getState()
+    if (custom.active && custom.code.length > 0) {
+      return buildCustomSnippet(custom.code, prefs.language)
+    }
+
     // Bài đầu tiên cũng phải tôn trọng chế độ luyện điểm yếu: bật rồi F5 mà bài đầu
     // vẫn ngẫu nhiên thì trông như cài đặt không được lưu.
     if (prefs.weakSpots) {
@@ -164,6 +185,15 @@ function App() {
   const [frozenStats, setFrozenStats] = useState<TypingStats | null>(null)
   const [capsLockOn, setCapsLockOn] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [customDialogOpen, setCustomDialogOpen] = useState(false)
+
+  const customCode = useCustomCodeStore((s) => s.code)
+  const customActive = useCustomCodeStore((s) => s.active)
+  const setCustomCode = useCustomCodeStore((s) => s.setCode)
+  const exitCustom = useCustomCodeStore((s) => s.exit)
+
+  /** Đang thật sự luyện code của mình (bật cờ VÀ có code). */
+  const customOn = customActive && customCode.length > 0
 
   const { charStatuses, cursor, status, stats, mistakeCounts, handleKeyDown, reset } =
     useTypingEngine(snippet.code)
@@ -215,7 +245,28 @@ function App() {
 
   const pickNext = (lang: SnippetLanguage) => {
     setLanguage(lang)
-    setSnippet(drawSnippet(lang, timeLimit))
+
+    // Đang gõ code của mình thì đổi ngôn ngữ chỉ là đổi cách tô màu — giữ nguyên code,
+    // không rút bài mới khiến người dùng mất đoạn đang luyện.
+    setSnippet(customOn ? buildCustomSnippet(customCode, lang) : drawSnippet(lang, timeLimit))
+  }
+
+  /** Bật chế độ gõ code của mình với đoạn code vừa dán. */
+  const startCustom = (code: string) => {
+    setCustomCode(code)
+    setSnippet(buildCustomSnippet(code, language))
+    setCustomDialogOpen(false)
+    setChallenge(null)
+    setFrozenStats(null)
+    recordedRef.current = false
+  }
+
+  /** Về kho bài. Giữ lại code đã dán để lần sau không phải dán lại. */
+  const leaveCustom = () => {
+    exitCustom()
+    setSnippet(drawSnippet(language, timeLimit))
+    setFrozenStats(null)
+    recordedRef.current = false
   }
 
   /**
@@ -225,7 +276,8 @@ function App() {
    */
   const chooseTimeLimit = (tl: number) => {
     setTimeLimit(tl)
-    setSnippet(drawSnippet(language, tl))
+    // Code của mình không có rổ theo độ dài, nên đổi mốc chỉ là đổi đồng hồ.
+    if (!customOn) setSnippet(drawSnippet(language, tl))
   }
 
   /**
@@ -258,8 +310,19 @@ function App() {
     containerRef.current?.focus()
   }
 
-  /** Sang bài mới cùng ngôn ngữ. Bỏ luôn lời thách đấu vì đã sang bài khác. */
+  /**
+   * Sang bài mới cùng ngôn ngữ. Bỏ luôn lời thách đấu vì đã sang bài khác.
+   *
+   * Ở chế độ code của mình chỉ có ĐÚNG MỘT bài, nên "next" = gõ lại chính nó. Cố ý
+   * không tự thoát về kho: thoát phải là hành động người dùng chủ động bấm, không thì
+   * gõ xong nhấn Enter là mất đoạn code đang luyện mà không hiểu vì sao.
+   */
   const goNext = () => {
+    if (customOn) {
+      restartSame()
+      return
+    }
+
     setChallenge(null)
     pickNext(language)
     containerRef.current?.focus()
@@ -271,7 +334,9 @@ function App() {
     reset()
     setFrozenStats(null)
     recordedRef.current = false
-    setSnippet(drawSnippet(language, timeLimit))
+    // Đang luyện code của mình thì giữ nguyên — bấm logo chỉ là làm mới lượt gõ, không
+    // phải bỏ đoạn code người dùng vừa dán vào.
+    if (!customOn) setSnippet(drawSnippet(language, timeLimit))
     containerRef.current?.focus()
   }
 
@@ -409,6 +474,7 @@ function App() {
         consistency: stats.consistency,
         // 'finished' = gõ hết bài; hết giờ thì `status` vẫn là 'typing'.
         completed: status === 'finished',
+        custom: customOn,
       })
     }
   }, [sessionOver])
@@ -526,6 +592,31 @@ function App() {
             >
               <Target className="w-3.5 h-3.5" />
               {t.weakSpots}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCustomDialogOpen(true)}
+              title={customOn ? t.customCodeEdit : t.customCodeTitle}
+              className={`${customOn ? TAB_BTN_ACTIVE : TAB_BTN} flex items-center gap-1.5`}
+            >
+              <ClipboardPaste className="w-3.5 h-3.5" />
+              {t.customCode}
+            </button>
+          </div>
+        )}
+
+        {mode === 'code' && customOn && (
+          <div className="flex items-center justify-center gap-3 font-mono text-xs">
+            <span className="px-2 py-0.5 rounded bg-orange-500/15 text-orange-600 dark:text-orange-400">
+              {t.customCodeActive}
+            </span>
+            <button
+              type="button"
+              onClick={leaveCustom}
+              className="cursor-pointer text-zinc-500 dark:text-zinc-400 hover:text-orange-500 transition-colors duration-150"
+            >
+              {t.customCodeExit}
             </button>
           </div>
         )}
@@ -668,14 +759,18 @@ function App() {
                 <button type="button" onClick={goNext} className={ACTION_BTN_ON_CARD}>
                   {t.nextSnippet}
                 </button>
-                <button
-                  type="button"
-                  onClick={copyChallengeLink}
-                  className={`${ACTION_BTN_ON_CARD} flex items-center gap-1.5`}
-                >
-                  <Swords className="w-4 h-4" />
-                  {linkCopied ? t.challengeCopied : t.challengeFriend}
-                </button>
+                {/* Link thách đấu chỉ mang theo ID bài: người nhận không có code của
+                    bạn nên mở link ra là trượt. Ẩn hẳn thay vì để họ copy một link hỏng. */}
+                {!customOn && (
+                  <button
+                    type="button"
+                    onClick={copyChallengeLink}
+                    className={`${ACTION_BTN_ON_CARD} flex items-center gap-1.5`}
+                  >
+                    <Swords className="w-4 h-4" />
+                    {linkCopied ? t.challengeCopied : t.challengeFriend}
+                  </button>
+                )}
               </div>
 
               <div className="flex gap-4 font-mono text-xs text-zinc-400 dark:text-zinc-500">
@@ -687,6 +782,13 @@ function App() {
                 </span>
               </div>
 
+              {/* Code tự dán KHÔNG được gửi lên bảng xếp hạng: ai cũng dán được đoạn
+                  dễ nhất rồi cày điểm, bảng mất hết ý nghĩa so sánh. */}
+              {customOn ? (
+                <p className="font-mono text-xs text-zinc-400 dark:text-zinc-500 text-center">
+                  {t.customCodeNoLeaderboard}
+                </p>
+              ) : (
               <SubmitScore
                 user={user}
                 language={snippet.language}
@@ -698,6 +800,7 @@ function App() {
                 accuracy={displayStats.accuracy}
                 t={t}
               />
+              )}
 
               {sessionTopMistakes.length > 0 && (
                 <div className="font-mono text-sm text-zinc-500 dark:text-zinc-400">
@@ -800,6 +903,17 @@ function App() {
       {recovery && (
         <Suspense fallback={null}>
           <NewPasswordDialog onDone={clearRecovery} t={t} />
+        </Suspense>
+      )}
+
+      {customDialogOpen && (
+        <Suspense fallback={null}>
+          <CustomCodeDialog
+            initialCode={customCode}
+            onSubmit={startCustom}
+            onClose={() => setCustomDialogOpen(false)}
+            t={t}
+          />
         </Suspense>
       )}
     </div>

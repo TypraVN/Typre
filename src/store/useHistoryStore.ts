@@ -29,6 +29,11 @@ export interface TypingResult {
    * ghi thành 15 và mất thưởng dù thực tế xong sớm.
    */
   completed?: boolean
+  /**
+   * Lượt gõ code người dùng tự dán. Không tính vào kỷ lục cá nhân: độ khó do họ tự
+   * chọn nên so với bài trong kho là vô nghĩa. XP vẫn tính — XP chỉ ở máy họ.
+   */
+  custom?: boolean
 }
 
 /**
@@ -91,7 +96,7 @@ export const useHistoryStore = create<HistoryState>()(
 
           const key = bestKey(result.language, result.timeLimit ?? 0)
           const previousBest = state.progress.bests[key] ?? 0
-          const newRecord = result.wpm > previousBest
+          const newRecord = !result.custom && result.wpm > previousBest
 
           const duration = result.durationSeconds ?? 0
           const breakdown = xpForRun({

@@ -147,6 +147,21 @@ export const translations = {
   weakSpotsTargeting: 'targeting:',
   weakSpotsNoData: 'Type a few runs first — weak spots come from the characters you actually mistype.',
 
+  // Gõ code của chính mình
+  customCode: 'your code',
+  customCodeTitle: 'Practice your own code',
+  customCodeSubtitle: 'Paste any snippet from your codebase and type that instead.',
+  customCodePlaceholder: 'Paste code here...',
+  customCodeStart: 'start typing this',
+  customCodeLines: 'lines',
+  customCodeCleaned: 'smart quotes, tabs and invisible characters were converted',
+  customCodeTruncated: 'trimmed to fit the limit',
+  customCodeNoLeaderboard:
+    'Runs on your own code stay local: no leaderboard, no personal best, no challenge link.',
+  customCodeActive: 'your code',
+  customCodeExit: 'back to the library',
+  customCodeEdit: 'edit your code',
+
   // Account settings
   tabAccount: 'account',
   tabAuthentication: 'authentication',
