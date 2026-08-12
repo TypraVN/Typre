@@ -1,3 +1,4 @@
+import { AchievementGrid } from './AchievementGrid'
 import { Avatar } from './Avatar'
 import { Modal } from './Modal'
 import { WpmChart } from './WpmChart'
@@ -33,6 +34,8 @@ export function UserStatsDialog({
 }: UserStatsDialogProps) {
   const results = useHistoryStore((s) => s.results)
   const totals = useHistoryStore((s) => s.totals)
+  // Bản lưu cũ chưa có `unlocked` → mặc định rỗng thay vì để undefined xuống UI.
+  const unlocked = useHistoryStore((s) => s.progress.unlocked ?? {})
 
   const summary = summarize(results)
   const bests = computeBests(results)
@@ -82,6 +85,8 @@ export function UserStatsDialog({
               />
             </div>
           </div>
+
+          <AchievementGrid unlocked={unlocked} t={t} />
 
           <div className="flex flex-col gap-2">
             <div className="font-mono text-xs uppercase tracking-wider text-zinc-500">

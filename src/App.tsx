@@ -22,6 +22,10 @@ const Leaderboard = lazy(() =>
   import('./components/Leaderboard').then((m) => ({ default: m.Leaderboard })),
 )
 import { SubmitScore } from './components/SubmitScore'
+// Cấp độ + thành tích: chỉ tải khi người dùng bấm huy hiệu ở header.
+const ProgressDialog = lazy(() =>
+  import('./components/ProgressDialog').then((m) => ({ default: m.ProgressDialog })),
+)
 // Chỉ tải khi người dùng mở ô dán code — không nhét textarea vào bundle đầu.
 const CustomCodeDialog = lazy(() =>
   import('./components/CustomCodeDialog').then((m) => ({ default: m.CustomCodeDialog })),
@@ -186,6 +190,7 @@ function App() {
   const [capsLockOn, setCapsLockOn] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [customDialogOpen, setCustomDialogOpen] = useState(false)
+  const [progressOpen, setProgressOpen] = useState(false)
 
   const customCode = useCustomCodeStore((s) => s.code)
   const customActive = useCustomCodeStore((s) => s.active)
@@ -220,6 +225,7 @@ function App() {
   const markStarted = useHistoryStore((s) => s.markStarted)
   const xp = useHistoryStore((s) => s.progress.xp)
   const lastAward = useHistoryStore((s) => s.lastAward)
+  const progress = useHistoryStore((s) => s.progress)
 
   const remaining = Math.max(0, timeLimit - stats.elapsedSeconds)
   const sessionOver = status === 'finished' || remaining === 0
@@ -486,7 +492,7 @@ function App() {
           <Logo size="sm" onClick={goHome} title={t.homeTooltip} />
 
           <div className="flex items-center flex-wrap justify-end gap-2">
-            <LevelBadge xp={xp} t={t} />
+            <LevelBadge xp={xp} onClick={() => setProgressOpen(true)} t={t} />
 
             <div className="flex gap-2">
               {(['code', 'shortcuts', 'leaderboard'] as const).map((m) => (
@@ -903,6 +909,12 @@ function App() {
       {recovery && (
         <Suspense fallback={null}>
           <NewPasswordDialog onDone={clearRecovery} t={t} />
+        </Suspense>
+      )}
+
+      {progressOpen && (
+        <Suspense fallback={null}>
+          <ProgressDialog progress={progress} onClose={() => setProgressOpen(false)} t={t} />
         </Suspense>
       )}
 

@@ -147,6 +147,10 @@ export const translations = {
   weakSpotsTargeting: 'targeting:',
   weakSpotsNoData: 'Type a few runs first — weak spots come from the characters you actually mistype.',
 
+  // Thành tích
+  achievements: 'achievements',
+  achievementUnlocked: 'unlocked:',
+
   // Gõ code của chính mình
   customCode: 'your code',
   customCodeTitle: 'Practice your own code',

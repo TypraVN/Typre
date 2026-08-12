@@ -8,6 +8,7 @@ import {
   xpForRun,
   type XpBreakdown,
 } from '../lib/xp'
+import { newlyUnlocked } from '../lib/achievements'
 
 export interface TypingResult {
   id: string
@@ -40,7 +41,7 @@ export interface TypingResult {
  * Đếm trọn đời, KHÔNG bị ảnh hưởng bởi việc `results` chỉ giữ 50 lần gần nhất —
  * nếu tính "số lần đã gõ" bằng `results.length` thì gõ tới lần thứ 51 là số liệu đứng im.
  */
-interface LifetimeTotals {
+export interface LifetimeTotals {
   started: number
   completed: number
   typingSeconds: number
@@ -57,6 +58,14 @@ export interface Progress {
   lastRunDate: string | null
   /** Kỷ lục wpm theo cặp (ngôn ngữ × mốc thời gian), khoá do `bestKey()` sinh. */
   bests: Record<string, number>
+  /**
+   * Thành tích đã mở khoá: id → ngày mở (ISO). Lưu ngày chứ không lưu `true` để sau này
+   * hiện được "mở khoá hôm nào" mà không phải đổi cấu trúc.
+   *
+   * Một khi đã mở thì KHÔNG bao giờ mất, kể cả điều kiện không còn đúng — thành tích là
+   * ghi nhận việc đã làm được, không phải trạng thái hiện tại.
+   */
+  unlocked: Record<string, string>
 }
 
 /** Kết quả tính XP của lượt VỪA XONG, để bảng kết quả hiện "+72 XP". */
@@ -66,6 +75,8 @@ export interface XpAward {
   levelAfter: number
   streakDays: number
   newRecord: boolean
+  /** Id các thành tích vừa mở khoá ở lượt này, để bảng kết quả hiện ra. */
+  unlockedNow: string[]
 }
 
 interface HistoryState {
@@ -80,7 +91,13 @@ interface HistoryState {
 
 const EMPTY_TOTALS: LifetimeTotals = { started: 0, completed: 0, typingSeconds: 0 }
 
-const EMPTY_PROGRESS: Progress = { xp: 0, streakDays: 0, lastRunDate: null, bests: {} }
+const EMPTY_PROGRESS: Progress = {
+  xp: 0,
+  streakDays: 0,
+  lastRunDate: null,
+  bests: {},
+  unlocked: {},
+}
 
 export const useHistoryStore = create<HistoryState>()(
   persist(
@@ -96,7 +113,15 @@ export const useHistoryStore = create<HistoryState>()(
 
           const key = bestKey(result.language, result.timeLimit ?? 0)
           const previousBest = state.progress.bests[key] ?? 0
-          const newRecord = !result.custom && result.wpm > previousBest
+          /**
+           * Lượt ĐẦU TIÊN của một cặp (ngôn ngữ × mốc) chỉ đặt mốc chuẩn, KHÔNG được
+           * tính là phá kỷ lục: 14 ngôn ngữ × 3 mốc = 42 lần +50 gần như miễn phí, đủ
+           * lên ~cấp 11 chỉ bằng cách thử qua mỗi loại một lượt.
+           */
+          const beatsRecord = previousBest > 0 && result.wpm > previousBest
+          const newRecord = !result.custom && beatsRecord
+          // Vẫn phải LƯU mốc chuẩn của lượt đầu, không thì lần sau vẫn là "lần đầu".
+          const raisesBest = !result.custom && result.wpm > previousBest
 
           const duration = result.durationSeconds ?? 0
           const breakdown = xpForRun({
@@ -111,27 +136,45 @@ export const useHistoryStore = create<HistoryState>()(
 
           const xp = state.progress.xp + breakdown.total
 
+          const results = [result, ...state.results].slice(0, 50)
+          const totals = {
+            ...state.totals,
+            completed: state.totals.completed + 1,
+            typingSeconds: state.totals.typingSeconds + duration,
+          }
+          const progress: Progress = {
+            xp,
+            streakDays,
+            lastRunDate: today,
+            bests: raisesBest
+              ? { ...state.progress.bests, [key]: result.wpm }
+              : state.progress.bests,
+            // Bản lưu cũ không có `unlocked` → mặc định rỗng, đừng để undefined lọt xuống.
+            unlocked: state.progress.unlocked ?? {},
+          }
+
+          // Xét thành tích SAU khi đã cập nhật totals/progress: điều kiện kiểu "10 lượt"
+          // phải thấy được lượt vừa xong, không thì luôn chậm một nhịp.
+          const unlockedNow = newlyUnlocked(
+            { totals, progress, results, lastRun: result },
+            progress.unlocked,
+          )
+
+          for (const id of unlockedNow) {
+            progress.unlocked[id] = new Date().toISOString()
+          }
+
           return {
-            results: [result, ...state.results].slice(0, 50),
-            totals: {
-              ...state.totals,
-              completed: state.totals.completed + 1,
-              typingSeconds: state.totals.typingSeconds + duration,
-            },
-            progress: {
-              xp,
-              streakDays,
-              lastRunDate: today,
-              bests: newRecord
-                ? { ...state.progress.bests, [key]: result.wpm }
-                : state.progress.bests,
-            },
+            results,
+            totals,
+            progress,
             lastAward: {
               breakdown,
               levelBefore: levelFromXp(state.progress.xp).level,
               levelAfter: levelFromXp(xp).level,
               streakDays,
               newRecord,
+              unlockedNow,
             },
           }
         }),

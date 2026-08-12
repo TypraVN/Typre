@@ -3,6 +3,7 @@ import type { Translation } from '../i18n/translations'
 
 interface LevelBadgeProps {
   xp: number
+  onClick: () => void
   t: Translation
 }
 
@@ -12,12 +13,14 @@ interface LevelBadgeProps {
  * Chiều rộng thanh CỐ ĐỊNH (`w-16`), không co theo nội dung: cấp lên 2 chữ số hay XP đổi
  * thì header không được nhảy — cùng lý do khung code phải cao cố định.
  */
-export function LevelBadge({ xp, t }: LevelBadgeProps) {
+export function LevelBadge({ xp, onClick, t }: LevelBadgeProps) {
   const { level, into, needed, percent } = levelFromXp(xp)
 
   return (
-    <div
-      className="flex items-center gap-2 px-2 py-1 rounded border border-zinc-300 dark:border-zinc-700"
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2 px-2 py-1 rounded border cursor-pointer transition-colors duration-150 border-zinc-300 dark:border-zinc-700 hover:border-orange-500 dark:hover:border-orange-400"
       title={`${into} / ${needed} ${t.xpLabel} ${t.xpToNextLevel} · ${xp} ${t.xpLabel} total`}
     >
       <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
@@ -33,6 +36,6 @@ export function LevelBadge({ xp, t }: LevelBadgeProps) {
           style={{ width: `${percent}%` }}
         />
       </span>
-    </div>
+    </button>
   )
 }
