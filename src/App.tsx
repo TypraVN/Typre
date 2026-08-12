@@ -47,6 +47,7 @@ import { usePendingScoreSubmit } from './hooks/usePendingScoreSubmit'
 import { getRandomSnippet, getSnippetById, getWeakSpotSnippet } from './data/snippets'
 import { topWeakChars, weightsFor } from './lib/weakSpots'
 import { buildCustomSnippet } from './lib/customSnippet'
+import { pushXp } from './lib/xpSync'
 import { useCustomCodeStore } from './store/useCustomCodeStore'
 import type { SnippetLanguage } from './data/types'
 import type { TypingStats } from './types/typing'
@@ -482,6 +483,19 @@ function App() {
         completed: status === 'finished',
         custom: customOn,
       })
+
+      /**
+       * Đẩy XP lên tài khoản nếu đang đăng nhập. Đọc `lastAward` từ store SAU khi
+       * `addResult` chạy — `addResult` là hàm đồng bộ của zustand nên `getState()` ngay
+       * sau đó đã thấy giá trị mới, không cần chờ React render lại.
+       *
+       * Không `await`, không báo lỗi: XP ở máy đã cộng xong rồi, phần đồng bộ hỏng thì
+       * lần sau cộng tiếp — không đáng để chặn luồng gõ.
+       */
+      if (user) {
+        const earned = useHistoryStore.getState().lastAward?.breakdown.total ?? 0
+        if (earned > 0) void pushXp(earned)
+      }
     }
   }, [sessionOver])
 

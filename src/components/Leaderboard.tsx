@@ -11,6 +11,8 @@ import {
 } from '../lib/leaderboard'
 import { isLeaderboardEnabled } from '../lib/supabase'
 import { Avatar } from './Avatar'
+import { levelFromXp } from '../lib/xp'
+import { fetchXpFor } from '../lib/xpSync'
 import type { AppUser } from '../lib/auth'
 import type { SnippetLanguage } from '../data/types'
 import type { Translation } from '../i18n/translations'
@@ -82,6 +84,14 @@ export function Leaderboard({
     rank: null,
     wpm: null,
   })
+  /**
+   * XP của những người đang hiện trên trang, tra riêng theo `user_id`.
+   *
+   * Cố ý KHÔNG join `profiles` vào view xếp hạng: join thì phải tạo lại cả 3 view mỗi
+   * lần thêm cột, còn cách này chỉ cần thêm cột `xp` là xong. Một truy vấn phụ cho 10
+   * dòng là rẻ.
+   */
+  const [xpByUser, setXpByUser] = useState<Record<string, number>>({})
 
   // Đổi filter thì về trang 1, nếu không sẽ ở trang 3 của bảng chỉ có 1 trang.
   useEffect(() => {
@@ -100,6 +110,12 @@ export function Leaderboard({
       setTotal(res.total)
       setError(res.error)
       setLoading(false)
+
+      // Tra XP sau khi đã có danh sách: chỉ cần XP của đúng 10 người đang hiện.
+      const ids = [...new Set(res.rows.map((row) => row.user_id))]
+      fetchXpFor(ids).then((map) => {
+        if (!cancelled) setXpByUser(map)
+      })
     })
 
     return () => {
@@ -286,6 +302,17 @@ export function Leaderboard({
                       <span className="flex items-center gap-2">
                         <Avatar src={row.avatar_url} name={row.display_name} size={20} />
                         <span className="truncate max-w-[10rem]">{row.display_name}</span>
+
+                        {/* Chỉ hiện khi CÓ xp: chưa chạy SQL đồng bộ thì mọi người là 0,
+                            hiện "lv 1" cho cả bảng chỉ làm rối chứ không cho biết gì. */}
+                        {(xpByUser[row.user_id] ?? 0) > 0 && (
+                          <span
+                            title={`${xpByUser[row.user_id]} ${t.xpLabel}`}
+                            className="shrink-0 px-1 rounded bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[11px]"
+                          >
+                            {t.levelShort} {levelFromXp(xpByUser[row.user_id]).level}
+                          </span>
+                        )}
                       </span>
                     </td>
                     <td className="py-2 pr-3 text-right tabular-nums font-bold">{row.wpm}</td>
