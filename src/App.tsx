@@ -5,6 +5,8 @@ import { useTypingEngine } from './hooks/useTypingEngine'
 import { CodeEditorDisplay } from './components/CodeEditorDisplay'
 import { ShortcutTrainer } from './components/ShortcutTrainer'
 import { Logo } from './components/Logo'
+import { LevelBadge } from './components/LevelBadge'
+import { XpAwardCard } from './components/XpAwardCard'
 import { WpmChart } from './components/WpmChart'
 // Bảng xếp hạng nằm ở chunk riêng: chỉ tải khi thật sự mở tab Xếp hạng.
 const Leaderboard = lazy(() =>
@@ -173,6 +175,8 @@ function App() {
   const results = useHistoryStore((s) => s.results)
   const addResult = useHistoryStore((s) => s.addResult)
   const markStarted = useHistoryStore((s) => s.markStarted)
+  const xp = useHistoryStore((s) => s.progress.xp)
+  const lastAward = useHistoryStore((s) => s.lastAward)
 
   const remaining = Math.max(0, timeLimit - stats.elapsedSeconds)
   const sessionOver = status === 'finished' || remaining === 0
@@ -375,6 +379,8 @@ function App() {
         durationSeconds: Math.min(stats.elapsedSeconds, timeLimit),
         rawWpm: stats.rawWpm,
         consistency: stats.consistency,
+        // 'finished' = gõ hết bài; hết giờ thì `status` vẫn là 'typing'.
+        completed: status === 'finished',
       })
     }
   }, [sessionOver])
@@ -386,6 +392,8 @@ function App() {
           <Logo size="sm" onClick={goHome} title={t.homeTooltip} />
 
           <div className="flex items-center flex-wrap justify-end gap-2">
+            <LevelBadge xp={xp} t={t} />
+
             <div className="flex gap-2">
               {(['code', 'shortcuts', 'leaderboard'] as const).map((m) => (
                 <button
@@ -570,6 +578,12 @@ function App() {
                 <span title={t.rawHint}>raw: {displayStats.rawWpm}</span>
                 <span title={t.consistencyHint}>consistency: {displayStats.consistency}%</span>
               </div>
+
+              {lastAward && (
+                <div className="w-full pt-3 border-t border-zinc-300 dark:border-zinc-700">
+                  <XpAwardCard award={lastAward} t={t} />
+                </div>
+              )}
 
               {challenge && (
                 <div

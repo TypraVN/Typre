@@ -121,6 +121,21 @@ export const translations = {
   noBestsYet: 'no completed runs yet — type something first',
   statsLocalNote: 'counted on this device only, not synced to your account',
 
+  // XP và cấp độ
+  levelShort: 'lv',
+  levelLabel: 'level',
+  xpLabel: 'xp',
+  xpEarned: 'earned',
+  levelUp: 'level up',
+  xpBase: 'typed',
+  xpAccuracy: 'accuracy',
+  xpFinish: 'finished',
+  xpRecord: 'best',
+  xpStreak: 'streak',
+  dayStreak: 'day streak',
+  xpToNextLevel: 'to next level',
+  xpLocalNote: 'XP is counted on this device only',
+
   // Account settings
   tabAccount: 'account',
   tabAuthentication: 'authentication',
