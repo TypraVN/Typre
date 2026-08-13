@@ -110,18 +110,34 @@ export async function fetchLeaderboardPage(
   timeLimit: number,
   page = 0,
   period: Period = 'all',
+  /**
+   * Chỉ lấy những người này (bảng bạn bè). `undefined` = cả thiên hạ.
+   *
+   * Mảng RỖNG khác `undefined`: rỗng nghĩa là "đã lọc và không có ai", phải trả bảng
+   * trống chứ không được rơi về bảng toàn cầu — không thì người chưa có bạn nào bấm
+   * "friends" lại thấy nguyên bảng chung và tưởng lọc không hoạt động.
+   */
+  userIds?: string[],
 ): Promise<LeaderboardPage> {
   const supabase = await getSupabase()
   if (!supabase) return { rows: [], total: 0, error: 'not-configured' }
 
+  if (userIds !== undefined && userIds.length === 0) {
+    return { rows: [], total: 0, error: null }
+  }
+
   const from = page * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
-  const { data, error, count } = await supabase
+  let query = supabase
     .from(PERIOD_VIEW[period])
     .select('*', { count: 'exact' })
     .eq('language', language)
     .eq('time_limit', timeLimit)
+
+  if (userIds !== undefined) query = query.in('user_id', userIds)
+
+  const { data, error, count } = await query
     .order('wpm', { ascending: false })
     .order('created_at', { ascending: true })
     .range(from, to)
@@ -162,6 +178,8 @@ export async function fetchMyRank(
   timeLimit: number,
   userId: string,
   period: Period = 'all',
+  /** Cùng ý nghĩa như ở `fetchLeaderboardPage`: giới hạn trong nhóm bạn bè. */
+  userIds?: string[],
 ): Promise<{ rank: number | null; wpm: number | null }> {
   const supabase = await getSupabase()
   if (!supabase) return { rank: null, wpm: null }
@@ -179,12 +197,16 @@ export async function fetchMyRank(
   if (!mine) return { rank: null, wpm: null }
 
   // Số người có wpm cao hơn mình + 1 = hạng của mình.
-  const { count } = await supabase
+  let ahead = supabase
     .from(view)
     .select('*', { count: 'exact', head: true })
     .eq('language', language)
     .eq('time_limit', timeLimit)
     .gt('wpm', (mine as { wpm: number }).wpm)
+
+  if (userIds !== undefined) ahead = ahead.in('user_id', userIds)
+
+  const { count } = await ahead
 
   return { rank: (count ?? 0) + 1, wpm: (mine as { wpm: number }).wpm }
 }

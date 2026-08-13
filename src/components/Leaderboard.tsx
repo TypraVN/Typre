@@ -13,6 +13,7 @@ import { isLeaderboardEnabled } from '../lib/supabase'
 import { Avatar } from './Avatar'
 import { levelFromXp } from '../lib/xp'
 import { fetchXpFor } from '../lib/xpSync'
+import { listFriends } from '../lib/friends'
 import type { AppUser } from '../lib/auth'
 import type { SnippetLanguage } from '../data/types'
 import type { Translation } from '../i18n/translations'
@@ -76,6 +77,14 @@ export function Leaderboard({
   const [period, setPeriod] = useState<Period>('all')
   const [page, setPage] = useState(0)
 
+  /** 'friends' = chỉ mình + bạn bè đã kết nối. Chỉ có nghĩa khi đã đăng nhập. */
+  const [scope, setScope] = useState<'all' | 'friends'>('all')
+  /**
+   * `null` = chưa đọc xong danh sách bạn. Phân biệt với `[]` (đã đọc, không có ai) để
+   * không gọi truy vấn với danh sách rỗng rồi hiện "bảng trống" trong lúc còn đang tải.
+   */
+  const [friendIds, setFriendIds] = useState<string[] | null>(null)
+
   const [rows, setRows] = useState<ScoreRow[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -96,15 +105,46 @@ export function Leaderboard({
   // Đổi filter thì về trang 1, nếu không sẽ ở trang 3 của bảng chỉ có 1 trang.
   useEffect(() => {
     setPage(0)
-  }, [language, timeLimit, period])
+  }, [language, timeLimit, period, scope])
+
+  /**
+   * Đọc danh sách bạn MỘT LẦN khi chuyển sang phạm vi bạn bè, không đọc lại mỗi lần đổi
+   * ngôn ngữ/mốc — danh sách bạn không phụ thuộc mấy thứ đó.
+   *
+   * Gồm cả CHÍNH MÌNH: bảng bạn bè mà không có mình thì không biết mình đứng đâu.
+   */
+  useEffect(() => {
+    if (scope !== 'friends' || !currentUser) {
+      setFriendIds(null)
+      return
+    }
+
+    let cancelled = false
+    listFriends(currentUser.id).then((lists) => {
+      if (cancelled) return
+      setFriendIds([currentUser.id, ...lists.friends.map((f) => f.profile.id)])
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [scope, currentUser])
+
+  /** Danh sách truyền xuống truy vấn: `undefined` = không lọc. */
+  const scopeIds = scope === 'friends' ? (friendIds ?? undefined) : undefined
+  const waitingForFriends = scope === 'friends' && friendIds === null
 
   useEffect(() => {
     if (!isLeaderboardEnabled) return
+    // Chờ đọc xong danh sách bạn: gọi luôn với `undefined` sẽ nháy bảng toàn cầu một
+    // nhịp rồi mới đổi sang bảng bạn bè.
+    if (waitingForFriends) return
+
     let cancelled = false
     setLoading(true)
     setError(null)
 
-    fetchLeaderboardPage(language, timeLimit, page, period).then((res) => {
+    fetchLeaderboardPage(language, timeLimit, page, period, scopeIds).then((res) => {
       if (cancelled) return
       setRows(res.rows)
       setTotal(res.total)
@@ -121,7 +161,7 @@ export function Leaderboard({
     return () => {
       cancelled = true
     }
-  }, [language, timeLimit, page, period])
+  }, [language, timeLimit, page, period, scope, friendIds, waitingForFriends])
 
   useEffect(() => {
     if (!isLeaderboardEnabled || !currentUser) {
@@ -129,13 +169,13 @@ export function Leaderboard({
       return
     }
     let cancelled = false
-    fetchMyRank(language, timeLimit, currentUser.id, period).then((res) => {
+    fetchMyRank(language, timeLimit, currentUser.id, period, scopeIds).then((res) => {
       if (!cancelled) setMyRank(res)
     })
     return () => {
       cancelled = true
     }
-  }, [language, timeLimit, currentUser, period])
+  }, [language, timeLimit, currentUser, period, scope, friendIds])
 
   if (!isLeaderboardEnabled) {
     return (
@@ -151,9 +191,29 @@ export function Leaderboard({
     <div className="w-full max-w-4xl flex flex-col sm:flex-row gap-6">
       {/* Sidebar filter */}
       <aside className="sm:w-40 shrink-0 flex flex-col gap-5">
+        {/* Chỉ hiện khi đã đăng nhập: chưa đăng nhập thì không có danh sách bạn nào để
+            lọc, hiện nút bấm vào không có tác dụng chỉ làm người dùng bối rối. */}
+        {currentUser && (
+          <div className="flex flex-col gap-2">
+            <div className={GROUP_LABEL}>{t.scopeFilterLabel}</div>
+            <div className="flex flex-col gap-0.5 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-800/70">
+              {(['all', 'friends'] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setScope(s)}
+                  className={s === scope ? PERIOD_BTN_ACTIVE : PERIOD_BTN}
+                >
+                  {s === 'all' ? t.scopeEveryone : t.scopeFriends}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Khoảng thời gian đứng đầu vì nó đổi ý nghĩa của cả bảng, không chỉ lọc bớt.
             Dạng khay dọc — khác cả danh sách trần của ngôn ngữ và khay ngang của mốc. */}
-        <div className="flex flex-col gap-2">
+        <div className={`flex flex-col gap-2${currentUser ? ' pt-4 border-t border-zinc-200 dark:border-zinc-800' : ''}`}>
           <div className={GROUP_LABEL}>{t.periodFilterLabel}</div>
           <div className="flex flex-col gap-0.5 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-800/70">
             {PERIODS.map((p) => (
@@ -252,8 +312,15 @@ export function Leaderboard({
           </div>
         )}
 
+        {/* Bảng bạn bè trống có HAI lý do khác nhau: chưa kết bạn với ai, hoặc có bạn
+            nhưng chưa ai gõ ngôn ngữ/mốc này. Nói rõ cái nào để người dùng biết phải
+            làm gì tiếp. */}
         {!loading && !error && rows.length === 0 && (
-          <div className="text-center text-zinc-500 py-10">{t.leaderboardEmpty}</div>
+          <div className="text-center text-zinc-500 py-10">
+            {scope === 'friends' && friendIds !== null && friendIds.length <= 1
+              ? t.scopeNoFriends
+              : t.leaderboardEmpty}
+          </div>
         )}
 
         {!loading && !error && rows.length > 0 && (
