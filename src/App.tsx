@@ -8,6 +8,7 @@ import {
   Swords,
   Target,
   ClipboardPaste,
+  Users,
 } from 'lucide-react'
 import { Toast, ToastStack } from './components/Toast'
 import { useTypingEngine } from './hooks/useTypingEngine'
@@ -48,6 +49,9 @@ import { getRandomSnippet, getSnippetById, getWeakSpotSnippet } from './data/sni
 import { topWeakChars, weightsFor } from './lib/weakSpots'
 import { buildCustomSnippet } from './lib/customSnippet'
 import { pushXp } from './lib/xpSync'
+import { buildRaceUrl, clearRaceHash, guestName, newRoomId, readRaceFromHash } from './lib/race'
+import { useRace } from './hooks/useRace'
+import { RaceLanes } from './components/RaceLanes'
 import { useCustomCodeStore } from './store/useCustomCodeStore'
 import type { SnippetLanguage } from './data/types'
 import type { TypingStats } from './types/typing'
@@ -164,7 +168,22 @@ function App() {
     return getSnippetById(found.snippetId) ? found : null
   })
 
+  /**
+   * Phòng đua đọc MỘT LẦN lúc mount, như lời thách đấu. Link mang theo cả bài nên người
+   * nhận mở link là vào đúng bài, không phải hỏi ai đang gõ gì.
+   */
+  const [race, setRace] = useState(() => {
+    const found = readRaceFromHash()
+    // Link cũ trỏ bài đã bị xoá khỏi kho thì bỏ, đừng để app trắng bài.
+    return found && getSnippetById(found.snippetId) ? found : null
+  })
+
   const [snippet, setSnippet] = useState(() => {
+    // Đua đứng TRƯỚC mọi thứ khác: cả phòng phải gõ đúng một bài, không thể để chế độ
+    // luyện điểm yếu hay code tự dán đổi bài của riêng một người.
+    const fromRace = race && getSnippetById(race.snippetId)
+    if (fromRace) return fromRace
+
     const fromChallenge = challenge && getSnippetById(challenge.snippetId)
     if (fromChallenge) return fromChallenge
 
@@ -221,6 +240,11 @@ function App() {
   // ở lần render thứ hai.
   const [authError, setAuthError] = useState<string | null>(readAuthErrorFromUrl)
 
+  /** Tên trong phòng đua: tên tài khoản nếu đã đăng nhập, không thì tên khách. */
+  const guestNameRef = useRef(guestName())
+  const raceName = user?.displayName ?? guestNameRef.current
+
+
   const results = useHistoryStore((s) => s.results)
   const addResult = useHistoryStore((s) => s.addResult)
   const markStarted = useHistoryStore((s) => s.markStarted)
@@ -231,6 +255,20 @@ function App() {
   const remaining = Math.max(0, timeLimit - stats.elapsedSeconds)
   const sessionOver = status === 'finished' || remaining === 0
   const displayStats = frozenStats ?? stats
+
+  /**
+   * `done` dùng `sessionOver` (gõ xong HOẶC hết giờ), không dùng riêng `status ===
+   * 'finished'`: ai hết giờ giữa bài mà không báo "đã dừng" thì vạch của họ đứng im ở
+   * phần trăm dở dang và cả phòng tưởng họ vẫn đang gõ.
+   */
+  const raceProgress = {
+    percent: snippet.code.length === 0 ? 0 : (cursor / snippet.code.length) * 100,
+    wpm: displayStats.wpm,
+    done: sessionOver,
+    completed: status === 'finished',
+  }
+
+  const { racers, connected: raceConnected, myKey } = useRace(race, raceName, raceProgress)
   const sessionTopMistakes = Object.entries(mistakeCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
@@ -253,9 +291,50 @@ function App() {
   const pickNext = (lang: SnippetLanguage) => {
     setLanguage(lang)
 
+    // Đang đua thì đổi ngôn ngữ chỉ đổi cách tô màu. Đổi bài là mỗi người gõ một thứ
+    // khác nhau và cuộc đua vô nghĩa.
+    if (race) return
+
     // Đang gõ code của mình thì đổi ngôn ngữ chỉ là đổi cách tô màu — giữ nguyên code,
     // không rút bài mới khiến người dùng mất đoạn đang luyện.
     setSnippet(customOn ? buildCustomSnippet(customCode, lang) : drawSnippet(lang, timeLimit))
+  }
+
+  /**
+   * Tạo phòng đua từ bài đang mở và copy link.
+   *
+   * Cố ý dùng ĐÚNG bài đang mở chứ không rút bài mới: người tạo phòng đã thấy bài, biết
+   * mình mời người khác gõ cái gì.
+   */
+  const startRace = async () => {
+    const room = { roomId: newRoomId(), language: snippet.language, timeLimit, snippetId: snippet.id }
+    const url = buildRaceUrl(room)
+
+    setRace(room)
+    setChallenge(null)
+    exitCustom()
+    setFrozenStats(null)
+    recordedRef.current = false
+    reset()
+    // Ghi hash để F5 vẫn ở trong phòng, và để copy từ thanh địa chỉ cũng đúng link.
+    window.history.replaceState(null, '', url.slice(url.indexOf('#')))
+
+    try {
+      await navigator.clipboard.writeText(url)
+      setLinkCopied(true)
+      window.setTimeout(() => setLinkCopied(false), 2500)
+    } catch {
+      window.prompt(t.challengeCopyFailed, url)
+    }
+  }
+
+  /** Rời phòng: về bài mới bình thường. */
+  const leaveRace = () => {
+    setRace(null)
+    clearRaceHash()
+    setFrozenStats(null)
+    recordedRef.current = false
+    setSnippet(drawSnippet(language, timeLimit))
   }
 
   /** Bật chế độ gõ code của mình với đoạn code vừa dán. */
@@ -325,7 +404,9 @@ function App() {
    * gõ xong nhấn Enter là mất đoạn code đang luyện mà không hiểu vì sao.
    */
   const goNext = () => {
-    if (customOn) {
+    // Đua và code-của-mình đều chỉ có ĐÚNG MỘT bài, nên "next" = gõ lại chính nó. Rời
+    // phòng phải là hành động chủ động bấm, không thì nhấn Enter là tự thoát cuộc đua.
+    if (customOn || race) {
       restartSame()
       return
     }
@@ -397,6 +478,40 @@ function App() {
   useEffect(() => {
     if (timeLimit !== storedTimeLimit) setTimeLimit(timeLimit)
   }, [timeLimit, storedTimeLimit, setTimeLimit])
+
+  /**
+   * Vào phòng bằng link thì mốc thời gian, ngôn ngữ VÀ BÀI phải theo phòng, không theo
+   * cài đặt cũ của người nhận — cả phòng chạy khác đồng hồ hoặc khác bài thì không so
+   * được với nhau.
+   */
+  useEffect(() => {
+    if (!race) return
+
+    setTimeLimit(race.timeLimit)
+    setLanguage(race.language)
+
+    const target = getSnippetById(race.snippetId)
+    if (target) setSnippet(target)
+  }, [race, setTimeLimit, setLanguage])
+
+  /**
+   * Bắt link đua mở khi đang Ở TRÊN site: cùng origin chỉ khác hash thì trình duyệt
+   * KHÔNG tải lại trang, nên đọc hash một lần lúc mount là bỏ sót — người nhận dán link
+   * vào tab đang mở sẽ thấy hash đổi mà app không vào phòng.
+   */
+  useEffect(() => {
+    const onHashChange = () => {
+      const found = readRaceFromHash()
+      if (found && getSnippetById(found.snippetId)) {
+        setRace(found)
+        setFrozenStats(null)
+        recordedRef.current = false
+      }
+    }
+
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
 
   useEffect(() => {
     recordedRef.current = false
@@ -623,6 +738,17 @@ function App() {
               <ClipboardPaste className="w-3.5 h-3.5" />
               {t.customCode}
             </button>
+
+            {/* Đang trong phòng thì nút đổi thành "rời phòng": tạo phòng mới trong khi
+                đang đua sẽ bỏ rơi những người đang ở phòng cũ mà họ không biết. */}
+            <button
+              type="button"
+              onClick={race ? leaveRace : startRace}
+              className={`${race ? TAB_BTN_ACTIVE : TAB_BTN} flex items-center gap-1.5`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              {race ? t.raceLeave : linkCopied ? t.raceCopied : t.raceStart}
+            </button>
           </div>
         )}
 
@@ -677,6 +803,12 @@ function App() {
       >
       {mode === 'code' && (
         <>
+          {/* Vạch đua nằm NGOÀI khối `!sessionOver`: gõ xong rồi vẫn phải thấy người
+              khác chạy tới đâu, không thì về đích trước là mất luôn cuộc đua. */}
+          {race && (
+            <RaceLanes racers={racers} myKey={myKey} connected={raceConnected} t={t} />
+          )}
+
           {!sessionOver && (
             <>
               <div

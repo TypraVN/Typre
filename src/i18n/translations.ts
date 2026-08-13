@@ -151,6 +151,15 @@ export const translations = {
   weakSpotsTargeting: 'targeting:',
   weakSpotsNoData: 'Type a few runs first — weak spots come from the characters you actually mistype.',
 
+  // Đua real-time
+  raceLabel: 'race',
+  raceConnecting: 'connecting...',
+  raceWaiting: 'Waiting for someone to join — send them the link.',
+  raceStart: 'race a friend',
+  raceCopied: 'race link copied!',
+  raceLeave: 'leave the race',
+  raceActive: 'racing',
+
   // Thành tích
   achievements: 'achievements',
   achievementUnlocked: 'unlocked:',
