@@ -17,7 +17,6 @@ import { ShortcutTrainer } from './components/ShortcutTrainer'
 import { Logo } from './components/Logo'
 import { LevelBadge } from './components/LevelBadge'
 import { XpAwardCard } from './components/XpAwardCard'
-import { SnippetMeaning } from './components/SnippetMeaning'
 import { SnippetDemo } from './components/SnippetDemo'
 import { WpmChart } from './components/WpmChart'
 // Bảng xếp hạng nằm ở chunk riêng: chỉ tải khi thật sự mở tab Xếp hạng.
@@ -863,8 +862,6 @@ function App() {
                   replayLabel={t.snippetDemoReplay}
                 />
               )}
-
-              <SnippetMeaning snippet={snippet} label={t.snippetMeaning} />
 
               {lastAward && (
                 <div className="w-full pt-3 border-t border-zinc-300 dark:border-zinc-700">

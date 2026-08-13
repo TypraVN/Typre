@@ -13,7 +13,6 @@ export const translations = {
   statusFinished: 'finished',
   statusLabel: 'status',
   resultTitle: 'Result',
-  snippetMeaning: 'what you just typed',
   snippetDemo: 'what this code does',
   snippetDemoReplay: 'replay',
   thisRunMistakes: 'mistakes this run:',
