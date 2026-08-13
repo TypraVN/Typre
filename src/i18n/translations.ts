@@ -146,11 +146,6 @@ export const translations = {
   xpToNextLevel: 'to next level',
   xpLocalNote: 'XP is counted on this device only',
 
-  // Luyện điểm yếu
-  weakSpots: 'weak spots',
-  weakSpotsTargeting: 'targeting:',
-  weakSpotsNoData: 'Type a few runs first — weak spots come from the characters you actually mistype.',
-
   // Đua real-time
   raceLabel: 'race',
   raceConnecting: 'connecting...',

@@ -7,7 +7,6 @@ import {
   Sun,
   Moon,
   Swords,
-  Target,
   ClipboardPaste,
   Users,
 } from 'lucide-react'
@@ -46,8 +45,7 @@ import {
   type Challenge,
 } from './lib/challenge'
 import { usePendingScoreSubmit } from './hooks/usePendingScoreSubmit'
-import { getRandomSnippet, getSnippetById, getWeakSpotSnippet } from './data/snippets'
-import { topWeakChars, weightsFor } from './lib/weakSpots'
+import { getRandomSnippet, getSnippetById } from './data/snippets'
 import { buildCustomSnippet } from './lib/customSnippet'
 import { pushXp } from './lib/xpSync'
 import { buildRaceUrl, clearRaceHash, guestName, newRoomId, readRaceFromHash } from './lib/race'
@@ -144,8 +142,6 @@ function App() {
   const setMode = usePreferencesStore((s) => s.setMode)
   const shortcutSet = usePreferencesStore((s) => s.shortcutSet)
   const setShortcutSet = usePreferencesStore((s) => s.setShortcutSet)
-  const weakSpots = usePreferencesStore((s) => s.weakSpots)
-  const toggleWeakSpots = usePreferencesStore((s) => s.toggleWeakSpots)
   const language = usePreferencesStore((s) => s.language)
   const setLanguage = usePreferencesStore((s) => s.setLanguage)
   const storedTimeLimit = usePreferencesStore((s) => s.timeLimit)
@@ -194,15 +190,6 @@ function App() {
     const custom = useCustomCodeStore.getState()
     if (custom.active && custom.code.length > 0) {
       return buildCustomSnippet(custom.code, prefs.language)
-    }
-
-    // Bài đầu tiên cũng phải tôn trọng chế độ luyện điểm yếu: bật rồi F5 mà bài đầu
-    // vẫn ngẫu nhiên thì trông như cài đặt không được lưu.
-    if (prefs.weakSpots) {
-      const weak = topWeakChars(useHistoryStore.getState().results)
-      if (weak.length > 0) {
-        return getWeakSpotSnippet(prefs.language, weightsFor(weak), undefined, prefs.timeLimit)
-      }
     }
 
     return getRandomSnippet(prefs.language, undefined, prefs.timeLimit)
@@ -274,20 +261,13 @@ function App() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
 
-  /** Ký tự hay gõ sai gần đây — cơ sở của chế độ luyện điểm yếu. */
-  const weakChars = topWeakChars(results)
-  const weakSpotsUsable = weakChars.length > 0
-  const weakSpotsOn = weakSpots && weakSpotsUsable
-
   /**
    * Một cửa duy nhất để rút bài, dùng cho cả 4 chỗ (đổi ngôn ngữ, đổi mốc, bài kế,
    * bấm logo). Trước đây mỗi chỗ gọi `getRandomSnippet` riêng nên thêm chế độ chọn bài
    * mới là phải sửa 4 nơi và rất dễ bỏ sót một nơi.
    */
   const drawSnippet = (lang: SnippetLanguage, tl: number) =>
-    weakSpotsOn
-      ? getWeakSpotSnippet(lang, weightsFor(weakChars), snippet.id, tl)
-      : getRandomSnippet(lang, snippet.id, tl)
+    getRandomSnippet(lang, snippet.id, tl)
 
   const pickNext = (lang: SnippetLanguage) => {
     setLanguage(lang)
@@ -728,23 +708,6 @@ function App() {
 
             <div className="hidden sm:block w-px h-6 bg-zinc-300 dark:bg-zinc-700" />
 
-            {/* Chưa có dữ liệu lỗi thì nút vẫn HIỆN nhưng khoá + nói rõ lý do, thay vì
-                ẩn đi — ẩn thì người dùng không biết chế độ này tồn tại. */}
-            <button
-              type="button"
-              onClick={toggleWeakSpots}
-              disabled={!weakSpotsUsable}
-              title={
-                weakSpotsUsable
-                  ? `${t.weakSpotsTargeting} ${weakChars.map(displayChar).join(' ')}`
-                  : t.weakSpotsNoData
-              }
-              className={`${weakSpotsOn ? TAB_BTN_ACTIVE : TAB_BTN} flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-default`}
-            >
-              <Target className="w-3.5 h-3.5" />
-              {t.weakSpots}
-            </button>
-
             <button
               type="button"
               onClick={() => setCustomDialogOpen(true)}
@@ -783,19 +746,6 @@ function App() {
           </div>
         )}
 
-        {weakSpotsOn && (
-          <div className="flex items-center justify-center gap-2 font-mono text-xs text-zinc-500 dark:text-zinc-400">
-            <span>{t.weakSpotsTargeting}</span>
-            {weakChars.map((ch) => (
-              <span
-                key={ch}
-                className="px-1.5 rounded bg-orange-500/15 text-orange-600 dark:text-orange-400"
-              >
-                {displayChar(ch)}
-              </span>
-            ))}
-          </div>
-        )}
       </header>
 
       {/* Luôn chiếm sẵn chiều cao dù chưa bật Caps Lock: nếu chỉ render khi bật thì

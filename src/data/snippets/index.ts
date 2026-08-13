@@ -1,7 +1,6 @@
 import type { Snippet, SnippetLanguage } from '../types'
 import { drawFromBag } from '../../lib/shuffle'
 import { loadBagIds, saveBagIds } from '../../lib/bagStore'
-import { scoreSnippet } from '../../lib/weakSpots'
 import { javascriptSnippets } from './javascript'
 import { typescriptSnippets } from './typescript'
 import { csharpSnippets } from './csharp'
@@ -224,38 +223,4 @@ export function getRandomSnippet(
   )
 
   return picked
-}
-
-/** Bao nhiêu bài "trúng" nhất được đưa vào vòng quay của chế độ luyện điểm yếu. */
-const WEAK_SPOT_POOL = 10
-
-/**
- * Bài có mật độ ký tự-hay-sai cao nhất trong rổ, thay vì bài ngẫu nhiên.
- *
- * CỐ Ý không lấy đúng bài điểm cao nhất mà rút ngẫu nhiên trong top 10: lấy bài số 1
- * thì lượt nào cũng đúng một bài đó, luyện thành học vẹo chứ không thành kỹ năng.
- *
- * Cũng cố ý KHÔNG dùng túi trộn: túi lo việc đi hết kho không lặp, còn ở đây mục tiêu
- * ngược lại — quay lại đúng nhóm bài khó. Chỉ tránh lặp NGAY bài vừa gõ.
- */
-export function getWeakSpotSnippet(
-  language: SnippetLanguage,
-  weights: Record<string, number>,
-  excludeId?: string,
-  timeLimit = 30,
-): Snippet {
-  const { items } = poolFor(language, timeLimit)
-
-  const ranked = items
-    .map((snippet) => ({ snippet, score: scoreSnippet(snippet.code, weights) }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, WEAK_SPOT_POOL)
-    .map((entry) => entry.snippet)
-
-  // Không bài nào chứa ký tự yếu (điểm 0 hết) thì quay về cách chọn thường.
-  if (ranked.length === 0) return getRandomSnippet(language, excludeId, timeLimit)
-
-  const usable = ranked.length > 1 ? ranked.filter((s) => s.id !== excludeId) : ranked
-
-  return usable[Math.floor(Math.random() * usable.length)]
 }
