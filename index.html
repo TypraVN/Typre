@@ -15,9 +15,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>Typre — practice typing code in 14 languages</title>
+    <!--
+      Giữ dưới ~155 ký tự: dài hơn là Google cắt giữa câu trong kết quả tìm kiếm. Nhồi
+      thêm từ khoá vào đây không giúp xếp hạng, chỉ làm đoạn mô tả bị đứt.
+    -->
     <meta
       name="description"
-      content="Typing practice built for programmers: real code in JavaScript, TypeScript, C#, Python, Rust, Go, SQL and more. Measures WPM, accuracy and consistency, tracks the characters you keep missing, and ranks you on a leaderboard."
+      content="Free typing practice for programmers: real code in 14 languages, WPM and accuracy tracking, weak-spot drills and live races. Works offline."
     />
     <!-- Chỉ có một trang thật; mọi thứ khác là hash route nên không cần canonical riêng. -->
     <link rel="canonical" href="https://www.typre.dev/" />
@@ -55,8 +59,21 @@
         "url": "https://www.typre.dev/",
         "applicationCategory": "EducationalApplication",
         "operatingSystem": "Any",
-        "description": "Typing practice for programmers: real code in 14 languages, WPM and accuracy tracking, and a leaderboard.",
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+        "description": "Typing practice for programmers: real code in 14 languages, 2170 snippets, WPM and accuracy tracking, weak-spot drills, real-time races and a leaderboard. Works offline.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "featureList": [
+          "Type real code in 14 programming languages",
+          "15, 30 and 60 second runs",
+          "WPM, accuracy, raw speed and consistency",
+          "Practise the characters you mistype most",
+          "Paste and practise your own code",
+          "Real-time typing races",
+          "Leaderboard by language, run length and period",
+          "XP, levels and achievements",
+          "Works offline as an installable app"
+        ],
+        "isAccessibleForFree": true,
+        "browserRequirements": "Requires JavaScript"
       }
     </script>
 
@@ -82,19 +99,47 @@
           brackets, operators, semicolons and indentation — the characters that actually
           slow you down while programming.
         </p>
-        <h2>14 languages</h2>
+        <h2>14 languages, 2,170 snippets</h2>
         <p>
           JavaScript, TypeScript, C#, Python, Java, Go, SQL, Bash, C/C++, Rust, HTML, CSS,
-          JSON, and a special-characters drill. Over 700 snippets, each 1–4 lines, served in
-          shuffled order so you never repeat one before finishing a full round.
+          JSON, and a special-characters drill. Every language has at least 50 snippets for
+          each of the 15, 30 and 60 second runs, served in shuffled order so you never
+          repeat one before finishing a full round — even across page reloads.
         </p>
         <h2>What it measures</h2>
         <p>
-          WPM, CPM, accuracy, raw speed and consistency over 15, 30 or 60 second runs, plus
-          the characters you miss most often. Sign in to submit scores to the leaderboard.
+          WPM, CPM, accuracy, raw speed and consistency, plus the characters you miss most
+          often. Earn XP and levels as you practise, unlock achievements, and keep a daily
+          streak. Sign in to submit scores to the leaderboard.
+        </p>
+        <h2>Practise your weak spots</h2>
+        <p>
+          Typre remembers which characters you actually mistype — usually brackets, arrows
+          and operators rather than letters — and can pick snippets dense in exactly those.
+        </p>
+        <h2>Type your own code</h2>
+        <p>
+          Paste a snippet from your own codebase and practise that instead. Smart quotes,
+          tabs and invisible characters are converted so everything stays typeable.
+        </p>
+        <h2>Race a friend in real time</h2>
+        <p>
+          Send a link and type the same snippet side by side, watching each other's progress
+          live and seeing who finishes first.
+        </p>
+        <h2>Leaderboard</h2>
+        <p>
+          Rank all time, this week or today, filtered by language and run length, or narrow
+          it down to just you and your friends.
         </p>
         <h2>IDE shortcuts</h2>
         <p>A separate drill for VS Code and Vim keyboard shortcuts.</p>
+        <h2>Works offline, free forever</h2>
+        <p>
+          Install Typre to your home screen and keep practising without a network — the
+          whole snippet library ships with the app. No account needed to type, no ads, no
+          payment.
+        </p>
       </main>
     </div>
     <script type="module" src="/src/main.tsx"></script>
