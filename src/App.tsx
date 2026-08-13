@@ -501,9 +501,24 @@ function App() {
    */
   useEffect(() => {
     const onHashChange = () => {
-      const found = readRaceFromHash()
-      if (found && getSnippetById(found.snippetId)) {
-        setRace(found)
+      const room = readRaceFromHash()
+      if (room && getSnippetById(room.snippetId)) {
+        setRace(room)
+        setFrozenStats(null)
+        recordedRef.current = false
+        return
+      }
+
+      // Link thách đấu cũng bị bỏ sót vì cùng lý do: dán vào tab đang mở thì chỉ hash
+      // đổi, app không tải lại nên lời thách không bao giờ được áp dụng.
+      const found = readChallengeFromHash()
+      const target = found && getSnippetById(found.snippetId)
+      if (found && target) {
+        setChallenge(found)
+        setRace(null)
+        setTimeLimit(found.timeLimit)
+        setLanguage(found.language)
+        setSnippet(target)
         setFrozenStats(null)
         recordedRef.current = false
       }
@@ -511,7 +526,7 @@ function App() {
 
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
+  }, [setTimeLimit, setLanguage])
 
   useEffect(() => {
     recordedRef.current = false

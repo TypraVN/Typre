@@ -48,3 +48,21 @@ createRoot(document.getElementById('root')!).render(
     <Root />
   </StrictMode>,
 )
+
+/**
+ * Service worker để gõ được khi mất mạng. Toàn bộ bài nằm trong bundle nên chỉ cần cache
+ * file tĩnh là app chạy trọn vẹn offline.
+ *
+ * Đăng ký SAU khi render, không chặn lần tải đầu. Chỉ chạy ở bản build: dev server đổi
+ * module liên tục, có service worker chen vào giữa là gặp đủ loại lỗi "sao code không
+ * cập nhật" mà nguyên nhân nằm ở cache.
+ */
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    // Lỗi đăng ký không được làm app chết: mất offline thì vẫn dùng bình thường khi có
+    // mạng, nên chỉ ghi log.
+    navigator.serviceWorker.register('/sw.js').catch((error) => {
+      console.warn('[Typre] service worker không đăng ký được:', error)
+    })
+  })
+}
