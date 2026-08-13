@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState } from 'react'
+import { Suspense, useState } from 'react'
+import { lazyChunk } from '../lib/lazyChunk'
 import { submitScore, scoreIneligibleReason } from '../lib/leaderboard'
 import { isLeaderboardEnabled } from '../lib/supabase'
 import { clearPendingScore, savePendingScore } from '../lib/pendingScore'
@@ -6,7 +7,7 @@ import type { AppUser } from '../lib/auth'
 import type { SnippetLanguage } from '../data/types'
 import type { Translation } from '../i18n/translations'
 
-const SignInDialog = lazy(() =>
+const SignInDialog = lazyChunk('SignInDialog', () =>
   import('./SignInDialog').then((m) => ({ default: m.SignInDialog })),
 )
 

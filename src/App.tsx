@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { lazyChunk } from './lib/lazyChunk'
 import {
   Volume2,
   VolumeX,
@@ -19,20 +20,20 @@ import { LevelBadge } from './components/LevelBadge'
 import { XpAwardCard } from './components/XpAwardCard'
 import { WpmChart } from './components/WpmChart'
 // Bảng xếp hạng nằm ở chunk riêng: chỉ tải khi thật sự mở tab Xếp hạng.
-const Leaderboard = lazy(() =>
+const Leaderboard = lazyChunk('Leaderboard', () =>
   import('./components/Leaderboard').then((m) => ({ default: m.Leaderboard })),
 )
 import { SubmitScore } from './components/SubmitScore'
 // Cấp độ + thành tích: chỉ tải khi người dùng bấm huy hiệu ở header.
-const ProgressDialog = lazy(() =>
+const ProgressDialog = lazyChunk('ProgressDialog', () =>
   import('./components/ProgressDialog').then((m) => ({ default: m.ProgressDialog })),
 )
 // Chỉ tải khi người dùng mở ô dán code — không nhét textarea vào bundle đầu.
-const CustomCodeDialog = lazy(() =>
+const CustomCodeDialog = lazyChunk('CustomCodeDialog', () =>
   import('./components/CustomCodeDialog').then((m) => ({ default: m.CustomCodeDialog })),
 )
 // Chỉ cần khi người dùng vào từ link đặt lại mật khẩu — không nhét vào bundle đầu.
-const NewPasswordDialog = lazy(() =>
+const NewPasswordDialog = lazyChunk('NewPasswordDialog', () =>
   import('./components/NewPasswordDialog').then((m) => ({ default: m.NewPasswordDialog })),
 )
 import { AuthButton } from './components/AuthButton'

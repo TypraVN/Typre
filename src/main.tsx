@@ -1,4 +1,5 @@
-import { lazy, StrictMode, Suspense, useEffect, useState } from 'react'
+import { StrictMode, Suspense, useEffect, useState } from 'react'
+import { lazyChunk } from './lib/lazyChunk'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
@@ -7,7 +8,7 @@ import { translations } from './i18n/translations'
 // Trang profile công khai là màn duy nhất cần có địa chỉ riêng để chia sẻ. Dùng hash
 // (`#/u/<username>`) thay vì thêm router: không cần cấu hình rewrite trên hosting
 // tĩnh, và cả app vẫn chỉ có một file index.html.
-const PublicProfileView = lazy(() =>
+const PublicProfileView = lazyChunk('PublicProfileView', () =>
   import('./components/PublicProfileView').then((m) => ({ default: m.PublicProfileView })),
 )
 

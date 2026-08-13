@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState } from 'react'
+import { Suspense, useState } from 'react'
+import { lazyChunk } from '../lib/lazyChunk'
 import { LogIn } from 'lucide-react'
 import type { AppUser } from '../lib/auth'
 import { AccountMenu, type AccountMenuAction } from './AccountMenu'
@@ -8,19 +9,19 @@ import type { SnippetLanguage } from '../data/types'
 import type { Translation } from '../i18n/translations'
 
 // Hộp thoại đăng nhập kéo theo logo 3 hãng — chỉ tải khi người dùng thật sự mở nó.
-const SignInDialog = lazy(() =>
+const SignInDialog = lazyChunk('SignInDialog', () =>
   import('./SignInDialog').then((m) => ({ default: m.SignInDialog })),
 )
 
-const UserStatsDialog = lazy(() =>
+const UserStatsDialog = lazyChunk('UserStatsDialog', () =>
   import('./UserStatsDialog').then((m) => ({ default: m.UserStatsDialog })),
 )
 
-const AccountSettingsDialog = lazy(() =>
+const AccountSettingsDialog = lazyChunk('AccountSettingsDialog', () =>
   import('./AccountSettingsDialog').then((m) => ({ default: m.AccountSettingsDialog })),
 )
 
-const FriendsDialog = lazy(() =>
+const FriendsDialog = lazyChunk('FriendsDialog', () =>
   import('./FriendsDialog').then((m) => ({ default: m.FriendsDialog })),
 )
 

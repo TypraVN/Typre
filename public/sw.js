@@ -11,7 +11,10 @@
  * kéo theo cấu hình và bản sinh tự động khó soi khi có sự cố.
  */
 
-const VERSION = 'typre-v1'
+// Đổi VERSION là xoá sạch cache của bản trước ở bước `activate`. v2: bản v1 có thể đã
+// cache HTML fallback dưới URL của file .js (xem `isUsableAsset`) và bản vá không tự dọn
+// được những entry đã hỏng đó.
+const VERSION = 'typre-v2'
 const ASSET_CACHE = `${VERSION}-assets`
 const PAGE_CACHE = `${VERSION}-pages`
 
@@ -37,6 +40,19 @@ self.addEventListener('activate', (event) => {
 /** File trong /assets/ có hash trong tên nên nội dung là bất biến — cache là an toàn. */
 function isHashedAsset(url) {
   return url.origin === self.location.origin && url.pathname.startsWith('/assets/')
+}
+
+/**
+ * Chặn cache "200 nhưng sai nội dung".
+ *
+ * Hosting tĩnh SPA trả về index.html cho MỌI đường dẫn không tồn tại — kể cả
+ * `/assets/Leaderboard-abc123.js` của bản deploy cũ đã bị xoá. Response đó là 200 nên
+ * `res.ok` vẫn đúng, và cache-first sẽ giữ mẩu HTML ấy dưới tên file .js VĨNH VIỄN:
+ * mọi lần import sau đều hỏng, reload cũng không cứu được vì service worker trả lại
+ * đúng bản hỏng trong cache. Đã gặp thật khi test.
+ */
+function isUsableAsset(res) {
+  return res.ok && !/text\/html/i.test(res.headers.get('content-type') ?? '')
 }
 
 /** Ảnh, font, favicon: đổi rất ít, cache được nhưng vẫn nên làm mới nền. */
@@ -66,7 +82,7 @@ self.addEventListener('fetch', (event) => {
         (hit) =>
           hit ??
           fetch(request).then((res) => {
-            if (res.ok) {
+            if (isUsableAsset(res)) {
               const copy = res.clone()
               caches.open(ASSET_CACHE).then((cache) => cache.put(request, copy))
             }
@@ -82,7 +98,7 @@ self.addEventListener('fetch', (event) => {
       caches.match(request).then((hit) => {
         const network = fetch(request)
           .then((res) => {
-            if (res.ok) {
+            if (isUsableAsset(res)) {
               const copy = res.clone()
               caches.open(ASSET_CACHE).then((cache) => cache.put(request, copy))
             }
