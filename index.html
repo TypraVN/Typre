@@ -2,7 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      Google Search tìm /favicon.ico ở gốc và muốn ảnh tối thiểu 48×48, nên phải có bản
+      .ico thật chứ không chỉ SVG — không có thì kết quả tìm kiếm hiện quả cầu mặc định.
+      SVG để sau: trình duyệt hiện đại ưu tiên nó vì nét ở mọi cỡ.
+    -->
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <script>
       try {
         var raw = localStorage.getItem('codetyping-ui-mode');
