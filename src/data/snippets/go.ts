@@ -24,6 +24,7 @@ export const goSnippets: Snippet[] = [
     language: 'go',
     title: 'Range over slice',
     code: `for i, item := range items {\n    fmt.Printf("%d: %s\\n", i, item)\n}`,
+    demo: 'for-loop',
   },
   {
     id: 'go-map',

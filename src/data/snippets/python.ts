@@ -24,18 +24,21 @@ export const pythonSnippets: Snippet[] = [
     language: 'python',
     title: 'Dict iteration',
     code: `for key, value in data.items():\n    print(key, value)`,
+    demo: 'for-loop',
   },
   {
     id: 'py-try',
     language: 'python',
     title: 'Try/except',
     code: `try:\n    value = int(text)\nexcept ValueError:\n    value = 0`,
+    demo: 'try-catch',
   },
   {
     id: 'py-lambda',
     language: 'python',
     title: 'Lambda + sorted',
     code: `people.sort(key=lambda p: p.age, reverse=True)`,
+    demo: 'sort',
   },
   {
     id: 'py-decorator',

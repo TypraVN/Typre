@@ -30,4 +30,11 @@ export interface Snippet {
 }
 
 /** Danh sách hoạt hình đã có. Thêm khái niệm mới thì thêm ở đây và trong `SnippetDemo`. */
-export type DemoId = 'filter-map' | 'reduce' | 'spread'
+export type DemoId =
+  | 'filter-map'
+  | 'reduce'
+  | 'spread'
+  | 'for-loop'
+  | 'sort'
+  | 'stack'
+  | 'try-catch'

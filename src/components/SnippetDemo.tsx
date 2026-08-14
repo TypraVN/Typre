@@ -332,6 +332,211 @@ function SpreadFrame({ step }: { step: number }) {
   )
 }
 
+/** Bề rộng một ô + khoảng cách, dùng để tính vị trí trượt ngang. Phải khớp `w-10 gap-1.5`. */
+const CELL_PX = 46
+
+const LOOP_ITEMS = ['a', 'b', 'c', 'd']
+
+function ForLoopFrame({ step }: { step: number }) {
+  const done = step >= LOOP_ITEMS.length
+  const i = done ? LOOP_ITEMS.length : step
+
+  return (
+    <div className="flex flex-col gap-1 w-fit mx-auto">
+      <Lane label="i">
+        <Box tone={done ? 'used' : 'keep'}>{i}</Box>
+        <span className="font-mono text-xs text-zinc-400 dark:text-zinc-500 pl-1">
+          {done ? '// 4 < 4 sai → thoát vòng' : `// ${i} < 4 đúng → chạy thân vòng`}
+        </span>
+      </Lane>
+
+      <Lane label="items">
+        {LOOP_ITEMS.map((item, idx) => (
+          <Box key={item} tone={idx < i ? 'used' : idx === i ? 'result' : 'idle'}>
+            {item}
+          </Box>
+        ))}
+      </Lane>
+
+      {/* Con trỏ TRƯỢT sang ô kế thay vì nhảy: chính chuyển động này là thứ nói lên
+          "i++ đi tới phần tử tiếp theo". */}
+      <div className="flex items-center gap-2 h-4">
+        <span className="w-16 shrink-0" />
+        <div className="relative h-4" style={{ width: LOOP_ITEMS.length * CELL_PX }}>
+          <span
+            style={{ transform: `translateX(${i * CELL_PX}px)` }}
+            className={`absolute left-0 w-10 text-center font-mono text-sm transition-all duration-500 ease-out ${
+              done ? 'opacity-0' : 'text-orange-500'
+            }`}
+          >
+            ▲
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Từng lượt đổi chỗ của bubble sort. Cặp đang so sánh nằm ở `swap`. */
+const SORT_PASSES: Array<{ order: number[]; swap: [number, number] | null }> = [
+  { order: [5, 1, 4, 2], swap: [0, 1] },
+  { order: [1, 5, 4, 2], swap: [1, 2] },
+  { order: [1, 4, 5, 2], swap: [2, 3] },
+  { order: [1, 4, 2, 5], swap: [1, 2] },
+  { order: [1, 2, 4, 5], swap: null },
+]
+
+function SortFrame({ step }: { step: number }) {
+  const { order, swap } = SORT_PASSES[Math.min(step, SORT_PASSES.length - 1)]
+  const done = swap === null
+
+  return (
+    <div className="flex flex-col gap-2 w-fit mx-auto">
+      <Lane label="numbers">
+        {/* Mỗi số là MỘT phần tử duy nhất suốt hoạt hình (key theo giá trị), chỉ đổi
+            translateX. Nhờ vậy đổi chỗ là thấy nó TRƯỢT qua nhau; render lại theo thứ tự
+            mới thì hai số chỉ nhấp một cái là đã đứng chỗ khác, không hiểu gì. */}
+        <div className="relative h-8" style={{ width: order.length * CELL_PX }}>
+          {order.map((value, slot) => (
+            <span
+              key={value}
+              style={{ transform: `translateX(${slot * CELL_PX}px)` }}
+              className="absolute left-0 top-0 transition-transform duration-500 ease-out"
+            >
+              <Box
+                tone={
+                  done ? 'result' : swap && (slot === swap[0] || slot === swap[1]) ? 'keep' : 'idle'
+                }
+              >
+                {value}
+              </Box>
+            </span>
+          ))}
+        </div>
+      </Lane>
+
+      <Flow
+        code={done ? '// đã sắp xếp' : `${order[swap[0]]} > ${order[swap[1]]} → đổi chỗ`}
+        active={!done}
+      />
+    </div>
+  )
+}
+
+/** Ba tầng của chồng và bước nhảy giữa hai tầng (ô cao 32px + 2px hở). */
+const STACK_SLOTS = ['a', 'b', 'c']
+const SLOT_PX = 34
+
+/** Mỗi bước là một lệnh trên chồng: đẩy vào hoặc lấy ra. */
+const STACK_OPS = [
+  { code: "push('a')", items: ['a'] },
+  { code: "push('b')", items: ['a', 'b'] },
+  { code: "push('c')", items: ['a', 'b', 'c'] },
+  { code: 'pop()  // lấy ra "c", không phải "a"', items: ['a', 'b'] },
+]
+
+function StackFrame({ step }: { step: number }) {
+  const { code, items } = STACK_OPS[Math.min(step, STACK_OPS.length - 1)]
+  const popped = step >= 3
+
+  return (
+    <div className="flex flex-col gap-2 w-fit mx-auto">
+      <Flow code={code} active />
+
+      {/* Xếp dọc, đáy ở dưới: LIFO chỉ hiện ra khi thấy phần tử vào và ra ĐÚNG một đầu.
+          Khung nét đứt chừa sẵn 3 tầng — vừa để chồng cao thấp gì bảng cũng không nhảy,
+          vừa làm chỗ trống đọc thành "chồng còn chỗ" thay vì thành lỗi layout. */}
+      <div className="flex items-center gap-2">
+        <span className="w-16 shrink-0 text-right font-mono text-xs text-zinc-400 dark:text-zinc-500">
+          stack
+        </span>
+
+        <div className="relative w-10 h-[102px] border-x border-b border-dashed border-zinc-300 dark:border-zinc-700 rounded-b">
+          {STACK_SLOTS.map((item, idx) => (
+            <span
+              key={item}
+              style={{ bottom: idx * SLOT_PX }}
+              className={`absolute left-0 transition-all duration-500 ease-out ${
+                items.includes(item) ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+              }`}
+            >
+              <Box tone={items[items.length - 1] === item ? 'result' : 'idle'}>{item}</Box>
+            </span>
+          ))}
+        </div>
+
+        {/* Mũi tên "top" TRƯỢT theo đỉnh chồng: pop() là thấy nó tụt xuống một tầng, tức
+            là lần sau sẽ lấy ra phần tử khác. */}
+        <div className="relative h-[102px] w-44">
+          <span
+            style={{ bottom: (items.length - 1) * SLOT_PX }}
+            className="absolute left-0 h-8 flex items-center font-mono text-xs text-orange-500 transition-all duration-500 ease-out"
+          >
+            ← top
+          </span>
+        </div>
+      </div>
+
+      <div className="min-h-4 text-center font-mono text-xs text-zinc-400 dark:text-zinc-500">
+        {popped ? 'vào sau cùng thì ra trước tiên (LIFO)' : ''}
+      </div>
+    </div>
+  )
+}
+
+/** Các dòng của khối try/catch, kèm bước mà mỗi dòng được chạy. */
+const TRY_LINES = [
+  { code: 'try {', runAt: 0, indent: 0 },
+  { code: 'JSON.parse(input)', runAt: 1, indent: 1, throws: true },
+  { code: 'render(data)', runAt: -1, indent: 1, skipped: true },
+  { code: '} catch {', runAt: 2, indent: 0 },
+  { code: "warn('invalid json')", runAt: 3, indent: 1 },
+  { code: '}', runAt: -1, indent: 0 },
+  { code: 'next()', runAt: 4, indent: 0 },
+]
+
+function TryCatchFrame({ step }: { step: number }) {
+  return (
+    <div className="flex flex-col gap-0.5 w-fit mx-auto text-left">
+      {TRY_LINES.map((line, i) => {
+        const running = line.runAt === step
+        // Dòng sau chỗ throw KHÔNG bao giờ chạy — đó là điều duy nhất cần hiểu ở đây.
+        const skipped = line.skipped && step >= 1
+
+        return (
+          <div key={i} className="flex items-center gap-2 h-6">
+            <span className="w-16 shrink-0 text-right font-mono text-xs text-orange-500">
+              {running ? '▶' : ''}
+            </span>
+            <span
+              style={{ paddingLeft: line.indent * 16 }}
+              className={`font-mono text-sm transition-all duration-300 ${
+                running
+                  ? 'text-orange-600 dark:text-orange-400 font-bold'
+                  : skipped
+                    ? 'text-zinc-400 dark:text-zinc-600 line-through opacity-40'
+                    : 'text-zinc-500 dark:text-zinc-400'
+              }`}
+            >
+              {line.code}
+            </span>
+            {line.throws && step >= 1 && (
+              <span className="font-mono text-xs text-red-500 animate-fade-in">
+                ✗ throw → nhảy xuống catch
+              </span>
+            )}
+            {skipped && (
+              <span className="font-mono text-xs text-zinc-400 dark:text-zinc-600">
+                // bị bỏ qua
+              </span>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 interface Demo {
   steps: number
   Frame: (props: { step: number }) => ReactNode
@@ -341,6 +546,10 @@ const DEMOS: Record<DemoId, Demo> = {
   'filter-map': { steps: 4, Frame: FilterMapFrame },
   reduce: { steps: 4, Frame: ReduceFrame },
   spread: { steps: 4, Frame: SpreadFrame },
+  'for-loop': { steps: 5, Frame: ForLoopFrame },
+  sort: { steps: 5, Frame: SortFrame },
+  stack: { steps: 4, Frame: StackFrame },
+  'try-catch': { steps: 5, Frame: TryCatchFrame },
 }
 
 interface SnippetDemoProps {

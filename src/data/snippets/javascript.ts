@@ -69,5 +69,6 @@ export const javascriptSnippets: Snippet[] = [
     language: 'javascript',
     title: 'Try/catch',
     code: `try {\n  JSON.parse(input);\n} catch { warn('invalid json'); }`,
+    demo: 'try-catch',
   },
 ]
