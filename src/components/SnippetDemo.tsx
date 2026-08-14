@@ -484,16 +484,42 @@ function StackFrame({ step }: { step: number }) {
   )
 }
 
-/** Các dòng của khối try/catch, kèm bước mà mỗi dòng được chạy. */
-const TRY_LINES = [
+/**
+ * Các dòng của khối try/catch, kèm bước mà mỗi dòng được chạy và chú thích bên phải.
+ *
+ * Chú thích phải NGẮN: khung kết quả rộng `max-w-md`, câu dài là xuống dòng rồi chồng
+ * lên dòng code bên dưới. Đã gặp thật — "✗ throw → nhảy xuống catch" tràn thành hai
+ * dòng và đè lên `render(data)`.
+ */
+const TRY_LINES: Array<{
+  code: string
+  runAt: number
+  indent: number
+  skipped?: boolean
+  note?: { text: string; from: number; red?: boolean }
+}> = [
   { code: 'try {', runAt: 0, indent: 0 },
-  { code: 'JSON.parse(input)', runAt: 1, indent: 1, throws: true },
+  {
+    code: 'JSON.parse(input)',
+    runAt: 1,
+    indent: 1,
+    note: { text: '✗ throw', from: 1, red: true },
+  },
   { code: 'render(data)', runAt: -1, indent: 1, skipped: true },
-  { code: '} catch {', runAt: 2, indent: 0 },
+  { code: '} catch {', runAt: 2, indent: 0, note: { text: '← nhảy tới đây', from: 2 } },
   { code: "warn('invalid json')", runAt: 3, indent: 1 },
   { code: '}', runAt: -1, indent: 0 },
   { code: 'next()', runAt: 4, indent: 0 },
 ]
+
+/**
+ * Bước riêng ở CUỐI để chỉ ra dòng không bao giờ chạy.
+ *
+ * Trước đây gạch nó ngay lúc throw, nhưng hai chuyện xảy ra cùng một khung hình thì
+ * tranh chú ý nhau: mắt đang đọc "✗ throw → nhảy xuống catch" thì không kịp thấy dòng
+ * dưới bị gạch. Để riêng một nhịp sau khi luồng chạy xong mới nhìn ra được.
+ */
+const SKIP_REVEAL_STEP = 5
 
 function TryCatchFrame({ step }: { step: number }) {
   return (
@@ -501,7 +527,7 @@ function TryCatchFrame({ step }: { step: number }) {
       {TRY_LINES.map((line, i) => {
         const running = line.runAt === step
         // Dòng sau chỗ throw KHÔNG bao giờ chạy — đó là điều duy nhất cần hiểu ở đây.
-        const skipped = line.skipped && step >= 1
+        const skipped = line.skipped && step >= SKIP_REVEAL_STEP
 
         return (
           <div key={i} className="flex items-center gap-2 h-6">
@@ -510,7 +536,7 @@ function TryCatchFrame({ step }: { step: number }) {
             </span>
             <span
               style={{ paddingLeft: line.indent * 16 }}
-              className={`font-mono text-sm transition-all duration-300 ${
+              className={`font-mono text-sm whitespace-nowrap transition-all duration-300 ${
                 running
                   ? 'text-orange-600 dark:text-orange-400 font-bold'
                   : skipped
@@ -520,14 +546,18 @@ function TryCatchFrame({ step }: { step: number }) {
             >
               {line.code}
             </span>
-            {line.throws && step >= 1 && (
-              <span className="font-mono text-xs text-red-500 animate-fade-in">
-                ✗ throw → nhảy xuống catch
+            {line.note && step >= line.note.from && (
+              <span
+                className={`font-mono text-xs whitespace-nowrap animate-fade-in ${
+                  line.note.red ? 'text-red-500' : 'text-orange-600 dark:text-orange-400'
+                }`}
+              >
+                {line.note.text}
               </span>
             )}
             {skipped && (
-              <span className="font-mono text-xs text-zinc-400 dark:text-zinc-600">
-                // bị bỏ qua
+              <span className="font-mono text-xs whitespace-nowrap text-zinc-400 dark:text-zinc-600 animate-fade-in">
+                // không chạy
               </span>
             )}
           </div>
@@ -549,7 +579,8 @@ const DEMOS: Record<DemoId, Demo> = {
   'for-loop': { steps: 5, Frame: ForLoopFrame },
   sort: { steps: 5, Frame: SortFrame },
   stack: { steps: 4, Frame: StackFrame },
-  'try-catch': { steps: 5, Frame: TryCatchFrame },
+  // 6 bước: 5 nhịp chạy code + 1 nhịp cuối chỉ ra dòng bị bỏ qua.
+  'try-catch': { steps: 6, Frame: TryCatchFrame },
 }
 
 interface SnippetDemoProps {
