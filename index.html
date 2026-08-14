@@ -44,12 +44,20 @@
       property="og:description"
       content="Typing practice built for programmers: brackets, symbols and real code in 14 languages. WPM, accuracy, consistency and a leaderboard."
     />
-    <!-- Ảnh vuông 208x208 nên dùng thẻ `summary`; muốn ô lớn thì thay bằng ảnh
-         1200x630 rồi đổi twitter:card thành summary_large_image. -->
+    <!--
+      1200x630 là cỡ mọi nền tảng đều nhận: Twitter/X, Facebook, LinkedIn, Discord,
+      Slack, Zalo. Ảnh cũ 208x208 ra ô thumbnail bé xíu bên cạnh dòng chữ, nhìn như
+      link rác — mà thứ đáng khoe nhất (hoạt hình "code này làm gì") thì không ai
+      thấy. Ảnh này vẽ luôn hoạt hình vào trong.
+
+      Sinh lại bằng scripts/og-builder.html (mở qua dev server) — vẽ bằng canvas trong
+      trình duyệt để có đúng font app đang dùng.
+    -->
     <meta property="og:image" content="https://www.typre.dev/og.png" />
-    <meta property="og:image:width" content="208" />
-    <meta property="og:image:height" content="208" />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Typre — type real code, then watch what it does" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Typre — practice typing code in 14 languages" />
     <meta
       name="twitter:description"

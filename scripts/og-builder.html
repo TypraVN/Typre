@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Typre OG image builder</title>
+    <!--
+      Sinh public/og.png (ảnh xem trước khi chia sẻ link, 1200x630).
+
+      CÁCH CHẠY:
+        1. npm run dev
+        2. mở http://localhost:5180/scripts/og-builder.html
+        3. bấm "tải ảnh xuống", đổi tên thành og.png, thay vào public/
+
+      Vẽ bằng canvas trong TRÌNH DUYỆT chứ không phải Node: ở đây có sẵn font thật
+      (Space Grotesk + JetBrains Mono, đúng hai font app đang dùng). Sinh bằng Node thì
+      phải tự dựng từng glyph — công sức gấp nhiều lần mà chữ vẫn không khớp app.
+
+      Nằm ở scripts/ chứ không phải public/: dev server của Vite vẫn phục vụ file trong
+      thư mục gốc, nhưng bản build production thì không mang theo — không để lọt một
+      trang lạ lên typre.dev cho Google lập chỉ mục.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        background: #09090b;
+        color: #a1a1aa;
+        font-family: 'JetBrains Mono', monospace;
+        display: grid;
+        place-items: center;
+        gap: 16px;
+        min-height: 100vh;
+        padding: 24px;
+      }
+      canvas { max-width: 100%; border: 1px solid #27272a; }
+      a {
+        color: #f97316;
+        border: 1px solid #f97316;
+        padding: 8px 16px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c" width="1200" height="630"></canvas>
+    <a id="save" download="og.png">tải ảnh xuống</a>
+    <script>
+      const W = 1200
+      const H = 630
+
+      const ORANGE = '#f97316'
+      const ORANGE_SOFT = '#fdba74'
+      const BG = '#18181b'
+      const ZINC_400 = '#a1a1aa'
+      const ZINC_500 = '#71717a'
+      const ZINC_600 = '#52525b'
+
+      const CELL = 52
+      const GAP = 9
+
+      function roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath()
+        ctx.moveTo(x + r, y)
+        ctx.arcTo(x + w, y, x + w, y + h, r)
+        ctx.arcTo(x + w, y + h, x, y + h, r)
+        ctx.arcTo(x, y + h, x, y, r)
+        ctx.arcTo(x, y, x + w, y, r)
+        ctx.closePath()
+      }
+
+      /** Logo: ba vạch như favicon. */
+      function drawLogo(ctx, x, y, size) {
+        const unit = size / 32
+        ctx.fillStyle = '#000000'
+        roundRect(ctx, x, y, size, size, 7 * unit)
+        ctx.fill()
+
+        const bars = [ORANGE, ORANGE_SOFT, ORANGE]
+        const barW = [16, 11, 7]
+        bars.forEach((color, i) => {
+          ctx.fillStyle = color
+          roundRect(ctx, x + 8 * unit, y + (8 + i * 6) * unit, barW[i] * unit, 3 * unit, 1.5 * unit)
+          ctx.fill()
+        })
+      }
+
+      /**
+       * Một ô của hoạt hình. `tone`: idle | keep | result | drop.
+       * `drop` có gạch ngang — chính chỗ này cho người xem hiểu đây là code ĐANG chạy,
+       * không phải ảnh chụp một giao diện tĩnh.
+       */
+      function drawCell(ctx, x, y, text, tone) {
+        const stroke = tone === 'idle' || tone === 'drop' ? ZINC_600 : ORANGE
+        ctx.globalAlpha = tone === 'drop' ? 0.38 : 1
+
+        if (tone === 'result') {
+          ctx.fillStyle = 'rgba(249,115,22,0.15)'
+          roundRect(ctx, x, y, CELL, CELL, 8)
+          ctx.fill()
+        }
+
+        ctx.strokeStyle = stroke
+        ctx.lineWidth = 2
+        roundRect(ctx, x + 1, y + 1, CELL - 2, CELL - 2, 8)
+        ctx.stroke()
+
+        ctx.fillStyle = tone === 'idle' || tone === 'drop' ? ZINC_400 : ORANGE
+        ctx.font = `${tone === 'result' ? 700 : 500} 24px "JetBrains Mono", monospace`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(text, x + CELL / 2, y + CELL / 2 + 1)
+
+        if (tone === 'drop') {
+          ctx.strokeStyle = ZINC_400
+          ctx.lineWidth = 2
+          ctx.beginPath()
+          ctx.moveTo(x + 14, y + CELL / 2)
+          ctx.lineTo(x + CELL - 14, y + CELL / 2)
+          ctx.stroke()
+        }
+
+        ctx.globalAlpha = 1
+      }
+
+      function drawLane(ctx, x, y, label, cells) {
+        ctx.fillStyle = ZINC_500
+        ctx.font = '400 18px "JetBrains Mono", monospace'
+        ctx.textAlign = 'right'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(label, x - 16, y + CELL / 2)
+
+        cells.forEach((cell, i) => {
+          if (cell === null) return
+          drawCell(ctx, x + i * (CELL + GAP), y, String(cell.v), cell.tone)
+        })
+      }
+
+      function draw() {
+        const ctx = document.getElementById('c').getContext('2d')
+
+        ctx.fillStyle = BG
+        ctx.fillRect(0, 0, W, H)
+
+        // Vạch cam mỏng trên cùng: đủ để nhận ra thương hiệu ngay cả khi ảnh bị thu nhỏ.
+        ctx.fillStyle = ORANGE
+        ctx.fillRect(0, 0, W, 6)
+
+        drawLogo(ctx, 72, 52, 64)
+
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'alphabetic'
+        ctx.fillStyle = '#fafafa'
+        ctx.font = '700 52px "Space Grotesk", sans-serif'
+        ctx.fillText('Typre', 152, 108)
+
+        ctx.fillStyle = '#fafafa'
+        ctx.font = '600 46px "Space Grotesk", sans-serif'
+        ctx.fillText('Type real code.', 72, 204)
+        ctx.fillStyle = ORANGE
+        ctx.fillText('Then watch what it does.', 72, 258)
+
+        ctx.fillStyle = ZINC_400
+        ctx.font = '400 21px "JetBrains Mono", monospace'
+        ctx.fillText('14 languages  ·  2,170 snippets  ·  free', 72, 306)
+
+        // Nhãn giống hệt trong app: ai đã dùng Typre nhận ra ngay đây là thẻ hiện sau
+        // khi gõ xong, không phải một hình minh hoạ dựng riêng cho ảnh quảng cáo.
+        ctx.fillStyle = ORANGE
+        ctx.font = '500 19px "JetBrains Mono", monospace'
+        ctx.fillText('WHAT THIS CODE DOES', 72, 352)
+
+        // Hoạt hình filter+map ở trạng thái cuối: ba hàng thẳng cột nói được cả câu
+        // chuyện "lọc rồi nhân đôi" trong một hình tĩnh.
+        const laneX = 220
+        const laneY = 392
+        const LANE_GAP = 66
+        const evens = [null, 2, null, 4, null, 6]
+
+        drawLane(ctx, laneX, laneY, 'numbers', [
+          { v: 1, tone: 'drop' },
+          { v: 2, tone: 'keep' },
+          { v: 3, tone: 'drop' },
+          { v: 4, tone: 'keep' },
+          { v: 5, tone: 'drop' },
+          { v: 6, tone: 'keep' },
+        ])
+
+        drawLane(
+          ctx,
+          laneX,
+          laneY + LANE_GAP,
+          'filtered',
+          evens.map((v) => (v === null ? null : { v, tone: 'keep' })),
+        )
+
+        drawLane(
+          ctx,
+          laneX,
+          laneY + LANE_GAP * 2,
+          'evens',
+          evens.map((v) => (v === null ? null : { v: v * 2, tone: 'result' })),
+        )
+
+        // Hai phép toán đặt ngang đúng khe giữa các hàng, như mũi tên trong app: mắt tự
+        // nối "hàng trên + phép này = hàng dưới". Đồng thời lấp nửa phải đang trống.
+        ctx.fillStyle = ZINC_500
+        ctx.font = '400 19px "JetBrains Mono", monospace'
+        ctx.textAlign = 'left'
+        ctx.fillText('↓ .filter((n) => n % 2 === 0)', 640, laneY + CELL + 4)
+        ctx.fillText('↓ .map((n) => n * 2)', 640, laneY + LANE_GAP + CELL + 4)
+
+        ctx.fillStyle = ORANGE
+        ctx.font = '500 28px "JetBrains Mono", monospace'
+        ctx.textAlign = 'right'
+        ctx.textBaseline = 'alphabetic'
+        ctx.fillText('typre.dev', W - 72, H - 44)
+      }
+
+      // Chờ font tải xong mới vẽ: vẽ trước là ra font mặc định của hệ thống.
+      document.fonts.ready.then(() => {
+        draw()
+        document.getElementById('save').href = document
+          .getElementById('c')
+          .toDataURL('image/png')
+      })
+    </script>
+  </body>
+</html>
