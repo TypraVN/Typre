@@ -109,6 +109,56 @@ export async function updateUsername(
   return { error: null }
 }
 
+export interface PlayerSearchHit {
+  id: string
+  display_name: string
+  /** `null` = chưa đặt username, nên chưa có hồ sơ công khai để mở. */
+  username: string | null
+  avatar_url: string | null
+  xp: number
+}
+
+/** Bao nhiêu kết quả hiện ra. Đủ để tìm thấy người mình muốn, không thành trang liệt kê. */
+const PLAYER_SEARCH_LIMIT = 8
+
+/**
+ * Tìm người chơi — dùng được KHI CHƯA ĐĂNG NHẬP.
+ *
+ * Khác `searchProfiles` (chỉ nằm trong hộp thoại Friends, bắt buộc đăng nhập): bảng xếp
+ * hạng chỉ hiện những người đứng đầu, nên không có cách nào tra một người cụ thể. Ô này
+ * là chỗ đó.
+ *
+ * Trả về CẢ người chưa đặt username, dù họ không có hồ sơ công khai để mở.
+ *
+ * Bản đầu tôi lọc bỏ họ cho "sạch" — kết quả là ô tìm kiếm không bao giờ ra ai, vì trên
+ * database thật chưa một ai đặt username (username là tuỳ chọn, nằm sâu trong Account
+ * settings). Tên và cấp độ vẫn là thông tin có ích, nên hiện ra và để phía giao diện
+ * quyết định dòng nào bấm được.
+ */
+export async function searchPlayers(query: string): Promise<PlayerSearchHit[]> {
+  const q = query.trim()
+  if (q.length < 2) return []
+
+  const supabase = await getSupabase()
+  if (!supabase) return []
+
+  // `%` và `,` trong chuỗi người dùng nhập sẽ được PostgREST hiểu là ký tự đại diện và
+  // dấu tách điều kiện — để nguyên là ô tìm kiếm biến thành "liệt kê toàn bộ", hoặc câu
+  // `or(...)` bị chẻ thành nhiều điều kiện lạ.
+  const safe = q.replace(/[%,]/g, '')
+  if (safe.length < 2) return []
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, display_name, username, avatar_url, xp')
+    .or(`username.ilike.%${safe}%,display_name.ilike.%${safe}%`)
+    // Người nhiều XP lên trước: tìm "an" mà ra 8 tài khoản trống thì vô dụng.
+    .order('xp', { ascending: false })
+    .limit(PLAYER_SEARCH_LIMIT)
+
+  return ((data as PlayerSearchHit[]) ?? []).map((hit) => ({ ...hit, xp: hit.xp ?? 0 }))
+}
+
 /** Tìm người để kết bạn — khớp cả username lẫn tên hiển thị. */
 export async function searchProfiles(query: string, excludeId: string): Promise<Profile[]> {
   const q = query.trim()

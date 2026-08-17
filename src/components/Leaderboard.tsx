@@ -11,6 +11,7 @@ import {
 } from '../lib/leaderboard'
 import { isLeaderboardEnabled } from '../lib/supabase'
 import { Avatar } from './Avatar'
+import { PlayerSearch } from './PlayerSearch'
 import { levelFromXp } from '../lib/xp'
 import { fetchXpFor } from '../lib/xpSync'
 import { listFriends } from '../lib/friends'
@@ -191,6 +192,14 @@ export function Leaderboard({
     <div className="w-full max-w-4xl flex flex-col sm:flex-row gap-6">
       {/* Sidebar filter */}
       <aside className="sm:w-40 shrink-0 flex flex-col gap-5">
+        {/* Tra người chơi đứng ĐẦU cột lọc, không phải cuối: bảng xếp hạng chỉ hiện những
+            người top, nên với hầu hết người dùng thì tra tên là việc duy nhất họ làm được
+            ở đây. Không bắt đăng nhập — hồ sơ công khai vốn đã mở cho khách. */}
+        <div className="flex flex-col gap-2">
+          <div className={GROUP_LABEL}>{t.findPlayerLabel}</div>
+          <PlayerSearch t={t} />
+        </div>
+
         {/* Chỉ hiện khi đã đăng nhập: chưa đăng nhập thì không có danh sách bạn nào để
             lọc, hiện nút bấm vào không có tác dụng chỉ làm người dùng bối rối. */}
         {currentUser && (
