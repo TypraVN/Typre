@@ -256,8 +256,101 @@ function renderPage(page, counts, samples, siblings) {
 `
 }
 
+/**
+ * Trang hub /practice/ — một chỗ liệt kê cả 14 trang.
+ *
+ * Không phải để xếp hạng cho từ khoá nào cụ thể, mà để con bot có một trang duy nhất dẫn
+ * tới toàn bộ: bò vào đây là thấy hết, không phải dò từng URL trong sitemap. Người dùng
+ * gõ tay `/practice/` cũng không gặp lỗi 404.
+ */
+function renderHub(pages, countsFor) {
+  const url = `${SITE}/practice/`
+  const title = 'Typing practice by language — 14 languages | Typre'
+  const description =
+    'Practice typing real code in 14 languages: JavaScript, TypeScript, Python, C#, Java, Go, Rust, SQL, Bash and more. Free, no account needed.'
+
+  const total = pages.reduce((sum, p) => sum + countsFor(p.id).total, 0)
+
+  const cards = pages
+    .map((p) => {
+      const counts = countsFor(p.id)
+      return `<li><a href="/practice/${p.slug}/"><strong>${escapeHtml(p.label)}</strong>${counts.total} snippets</a></li>`
+    })
+    .join('\n        ')
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(description)}" />
+    <link rel="canonical" href="${url}" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#18181b" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Typre" />
+    <meta property="og:url" content="${url}" />
+    <meta property="og:title" content="${escapeHtml(title)}" />
+    <meta property="og:description" content="${escapeHtml(description)}" />
+    <meta property="og:image" content="${SITE}/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>${STYLES}
+      .grid { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+      .grid a { display: block; border: 1px solid #3f3f46; border-radius: 8px; padding: 14px 16px; color: #a1a1aa; text-decoration: none; font-size: 14px; }
+      .grid a:hover { border-color: #f97316; }
+      .grid strong { display: block; color: #fafafa; font-size: 17px; margin-bottom: 2px; }
+      .grid a:hover strong { color: #f97316; }
+    </style>
+  </head>
+  <body>
+    <div class="bar"></div>
+    <div class="wrap">
+      <header>
+        ${LOGO_SVG}
+        <a href="/">Typre</a>
+      </header>
+
+      <main>
+        <h1>Typing practice by language</h1>
+        <p>
+          ${total} code snippets across 14 languages. Pick one to see what it covers and what
+          makes it awkward to type, or go straight to the app and start a run.
+        </p>
+
+        <a class="cta" href="/">Start typing</a>
+
+        <ul class="grid">
+        ${cards}
+        </ul>
+      </main>
+
+      <footer>
+        <a href="/">Typre</a> — typing practice for programmers. Free, works offline.
+      </footer>
+    </div>
+  </body>
+</html>
+`
+}
+
 function renderSitemap(pages) {
-  const urls = [`${SITE}/`, ...pages.map((p) => `${SITE}/practice/${p.slug}/`)]
+  const urls = [
+    `${SITE}/`,
+    `${SITE}/practice/`,
+    ...pages.map((p) => `${SITE}/practice/${p.slug}/`),
+  ]
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!--
@@ -306,8 +399,12 @@ async function main() {
     console.log(`  /practice/${page.slug}/  (${counts.total} bai)`)
   }
 
-  writeFileSync(`${DIST}/sitemap.xml`, renderSitemap(LANGUAGE_PAGES), 'utf8')
-  console.log(`  sitemap.xml (${LANGUAGE_PAGES.length + 1} URL)`)
+  writeFileSync(`${DIST}/practice/index.html`, renderHub(LANGUAGE_PAGES, snippetCounts), 'utf8')
+  console.log('  /practice/  (trang hub)')
+
+  const sitemap = renderSitemap(LANGUAGE_PAGES)
+  writeFileSync(`${DIST}/sitemap.xml`, sitemap, 'utf8')
+  console.log(`  sitemap.xml (${(sitemap.match(/<loc>/g) ?? []).length} URL)`)
 
   rmSync(TMP_DIR, { recursive: true, force: true })
 }

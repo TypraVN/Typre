@@ -13,6 +13,7 @@ export const translations = {
   statusFinished: 'finished',
   statusLabel: 'status',
   resultTitle: 'Result',
+  footerPractice: 'practice by language',
   shareResultSave: 'save image',
   shareResultCopy: 'copy image',
   shareResultCopied: 'copied!',
