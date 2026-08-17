@@ -13,7 +13,6 @@ export const translations = {
   statusFinished: 'finished',
   statusLabel: 'status',
   resultTitle: 'Result',
-  footerPractice: 'practice by language',
   thisRunMistakes: 'mistakes this run:',
   capsLockWarning: 'Caps Lock is on',
   wpmChartTitle: 'WPM over time',

@@ -17,7 +17,6 @@ import { ShortcutTrainer } from './components/ShortcutTrainer'
 import { Logo } from './components/Logo'
 import { LevelBadge } from './components/LevelBadge'
 import { XpAwardCard } from './components/XpAwardCard'
-import { LanguageFooter } from './components/LanguageFooter'
 import { WpmChart } from './components/WpmChart'
 // Bảng xếp hạng nằm ở chunk riêng: chỉ tải khi thật sự mở tab Xếp hạng.
 const Leaderboard = lazyChunk('Leaderboard', () =>
@@ -984,8 +983,6 @@ function App() {
         </Suspense>
       )}
       </main>
-
-      <LanguageFooter languages={LANGUAGES} heading={t.footerPractice} />
 
       <ToastStack>
         {/* Đăng nhập lỗi thì Supabase chỉ trả lý do trong URL rồi thôi — không hiện ra
