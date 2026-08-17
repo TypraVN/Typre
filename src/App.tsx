@@ -64,7 +64,7 @@ import { usePreferencesStore } from './store/usePreferencesStore'
 import { translations } from './i18n/translations'
 import { CODE_THEMES, THEME_LABELS, type CodeLanguage } from './lib/highlighter'
 
-const LANGUAGES: SnippetLanguage[] = [
+export const LANGUAGES: SnippetLanguage[] = [
   'javascript',
   'typescript',
   'csharp',

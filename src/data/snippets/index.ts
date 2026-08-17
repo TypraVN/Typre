@@ -158,6 +158,41 @@ const POOLS: Record<SnippetLanguage, Record<Bucket, Snippet[]>> = Object.fromEnt
   }),
 ) as Record<SnippetLanguage, Record<Bucket, Snippet[]>>
 
+/**
+ * Số bài của một ngôn ngữ theo từng rổ.
+ *
+ * Dùng cho các trang giới thiệu từng ngôn ngữ (`scripts/generate-seo-pages.mjs`): số
+ * phải LẤY TỪ ĐÂY chứ không viết cứng vào trang, không thì thêm bài xong là trang quảng
+ * cáo một con số sai — vừa mất uy tín vừa không ai biết để sửa.
+ */
+export function snippetCounts(language: SnippetLanguage): {
+  short: number
+  medium: number
+  long: number
+  total: number
+} {
+  const pools = POOLS[language]
+  const short = pools.short.length
+  const medium = pools.medium.length
+  const long = pools.long.length
+
+  return { short, medium, long, total: short + medium + long }
+}
+
+/**
+ * Vài bài mẫu của một ngôn ngữ, để trang giới thiệu cho người ta xem sẽ phải gõ gì.
+ *
+ * CỐ Ý lấy theo thứ tự cố định chứ không ngẫu nhiên: trang tĩnh sinh lại ở mỗi lần build,
+ * mà nội dung đổi mỗi lần build thì con bot thấy một trang không ổn định — và mình cũng
+ * không bao giờ biết trang thật đang hiện bài nào.
+ */
+export function sampleSnippets(language: SnippetLanguage, count: number): string[] {
+  const pools = POOLS[language]
+  const source = pools.short.length > 0 ? pools.short : SNIPPETS[language]
+
+  return source.slice(0, count).map((snippet) => snippet.code)
+}
+
 /** Rổ mong muốn theo mốc thời gian; rổ rỗng thì lùi dần về rổ có bài. */
 function poolFor(language: SnippetLanguage, timeLimit: number): { key: string; items: Snippet[] } {
   const pools = POOLS[language]

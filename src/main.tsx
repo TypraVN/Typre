@@ -2,8 +2,10 @@ import { StrictMode, Suspense, useEffect, useState } from 'react'
 import { lazyChunk } from './lib/lazyChunk'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.tsx'
+import App, { LANGUAGES } from './App.tsx'
 import { translations } from './i18n/translations'
+import { clearLanguageParam, readLanguageParam } from './lib/langParam'
+import { usePreferencesStore } from './store/usePreferencesStore'
 
 // Trang profile công khai là màn duy nhất cần có địa chỉ riêng để chia sẻ. Dùng hash
 // (`#/u/<username>`) thay vì thêm router: không cần cấu hình rewrite trên hosting
@@ -42,6 +44,20 @@ function Root() {
   }
 
   return <App />
+}
+
+/**
+ * Áp dụng `?lang=` TRƯỚC khi render.
+ *
+ * Phải làm ở đây chứ không phải trong một effect của App: App rút bài đầu tiên ngay trong
+ * `useState`, nên nếu ngôn ngữ tới sau thì người dùng thấy nháy một bài JavaScript rồi
+ * mới đổi sang bài Python — đúng thứ trông như lỗi. Store của zustand đọc localStorage
+ * đồng bộ nên gọi được ngay ở tầng module này.
+ */
+const fromLandingPage = readLanguageParam(LANGUAGES)
+if (fromLandingPage) {
+  usePreferencesStore.getState().setLanguage(fromLandingPage)
+  clearLanguageParam()
 }
 
 createRoot(document.getElementById('root')!).render(
