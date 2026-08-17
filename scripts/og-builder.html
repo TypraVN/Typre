@@ -18,6 +18,9 @@
       Nằm ở scripts/ chứ không phải public/: dev server của Vite vẫn phục vụ file trong
       thư mục gốc, nhưng bản build production thì không mang theo — không để lọt một
       trang lạ lên typre.dev cho Google lập chỉ mục.
+
+      QUY TẮC DUY NHẤT khi sửa ảnh này: chỉ vẽ thứ app THẬT SỰ có. Bản trước từng quảng
+      cáo một tính năng đã bị bỏ, người click vào thấy khác ảnh — tệ hơn là không có ảnh.
     -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -58,12 +61,18 @@
       const ORANGE = '#f97316'
       const ORANGE_SOFT = '#fdba74'
       const BG = '#18181b'
+      const CODE_BG = '#0f0f11'
       const ZINC_400 = '#a1a1aa'
       const ZINC_500 = '#71717a'
-      const ZINC_600 = '#52525b'
+      const ZINC_700 = '#3f3f46'
 
-      const CELL = 52
-      const GAP = 9
+      // Bảng màu One Dark Pro — đúng theme mặc định của app, để ảnh trông như ảnh chụp
+      // thật chứ không phải hình vẽ lại.
+      const KW = '#c678dd'
+      const FN = '#61afef'
+      const VAR = '#e06c75'
+      const NUM = '#d19a66'
+      const PUNCT = '#abb2bf'
 
       function roundRect(ctx, x, y, w, h, r) {
         ctx.beginPath()
@@ -92,54 +101,68 @@
       }
 
       /**
-       * Một ô của hoạt hình. `tone`: idle | keep | result | drop.
-       * `drop` có gạch ngang — chính chỗ này cho người xem hiểu đây là code ĐANG chạy,
-       * không phải ảnh chụp một giao diện tĩnh.
+       * Bài đang gõ dở. `t: false` = chưa gõ tới.
+       *
+       * Phần chưa gõ để mờ và xám, phần đã gõ giữ màu syntax — đúng cách app hiển thị,
+       * và cũng là cách duy nhất để một ảnh TĨNH nói được "đang gõ", không phải ảnh
+       * chụp một đoạn code nằm im.
        */
-      function drawCell(ctx, x, y, text, tone) {
-        const stroke = tone === 'idle' || tone === 'drop' ? ZINC_600 : ORANGE
-        ctx.globalAlpha = tone === 'drop' ? 0.38 : 1
+      const CODE_LINES = [
+        [
+          { s: 'const', c: KW, t: true },
+          { s: ' evens = ', c: PUNCT, t: true },
+          { s: 'numbers', c: VAR, t: true },
+        ],
+        [
+          { s: '  .', c: PUNCT, t: true },
+          { s: 'filter', c: FN, t: true },
+          { s: '((', c: PUNCT, t: true },
+          { s: 'n', c: VAR, t: true },
+          { s: ') => ', c: PUNCT, t: true },
+          { s: 'n', c: VAR, t: true },
+          { s: ' % ', c: PUNCT, t: true },
+          { s: '2', c: NUM, t: true },
+          { s: ' === ', c: PUNCT, t: true },
+          { s: '0', c: NUM, t: true },
+          { s: ')', c: PUNCT, t: true },
+        ],
+        [
+          { s: '  .', c: PUNCT, t: true },
+          { s: 'map', c: FN, t: true },
+          { s: '((', c: PUNCT, t: true },
+          { s: 'n', c: VAR, t: true },
+          { s: ') => ', c: PUNCT, t: true, caretAfter: true },
+          { s: 'n', c: VAR, t: false },
+          { s: ' * ', c: PUNCT, t: false },
+          { s: '2', c: NUM, t: false },
+          { s: ');', c: PUNCT, t: false },
+        ],
+      ]
 
-        if (tone === 'result') {
-          ctx.fillStyle = 'rgba(249,115,22,0.15)'
-          roundRect(ctx, x, y, CELL, CELL, 8)
-          ctx.fill()
-        }
+      function drawCode(ctx, x, y, lineHeight) {
+        ctx.font = '400 26px "JetBrains Mono", monospace'
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'alphabetic'
 
-        ctx.strokeStyle = stroke
-        ctx.lineWidth = 2
-        roundRect(ctx, x + 1, y + 1, CELL - 2, CELL - 2, 8)
-        ctx.stroke()
+        CODE_LINES.forEach((line, row) => {
+          let penX = x
+          const penY = y + row * lineHeight
 
-        ctx.fillStyle = tone === 'idle' || tone === 'drop' ? ZINC_400 : ORANGE
-        ctx.font = `${tone === 'result' ? 700 : 500} 24px "JetBrains Mono", monospace`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(text, x + CELL / 2, y + CELL / 2 + 1)
+          for (const seg of line) {
+            ctx.globalAlpha = seg.t ? 1 : 0.34
+            ctx.fillStyle = seg.t ? seg.c : ZINC_500
+            ctx.fillText(seg.s, penX, penY)
+            penX += ctx.measureText(seg.s).width
 
-        if (tone === 'drop') {
-          ctx.strokeStyle = ZINC_400
-          ctx.lineWidth = 2
-          ctx.beginPath()
-          ctx.moveTo(x + 14, y + CELL / 2)
-          ctx.lineTo(x + CELL - 14, y + CELL / 2)
-          ctx.stroke()
-        }
+            if (seg.caretAfter) {
+              ctx.globalAlpha = 1
+              ctx.fillStyle = ORANGE
+              ctx.fillRect(penX, penY - 20, 2.5, 27)
+            }
+          }
+        })
 
         ctx.globalAlpha = 1
-      }
-
-      function drawLane(ctx, x, y, label, cells) {
-        ctx.fillStyle = ZINC_500
-        ctx.font = '400 18px "JetBrains Mono", monospace'
-        ctx.textAlign = 'right'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(label, x - 16, y + CELL / 2)
-
-        cells.forEach((cell, i) => {
-          if (cell === null) return
-          drawCell(ctx, x + i * (CELL + GAP), y, String(cell.v), cell.tone)
-        })
       }
 
       function draw() {
@@ -160,66 +183,56 @@
         ctx.font = '700 52px "Space Grotesk", sans-serif'
         ctx.fillText('Typre', 152, 108)
 
+        // Khác biệt thật và còn tồn tại: các trang luyện gõ khác cho gõ văn xuôi, ở đây
+        // gõ code thật — dấu ngoặc, toán tử, thụt lề, đúng những ký tự làm chậm tay khi
+        // lập trình.
         ctx.fillStyle = '#fafafa'
         ctx.font = '600 46px "Space Grotesk", sans-serif'
-        ctx.fillText('Type real code.', 72, 204)
+        ctx.fillText('Typing practice for', 72, 200)
         ctx.fillStyle = ORANGE
-        ctx.fillText('Then watch what it does.', 72, 258)
+        ctx.fillText('programmers.', 72, 254)
 
         ctx.fillStyle = ZINC_400
         ctx.font = '400 21px "JetBrains Mono", monospace'
-        ctx.fillText('14 languages  ·  2,170 snippets  ·  free', 72, 306)
+        ctx.fillText('14 languages  ·  2,170 snippets  ·  live races  ·  free', 72, 302)
 
-        // Nhãn giống hệt trong app: ai đã dùng Typre nhận ra ngay đây là thẻ hiện sau
-        // khi gõ xong, không phải một hình minh hoạ dựng riêng cho ảnh quảng cáo.
-        ctx.fillStyle = ORANGE
-        ctx.font = '500 19px "JetBrains Mono", monospace'
-        ctx.fillText('WHAT THIS CODE DOES', 72, 352)
+        // Khung code: nền tối hơn + viền, đúng như vùng gõ trong app.
+        const cardX = 72
+        const cardY = 348
+        const cardW = 620
+        const cardH = 186
 
-        // Hoạt hình filter+map ở trạng thái cuối: ba hàng thẳng cột nói được cả câu
-        // chuyện "lọc rồi nhân đôi" trong một hình tĩnh.
-        const laneX = 220
-        const laneY = 392
-        const LANE_GAP = 66
-        const evens = [null, 2, null, 4, null, 6]
+        ctx.fillStyle = CODE_BG
+        roundRect(ctx, cardX, cardY, cardW, cardH, 12)
+        ctx.fill()
+        ctx.strokeStyle = ZINC_700
+        ctx.lineWidth = 1.5
+        roundRect(ctx, cardX, cardY, cardW, cardH, 12)
+        ctx.stroke()
 
-        drawLane(ctx, laneX, laneY, 'numbers', [
-          { v: 1, tone: 'drop' },
-          { v: 2, tone: 'keep' },
-          { v: 3, tone: 'drop' },
-          { v: 4, tone: 'keep' },
-          { v: 5, tone: 'drop' },
-          { v: 6, tone: 'keep' },
-        ])
+        drawCode(ctx, cardX + 32, cardY + 54, 44)
 
-        drawLane(
-          ctx,
-          laneX,
-          laneY + LANE_GAP,
-          'filtered',
-          evens.map((v) => (v === null ? null : { v, tone: 'keep' })),
-        )
+        // Cột phải: đúng các số bảng kết quả của app hiện.
+        const statX = 780
 
-        drawLane(
-          ctx,
-          laneX,
-          laneY + LANE_GAP * 2,
-          'evens',
-          evens.map((v) => (v === null ? null : { v: v * 2, tone: 'result' })),
-        )
-
-        // Hai phép toán đặt ngang đúng khe giữa các hàng, như mũi tên trong app: mắt tự
-        // nối "hàng trên + phép này = hàng dưới". Đồng thời lấp nửa phải đang trống.
-        ctx.fillStyle = ZINC_500
-        ctx.font = '400 19px "JetBrains Mono", monospace'
         ctx.textAlign = 'left'
-        ctx.fillText('↓ .filter((n) => n % 2 === 0)', 640, laneY + CELL + 4)
-        ctx.fillText('↓ .map((n) => n * 2)', 640, laneY + LANE_GAP + CELL + 4)
+        ctx.fillStyle = ORANGE
+        ctx.font = '700 92px "JetBrains Mono", monospace'
+        ctx.fillText('87', statX, cardY + 96)
+
+        const wpmX = statX + ctx.measureText('87').width + 14
+        ctx.fillStyle = ZINC_500
+        ctx.font = '400 28px "JetBrains Mono", monospace'
+        ctx.fillText('wpm', wpmX, cardY + 96)
+
+        ctx.fillStyle = ZINC_400
+        ctx.font = '400 22px "JetBrains Mono", monospace'
+        ctx.fillText('accuracy 98%', statX, cardY + 146)
+        ctx.fillText('consistency 91%', statX, cardY + 180)
 
         ctx.fillStyle = ORANGE
         ctx.font = '500 28px "JetBrains Mono", monospace'
         ctx.textAlign = 'right'
-        ctx.textBaseline = 'alphabetic'
         ctx.fillText('typre.dev', W - 72, H - 44)
       }
 

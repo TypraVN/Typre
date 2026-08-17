@@ -47,8 +47,11 @@
     <!--
       1200x630 là cỡ mọi nền tảng đều nhận: Twitter/X, Facebook, LinkedIn, Discord,
       Slack, Zalo. Ảnh cũ 208x208 ra ô thumbnail bé xíu bên cạnh dòng chữ, nhìn như
-      link rác — mà thứ đáng khoe nhất (hoạt hình "code này làm gì") thì không ai
-      thấy. Ảnh này vẽ luôn hoạt hình vào trong.
+      link rác.
+
+      Ảnh vẽ vùng gõ code đang gõ dở (phần chưa gõ để mờ + con trỏ cam) và các số của
+      bảng kết quả — CHỈ vẽ thứ app thật sự có. Bản trước từng vẽ một tính năng sau đó
+      bị bỏ, người click vào thấy khác ảnh, còn tệ hơn là không có ảnh.
 
       Sinh lại bằng scripts/og-builder.html (mở qua dev server) — vẽ bằng canvas trong
       trình duyệt để có đúng font app đang dùng.
@@ -56,7 +59,10 @@
     <meta property="og:image" content="https://www.typre.dev/og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Typre — type real code, then watch what it does" />
+    <meta
+      property="og:image:alt"
+      content="Typre — typing practice for programmers: a JavaScript snippet being typed, 87 wpm"
+    />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Typre — practice typing code in 14 languages" />
     <meta
