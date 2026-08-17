@@ -17,7 +17,6 @@ import { ShortcutTrainer } from './components/ShortcutTrainer'
 import { Logo } from './components/Logo'
 import { LevelBadge } from './components/LevelBadge'
 import { XpAwardCard } from './components/XpAwardCard'
-import { ShareResultButton } from './components/ShareResultButton'
 import { LanguageFooter } from './components/LanguageFooter'
 import { WpmChart } from './components/WpmChart'
 // Bảng xếp hạng nằm ở chunk riêng: chỉ tải khi thật sự mở tab Xếp hạng.
@@ -879,24 +878,6 @@ function App() {
                 <button type="button" onClick={goNext} className={ACTION_BTN_ON_CARD}>
                   {t.nextSnippet}
                 </button>
-                {/* Ảnh kết quả thì cho cả lượt gõ code tự dán: ảnh không gửi điểm đi
-                    đâu, chỉ để người ta đem đi khoe — nên không có lý do chặn. */}
-                <ShareResultButton
-                  data={{
-                    wpm: displayStats.wpm,
-                    accuracy: displayStats.accuracy,
-                    rawWpm: displayStats.rawWpm,
-                    consistency: displayStats.consistency,
-                    language: customOn ? null : snippet.language,
-                    timeLimit,
-                  }}
-                  className={ACTION_BTN_ON_CARD}
-                  saveLabel={t.shareResultSave}
-                  copyLabel={t.shareResultCopy}
-                  copiedLabel={t.shareResultCopied}
-                  failedLabel={t.shareResultFailed}
-                />
-
                 {/* Link thách đấu chỉ mang theo ID bài: người nhận không có code của
                     bạn nên mở link ra là trượt. Ẩn hẳn thay vì để họ copy một link hỏng. */}
                 {!customOn && (
