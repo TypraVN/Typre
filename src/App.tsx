@@ -17,7 +17,6 @@ import { ShortcutTrainer } from './components/ShortcutTrainer'
 import { Logo } from './components/Logo'
 import { LevelBadge } from './components/LevelBadge'
 import { XpAwardCard } from './components/XpAwardCard'
-import { SnippetDemo } from './components/SnippetDemo'
 import { WpmChart } from './components/WpmChart'
 // Bảng xếp hạng nằm ở chunk riêng: chỉ tải khi thật sự mở tab Xếp hạng.
 const Leaderboard = lazyChunk('Leaderboard', () =>
@@ -849,19 +848,6 @@ function App() {
                 <span title={t.rawHint}>raw: {displayStats.rawWpm}</span>
                 <span title={t.consistencyHint}>consistency: {displayStats.consistency}%</span>
               </div>
-
-              {/* Trước XP và các nút: đây là phần đáng xem nhất của bảng kết quả, để
-                  dưới nút "next snippet" thì gần như không ai nhìn tới. */}
-              {snippet.demo && (
-                <SnippetDemo
-                  // `key` theo bài: không có thì đổi bài mà cùng khái niệm sẽ giữ nguyên
-                  // bước cũ, hoạt hình không chạy lại từ đầu.
-                  key={snippet.id}
-                  demo={snippet.demo}
-                  label={t.snippetDemo}
-                  replayLabel={t.snippetDemoReplay}
-                />
-              )}
 
               {lastAward && (
                 <div className="w-full pt-3 border-t border-zinc-300 dark:border-zinc-700">

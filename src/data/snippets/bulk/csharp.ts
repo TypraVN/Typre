@@ -12,7 +12,7 @@ export const csharpBulk = defineSnippets('csharp', 'cs-x', [
   `var lookup = panels.ToDictionary(p => p.Mark);`,
   `var count = items.Count(i => i.IsValid);`,
   `foreach (var (mark, weight) in panels)\n{\n    total += weight;\n}`,
-  [`for (int i = 0; i < count; i++)\n{\n    total += values[i];\n}`, 'for-loop'],
+  `for (int i = 0; i < count; i++)\n{\n    total += values[i];\n}`,
   `while (reader.Read())\n{\n    rows.Add(reader.GetString(0));\n}`,
   `if (string.IsNullOrWhiteSpace(name))\n{\n    return null;\n}`,
   `var name = user?.Profile?.DisplayName ?? "guest";`,

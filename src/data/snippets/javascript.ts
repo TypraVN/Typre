@@ -12,7 +12,6 @@ export const javascriptSnippets: Snippet[] = [
     language: 'javascript',
     title: 'Array filter + map',
     code: `const evens = numbers\n  .filter((n) => n % 2 === 0)\n  .map((n) => n * 2);`,
-    demo: 'filter-map',
   },
   {
     id: 'js-fetch',
@@ -49,14 +48,12 @@ export const javascriptSnippets: Snippet[] = [
     language: 'javascript',
     title: 'Array reduce',
     code: `const total = items.reduce((sum, item) => {\n  return sum + item.price;\n}, 0);`,
-    demo: 'reduce',
   },
   {
     id: 'js-spread',
     language: 'javascript',
     title: 'Spread operator',
     code: `const merged = { ...defaults, ...options };\nconst copy = [...items, newItem];`,
-    demo: 'spread',
   },
   {
     id: 'js-event-listener',
@@ -69,6 +66,5 @@ export const javascriptSnippets: Snippet[] = [
     language: 'javascript',
     title: 'Try/catch',
     code: `try {\n  JSON.parse(input);\n} catch { warn('invalid json'); }`,
-    demo: 'try-catch',
   },
 ]

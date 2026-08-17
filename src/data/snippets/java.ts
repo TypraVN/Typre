@@ -18,7 +18,6 @@ export const javaSnippets: Snippet[] = [
     language: 'java',
     title: 'For-each loop',
     code: `for (String item : items) {\n    System.out.println(item);\n}`,
-    demo: 'for-loop',
   },
   {
     id: 'java-stream',
@@ -31,7 +30,6 @@ export const javaSnippets: Snippet[] = [
     language: 'java',
     title: 'Try/catch',
     code: `try {\n    int value = Integer.parseInt(text);\n} catch (NumberFormatException e) { value = 0; }`,
-    demo: 'try-catch',
   },
   {
     id: 'java-interface',

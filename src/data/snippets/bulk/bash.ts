@@ -38,7 +38,7 @@ export const bashBulk = defineSnippets('bash', 'sh-x', [
   `chmod +x scripts/deploy.sh`,
   `export NODE_ENV=production`,
   `echo "$HOME/.config" > paths.txt`,
-  [`for f in *.png; do\n    echo "$f"\ndone`, 'for-loop'],
+  `for f in *.png; do\n    echo "$f"\ndone`,
   `if [ -f .env ]; then\n    source .env\nfi`,
   `while read -r line; do\n    echo "$line"\ndone < input.txt`,
   `ps aux | grep node | grep -v grep`,

@@ -13,8 +13,6 @@ export const translations = {
   statusFinished: 'finished',
   statusLabel: 'status',
   resultTitle: 'Result',
-  snippetDemo: 'what this code does',
-  snippetDemoReplay: 'replay',
   thisRunMistakes: 'mistakes this run:',
   capsLockWarning: 'Caps Lock is on',
   wpmChartTitle: 'WPM over time',

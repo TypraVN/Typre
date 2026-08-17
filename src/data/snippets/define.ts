@@ -1,12 +1,4 @@
-import type { Snippet, SnippetLanguage, DemoId } from '../types'
-
-/**
- * Một bài khai báo hàng loạt: chỉ code, hoặc kèm khái niệm để chạy hoạt hình.
- *
- * Dạng tuple thay vì object để dòng dữ liệu vẫn gọn — 2.000 bài mà mỗi bài là một
- * object nhiều dòng thì file phình lên toàn khung sườn lặp lại.
- */
-export type SnippetInput = string | [code: string, demo: DemoId]
+import type { Snippet, SnippetLanguage } from '../types'
 
 /**
  * Khai báo hàng loạt snippet chỉ bằng chuỗi code. Dạng object đầy đủ tốn 6 dòng cho
@@ -15,21 +7,19 @@ export type SnippetInput = string | [code: string, demo: DemoId]
  *
  * `prefix` phải khác với id của các bài viết tay trong cùng ngôn ngữ, vì id là thứ
  * dùng để loại bài vừa gõ khỏi lượt kế tiếp — trùng id là loại nhầm bài.
+ *
+ * Thứ tự trong mảng quyết định id: chèn hay xoá một bài giữa mảng là làm id mọi bài
+ * sau nó xê dịch, và người đang giữ link thách đấu `#/c/<id>` sẽ mở ra một bài khác.
+ * Thêm bài mới thì thêm vào CUỐI.
  */
 export function defineSnippets(
   language: SnippetLanguage,
   prefix: string,
-  codes: SnippetInput[],
+  codes: string[],
 ): Snippet[] {
-  return codes.map((input, i) => {
-    // Thứ tự trong mảng quyết định id, nên gắn hoạt hình cho một bài KHÔNG được làm id
-    // các bài khác xê dịch: người đang giữ link thách đấu `#/c/<id>` sẽ mở ra một bài
-    // hoàn toàn khác.
-    const base = { id: `${prefix}-${i + 1}`, language }
-
-    if (typeof input === 'string') return { ...base, code: input }
-
-    const [code, demo] = input
-    return { ...base, code, demo }
-  })
+  return codes.map((code, i) => ({
+    id: `${prefix}-${i + 1}`,
+    language,
+    code,
+  }))
 }

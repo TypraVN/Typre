@@ -8,7 +8,6 @@ export const cppSnippets: Snippet[] = [
     language: 'cpp',
     title: 'Vector + range for',
     code: `std::vector<int> nums = {3, 1, 4};\nfor (int n : nums) {\n    std::cout << n << "\\n";\n}`,
-    demo: 'for-loop',
   },
   {
     id: 'cpp-class',
