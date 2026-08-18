@@ -15,16 +15,23 @@ type Feedback = 'idle' | 'correct' | 'wrong'
 
 const MODIFIER_TOKENS = ['Ctrl', 'Alt', 'Shift', 'Meta']
 const MODIFIER_KEY_NAMES = ['Control', 'Alt', 'Shift', 'Meta']
-const ARROW_ALIASES: Record<string, string> = {
+/**
+ * Tên hiển thị trên phím → giá trị `KeyboardEvent.key` thật.
+ *
+ * `Space` bắt buộc phải có: trình duyệt trả về đúng một dấu cách `' '`, nên so thẳng với
+ * chuỗi `'Space'` là không bao giờ khớp — phím tắt hiện ra nhưng gõ kiểu gì cũng sai.
+ */
+const KEY_ALIASES: Record<string, string> = {
   Up: 'ArrowUp',
   Down: 'ArrowDown',
   Left: 'ArrowLeft',
   Right: 'ArrowRight',
+  Space: ' ',
 }
 
 function matchesKey(pressed: string, token: string | undefined): boolean {
   if (!token) return false
-  const expected = ARROW_ALIASES[token] ?? token
+  const expected = KEY_ALIASES[token] ?? token
   if (expected.length === 1) return pressed.toLowerCase() === expected.toLowerCase()
   return pressed === expected
 }

@@ -132,3 +132,7 @@ the usual reason sign-in works locally and fails in production.
 ## Stack
 
 React 19 · TypeScript · Vite · Tailwind CSS v4 · Zustand · Shiki · Supabase
+
+## License
+
+[MIT](LICENSE)
