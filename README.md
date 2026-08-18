@@ -98,6 +98,7 @@ fresh project:
 5. `migration-account-features.sql` — `profiles` + `friendships`
 6. `add-leaderboard-periods.sql` — weekly and daily views
 7. `add-xp-sync.sql` — XP column and the capped increment function
+8. `add-scale-indexes.sql` — indexes the leaderboard views and player search actually need
 
 Then set two environment variables:
 
