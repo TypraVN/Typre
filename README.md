@@ -1,94 +1,133 @@
+<div align="center">
+
 # Typre
 
-Web luyện gõ code cho developer — lấy cảm hứng từ Monkeytype nhưng tối ưu cho cú pháp lập trình: dấu ngoặc, ký tự đặc biệt, và phím tắt IDE.
+**Typing practice for programmers.** You type real code, not prose.
 
-## Chạy ở máy
+[**typre.dev**](https://www.typre.dev) · free · no account needed · works offline
+
+![Typre](public/og.png)
+
+</div>
+
+---
+
+Most typing trainers feed you English prose. But the keys that actually slow you down while
+programming are `{}`, `[]`, `=>`, `&&`, `::`, `?.` — and prose never contains them.
+
+Typre only serves real code: 2,170 hand-picked snippets across 14 languages, in 15, 30 and
+60 second runs.
+
+## What makes it different
+
+- **No repeated snippets.** Snippets come from a shuffle bag — you never see the same one
+  twice until you have been through the whole pool, and that survives a page reload.
+- **Separate pool per run length.** A 15 second run is one short idiom, not the first three
+  lines of something longer. Each language has its own short/medium/long pools.
+- **Works offline.** Every snippet ships in the bundle. Install it and keep practising on a
+  plane.
+- **A drill for punctuation alone** — `{} [] <> | ~ ^ && => !== ?. ?? <=>` — plus a separate
+  trainer for VS Code and Vim shortcuts.
+
+## Features
+
+| | |
+|---|---|
+| **Languages** | JavaScript, TypeScript, C#, Python, Java, Go, Rust, C/C++, SQL, Bash, HTML, CSS, JSON, special characters |
+| **Metrics** | WPM, CPM, raw WPM, accuracy, consistency, and the characters you mistyped most |
+| **Progress** | XP, levels, achievements, daily streak |
+| **Leaderboard** | per language × run length, all-time / this week / today, everyone or just friends |
+| **Multiplayer** | real-time races on the same snippet, and challenge links to beat a score |
+| **Your own code** | paste a snippet from your codebase and type that instead |
+| **Accounts** | Google, GitHub, email + password, or a magic link |
+
+Shortcuts: `Esc` restart · after a run, `Tab` retry and `Enter` next snippet.
+
+## Run it locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Mở http://localhost:5180
+Open http://localhost:5180
 
-## Lệnh
-
-| Lệnh | Việc |
+| Command | What it does |
 |---|---|
-| `npm run dev` | Dev server (KHÔNG kiểm tra TypeScript) |
-| `npm run build` | Kiểm tra type + build production |
-| `npm run preview` | Xem thử bản build |
+| `npm run dev` | Dev server — **does not typecheck** |
+| `npm run build` | Typecheck, build, then generate the static language pages |
+| `npm run preview` | Serve the production build |
+| `npm run lint` | oxlint |
+| `npm run indexnow` | Submit sitemap URLs to Bing/Yandex (run *after* deploying) |
 
-> **Chạy `npm run build` định kỳ.** Dev server dùng esbuild nên chỉ xoá kiểu chứ không kiểm tra — code sai type vẫn chạy ở dev nhưng làm hỏng deploy.
+> Run `npm run build` regularly. The dev server uses esbuild, which strips types without
+> checking them — code with type errors runs fine in dev and then breaks the deploy.
 
-## Tính năng
+## Architecture notes
 
-- **Gõ code**: 14 bộ bài (JS, TS, C#, Python, Java, Go, Rust, C++, SQL, Bash, HTML, CSS, JSON, ký tự đặc biệt)
-- **Phím tắt**: luyện tổ hợp VS Code và chuỗi phím Vim
-- **Chỉ số**: WPM, CPM, raw WPM, accuracy, consistency
-- **Bảng xếp hạng online**: mỗi người 1 dòng với điểm cao nhất, lọc theo ngôn ngữ × mốc thời gian
-- **Tài khoản**: đăng nhập Google / Facebook / GitHub / magic link email, hồ sơ công khai, kết bạn
-- Sáng/tối, 4 theme màu code, âm thanh gõ, cảnh báo Caps Lock
+Things that are load-bearing and not obvious from the file names:
 
-Phím tắt trong app: `Esc` gõ lại · sau khi xong thì `Tab` gõ lại, `Enter` bài mới.
+- **Shiki is loaded fine-grained.** `createHighlighterCore` plus a dynamic import per
+  language, instead of the full bundle. That took the highlighter from 11 MB across 309
+  files down to 1.3 MB across 12.
+- **Lazy chunks self-heal.** Static hosting only keeps the newest deploy's files, so a tab
+  opened before a deploy has dead chunk URLs. `lib/lazyChunk.ts` reloads the page once when
+  an import fails, then shows a message rather than silently doing nothing.
+- **The service worker refuses HTML under `/assets/`.** SPA hosting answers a deleted file
+  with `index.html` and a 200, so a naive cache-first worker will store that HTML under a
+  `.js` URL forever.
+- **Snippet ids come from array position.** Challenge links are `#/c/<lang>/<time>/<id>/<wpm>`,
+  so inserting a snippet in the middle of a list silently repoints everyone's saved links.
+  Append to the end.
+- **The 14 `/practice/<language>/` pages are static files**, generated after `vite build` by
+  `scripts/generate-seo-pages.mjs`. Counts and sample snippets are read from the real data,
+  never hardcoded.
 
-## Backend (không bắt buộc)
+## Backend (optional)
 
-App **chạy bình thường mà không cần backend** — chỉ mất bảng xếp hạng và tài khoản (tự ẩn, không lỗi).
+The app **runs fine without a backend** — you only lose the leaderboard and accounts, and
+both hide themselves rather than erroring.
 
-Muốn bật: xem [supabase/README.md](supabase/README.md).
+To enable it, see [supabase/README.md](supabase/README.md). Run the SQL in this order on a
+fresh project:
 
-Các file SQL trong `supabase/`, chạy theo thứ tự nếu làm mới từ đầu:
-
-1. `schema.sql` — bảng `scores` + RLS
-2. `leaderboard-view.sql` — view mỗi người 1 dòng
-3. `add-raw-consistency.sql` — 2 cột raw/consistency
-4. `migration-add-languages.sql` — cho phép các ngôn ngữ mới
+1. `schema.sql` — `scores` table + RLS
+2. `leaderboard-view.sql` — one row per player
+3. `add-raw-consistency.sql` — raw and consistency columns
+4. `migration-add-languages.sql` — allow the newer languages
 5. `migration-account-features.sql` — `profiles` + `friendships`
+6. `add-leaderboard-periods.sql` — weekly and daily views
+7. `add-xp-sync.sql` — XP column and the capped increment function
 
-## Deploy lên Vercel (miễn phí)
-
-**1. Đưa code lên GitHub**
-
-```bash
-git init
-git add .
-git commit -m "Typre"
-git branch -M main
-git remote add origin https://github.com/<ten-ban>/typre.git
-git push -u origin main
-```
-
-**2. Import vào Vercel**
-
-Vào https://vercel.com → **Add New** → **Project** → chọn repo. Vercel tự nhận Vite, không cần đổi gì.
-
-File `vercel.json` có sẵn chỉ làm 1 việc: cache asset vĩnh viễn (tên file có hash nên nội dung không đổi mà không đổi tên), còn `index.html` thì không cache — nếu cache file này người dùng sẽ mắc ở bản cũ sau mỗi lần deploy.
-
-**3. Khai báo biến môi trường**
-
-Trong **Project Settings → Environment Variables**, thêm 2 biến (lấy từ Supabase → Project Settings → API Keys):
+Then set two environment variables:
 
 ```
 VITE_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY
 ```
 
-**4. Cập nhật URL sau khi có domain thật**
+## Deploying
 
-Đây là bước hay bị quên, thiếu là **đăng nhập hỏng trên production**:
+Vercel detects Vite and needs no configuration. `vercel.json` does one thing: cache
+`/assets/*` forever (the filenames are content-hashed) while keeping `index.html` and
+`sw.js` uncached — cache those and users get stuck on an old build.
 
-- **Supabase → Authentication → URL Configuration**: thêm domain Vercel vào *Site URL* và *Redirect URLs*
-- **GitHub OAuth App**: sửa *Homepage URL* thành domain thật
-- **Google Cloud Console**: giữ nguyên *Authorized redirect URI* (nó trỏ tới Supabase, không phải app)
+After you have a real domain, update **Supabase → Authentication → URL Configuration**
+(*Site URL* and *Redirect URLs*) and your **GitHub OAuth App** homepage URL. The **Google**
+redirect URI points at Supabase, not at the app, so it stays as it is. Forgetting this is
+the usual reason sign-in works locally and fails in production.
 
-## Lưu ý bảo mật
+## Security
 
-- `VITE_SUPABASE_ANON_KEY` (Publishable key) **là công khai theo thiết kế** — nó nằm trong file JS ai cũng đọc được. An toàn nhờ Row Level Security ở database, không nhờ giấu key.
-- **Secret key** của Supabase và **Client Secret** của Google/Facebook/GitHub thì **không bao giờ** đưa vào `.env` hay code frontend — chỉ dán vào Supabase Dashboard.
-- File `.env` đã được `.gitignore` chặn.
-- Hạn chế đã biết: WPM tính ở phía client, nên người dùng DevTools vẫn có thể gửi điểm giả **cho tài khoản của chính họ**. Database đã chặn giá trị phi lý (`wpm > 300`, `accuracy < 50%`) và RLS chặn mạo danh người khác.
+- `VITE_SUPABASE_ANON_KEY` is **public by design** — it ships in the JavaScript bundle. What
+  protects the data is Row Level Security, not hiding the key.
+- Supabase service keys and OAuth client secrets go in the Supabase dashboard only, never in
+  `.env` or frontend code.
+- **Known limitation: WPM is measured client-side.** Someone with DevTools can submit a fake
+  score *for their own account*. The database rejects impossible values (`wpm > 300`,
+  `accuracy < 50%`) and RLS prevents writing as someone else, but there is no server-side
+  verification of a run. Treat the leaderboard as a bit of fun.
 
-## Tech stack
+## Stack
 
-React 19 + TypeScript + Vite · Tailwind CSS v4 · Zustand · Shiki (syntax highlighting) · Supabase (auth + database)
+React 19 · TypeScript · Vite · Tailwind CSS v4 · Zustand · Shiki · Supabase
