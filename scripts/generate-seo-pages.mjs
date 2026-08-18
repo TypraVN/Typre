@@ -107,7 +107,19 @@ const STYLES = `
     line-height: 1.6;
   }
   pre code { background: none; color: #d4d4d8; padding: 0; font-size: inherit; }
-  .counts { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0 8px; padding: 0; list-style: none; }
+  /*
+    Lưới tự co thay vì flex-wrap: trên màn 375px, flex-wrap cho 4 ô xếp DỌC thành 4 hàng
+    và đẩy nút bấm xuống dưới đáy màn hình — người từ Google vào bằng điện thoại không
+    thấy nút nào. Đã đo: nút ở 823px trong khi màn cao 812px.
+  */
+  .counts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin: 24px 0 8px;
+    padding: 0;
+    list-style: none;
+  }
   .counts li {
     border: 1px solid #3f3f46;
     border-radius: 8px;

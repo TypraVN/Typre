@@ -13,6 +13,9 @@ export const translations = {
   statusFinished: 'finished',
   statusLabel: 'status',
   resultTitle: 'Result',
+  noKeyboardTitle: 'Typre needs a physical keyboard',
+  noKeyboardBody:
+    'Phones have no keys to practise on, so typing here will not work. Open typre.dev on a laptop — the leaderboard and profiles still work on this screen.',
   thisRunMistakes: 'mistakes this run:',
   capsLockWarning: 'Caps Lock is on',
   wpmChartTitle: 'WPM over time',

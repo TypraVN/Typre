@@ -17,6 +17,7 @@ import { ShortcutTrainer } from './components/ShortcutTrainer'
 import { Logo } from './components/Logo'
 import { LevelBadge } from './components/LevelBadge'
 import { XpAwardCard } from './components/XpAwardCard'
+import { NoKeyboardNotice } from './components/NoKeyboardNotice'
 import { WpmChart } from './components/WpmChart'
 // Bảng xếp hạng nằm ở chunk riêng: chỉ tải khi thật sự mở tab Xếp hạng.
 const Leaderboard = lazyChunk('Leaderboard', () =>
@@ -769,6 +770,10 @@ function App() {
       >
       {mode === 'code' && (
         <>
+          {/* Đặt TRƯỚC vùng gõ: người vào bằng điện thoại phải đọc được lý do ngay, trước
+              khi họ chạm vào code và thấy không có gì xảy ra. */}
+          <NoKeyboardNotice t={t} />
+
           {/* Vạch đua nằm NGOÀI khối `!sessionOver`: gõ xong rồi vẫn phải thấy người
               khác chạy tới đâu, không thì về đích trước là mất luôn cuộc đua. */}
           {race && (
