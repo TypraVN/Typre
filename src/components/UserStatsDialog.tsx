@@ -2,7 +2,7 @@ import { AchievementGrid } from './AchievementGrid'
 import { Avatar } from './Avatar'
 import { Modal } from './Modal'
 import { WpmChart } from './WpmChart'
-import { useHistoryStore } from '../store/useHistoryStore'
+import { useHistoryStore, type TypingResult } from '../store/useHistoryStore'
 import { computeBests, formatDuration, formatJoinDate, summarize } from '../lib/stats'
 import type { AppUser } from '../lib/auth'
 import type { SnippetLanguage } from '../data/types'
@@ -15,6 +15,15 @@ interface UserStatsDialogProps {
   onClose: () => void
   t: Translation
 }
+
+/**
+ * Giá trị mặc định dùng chung, KHÔNG tạo mới mỗi lần render.
+ *
+ * Bắt buộc phải ở tầng module: viết `?? {}` ngay trong selector của zustand là tạo tham
+ * chiếu mới mỗi lần gọi và gây vòng lặp render vô tận (xem ghi chú trong component).
+ */
+const NO_RESULTS: TypingResult[] = []
+const NO_UNLOCKED: Record<string, string> = {}
 
 function Tile({ label, value }: { label: string; value: string }) {
   return (
@@ -33,17 +42,25 @@ export function UserStatsDialog({
   t,
 }: UserStatsDialogProps) {
   /**
-   * Mọi thứ đọc từ store đều phải chịu được dữ liệu lưu từ phiên bản CŨ.
+   * Selector CHỈ được trả về thứ đang nằm sẵn trong store, không được tạo giá trị mới.
    *
-   * `results`, `totals`, `progress` nằm trong localStorage của người dùng từ trước khi có
-   * XP và thành tích. Zustand merge nông nên thiếu khoá thì lấy giá trị khởi tạo — nhưng
-   * khoá tồn tại với hình dạng cũ thì lọt thẳng xuống đây. Hộp thoại này nằm trong
-   * `Suspense` KHÔNG có error boundary: một lỗi lúc render là mất sạch giao diện, không
-   * phải chỉ mất hộp thoại.
+   * Đây chính là nguyên nhân lỗi "Maximum update depth exceeded" (React #185): zustand so
+   * kết quả selector bằng `Object.is`, nên `s.progress.unlocked ?? {}` sinh một `{}` MỚI
+   * mỗi lần gọi khi `unlocked` chưa có → không bao giờ bằng lần trước → render lại → lại
+   * sinh `{}` mới → vòng lặp vô tận, React ném lỗi ở lần thứ 50.
+   *
+   * Chỉ hỏng với người có `progress` lưu từ phiên bản TRƯỚC khi có thành tích: máy sạch
+   * luôn có `unlocked: {}` sẵn nên không bao giờ tái hiện được.
+   *
+   * Giá trị mặc định phải là hằng ở tầng module để tham chiếu không đổi giữa các lần
+   * render.
    */
-  const results = useHistoryStore((s) => (Array.isArray(s.results) ? s.results : []))
+  const rawResults = useHistoryStore((s) => s.results)
   const totals = useHistoryStore((s) => s.totals)
-  const unlocked = useHistoryStore((s) => s.progress?.unlocked ?? {})
+  const rawUnlocked = useHistoryStore((s) => s.progress?.unlocked)
+
+  const results = Array.isArray(rawResults) ? rawResults : NO_RESULTS
+  const unlocked = rawUnlocked ?? NO_UNLOCKED
 
   const started = Number(totals?.started) || 0
   const completed = Number(totals?.completed) || 0
