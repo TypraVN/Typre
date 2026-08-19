@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App, { LANGUAGES } from './App.tsx'
 import { translations } from './i18n/translations'
+import { Analytics } from '@vercel/analytics/react'
 import { clearLanguageParam, readLanguageParam } from './lib/langParam'
 import { usePreferencesStore } from './store/usePreferencesStore'
 
@@ -29,21 +30,34 @@ function Root() {
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
-  if (username) {
-    return (
-      <Suspense fallback={null}>
-        <PublicProfileView
-          username={username}
-          onBack={() => {
-            window.location.hash = ''
-          }}
-          t={translations}
-        />
-      </Suspense>
-    )
-  }
+  return (
+    <>
+      {username ? (
+        <Suspense fallback={null}>
+          <PublicProfileView
+            username={username}
+            onBack={() => {
+              window.location.hash = ''
+            }}
+            t={translations}
+          />
+        </Suspense>
+      ) : (
+        <App />
+      )}
 
-  return <App />
+      {/*
+        Đo lượt xem để biết đăng bài ở đâu thì ra người thật — hiện không có số liệu nào
+        nên mọi quyết định kéo người đều là đoán.
+
+        Không cookie, không định danh cá nhân, nên không cần banner đồng ý. Chỉ chạy trên
+        Vercel: ở máy nó tự im, và phải bật Web Analytics trong dashboard mới có dữ liệu.
+
+        Đặt NGOÀI nhánh điều kiện để đếm được cả trang hồ sơ công khai.
+      */}
+      <Analytics />
+    </>
+  )
 }
 
 /**

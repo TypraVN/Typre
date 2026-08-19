@@ -11,10 +11,12 @@
  * kéo theo cấu hình và bản sinh tự động khó soi khi có sự cố.
  */
 
-// Đổi VERSION là xoá sạch cache của bản trước ở bước `activate`. v2: bản v1 có thể đã
-// cache HTML fallback dưới URL của file .js (xem `isUsableAsset`) và bản vá không tự dọn
-// được những entry đã hỏng đó.
-const VERSION = 'typre-v2'
+// Đổi VERSION là xoá sạch cache của bản trước ở bước `activate`.
+//   v2: bản v1 có thể đã cache HTML fallback dưới URL file .js (xem `isUsableAsset`).
+//   v3: bản v2 lưu MỌI phản hồi dưới khoá `/`, nên ai từng mở một trang /practice/ là
+//       bản offline của họ đã bị thay bằng trang đó. Bản vá không tự dọn được entry sai,
+//       phải đổi version.
+const VERSION = 'typre-v3'
 const ASSET_CACHE = `${VERSION}-assets`
 const PAGE_CACHE = `${VERSION}-pages`
 
@@ -113,6 +115,15 @@ self.addEventListener('fetch', (event) => {
   }
 
   /**
+   * Chỉ can thiệp vào ĐIỀU HƯỚNG (mở một trang). Mọi thứ khác cùng origin — script đo
+   * lường ở `/_vercel/insights/`, các lệnh gọi phụ — để trình duyệt tự lo.
+   *
+   * Không có dòng này thì nhánh bên dưới nuốt hết mọi request lạ và lưu chúng làm trang
+   * chủ offline.
+   */
+  if (request.mode !== 'navigate') return
+
+  /**
    * Trang HTML: network-first. Cache-first ở đây là mắc bản cũ mãi — deploy mới xong mà
    * người dùng vẫn chạy bản tuần trước, đúng cái bẫy `index.html` đã đặt no-cache trong
    * vercel.json để tránh.
@@ -120,7 +131,15 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(request)
       .then((res) => {
-        if (res.ok) {
+        /**
+         * CHỈ lưu trang gốc làm bản offline.
+         *
+         * Trước đây lưu MỌI phản hồi dưới khoá `/`: vào `/practice/python/` một lần là
+         * bản offline của app bị thay bằng trang giới thiệu đó, và khi có script đo lường
+         * thì một file `.js` được lưu làm trang chủ — mất mạng là app trả về JavaScript
+         * thay vì HTML.
+         */
+        if (res.ok && url.pathname === '/') {
           const copy = res.clone()
           caches.open(PAGE_CACHE).then((cache) => cache.put('/', copy))
         }
