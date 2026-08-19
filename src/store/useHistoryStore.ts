@@ -74,6 +74,13 @@ export interface XpAward {
   levelBefore: number
   levelAfter: number
   streakDays: number
+  /**
+   * Chuỗi ngày vừa DÀI RA ở lượt này, không phải chỉ đang có chuỗi.
+   *
+   * Cần tách khỏi `streakDays` vì gõ lượt thứ hai trong cùng một ngày thì `streakDays`
+   * vẫn là 3 — ăn mừng lại là sai, và ăn mừng mỗi lượt thì lần thứ ba đã thành phiền.
+   */
+  streakGrew: boolean
   newRecord: boolean
   /** Id các thành tích vừa mở khoá ở lượt này, để bảng kết quả hiện ra. */
   unlockedNow: string[]
@@ -173,6 +180,9 @@ export const useHistoryStore = create<HistoryState>()(
               levelBefore: levelFromXp(state.progress.xp).level,
               levelAfter: levelFromXp(xp).level,
               streakDays,
+              // Từ ngày 2 trở đi mới ăn mừng: ngày 1 chưa phải "chuỗi", và khoản XP
+              // +streak đã hiện trong bảng chia nhỏ rồi.
+              streakGrew: streakDays > 1 && streakDays > state.progress.streakDays,
               newRecord,
               unlockedNow,
             },

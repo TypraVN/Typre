@@ -1,5 +1,6 @@
-import { Award, Flame, Trophy } from 'lucide-react'
+import { Award, Flame } from 'lucide-react'
 import { achievementById } from '../lib/achievements'
+import { Celebration } from './Celebration'
 import type { XpAward } from '../store/useHistoryStore'
 import type { Translation } from '../i18n/translations'
 
@@ -16,7 +17,7 @@ interface XpAwardCardProps {
  */
 export function XpAwardCard({ award, t }: XpAwardCardProps) {
   // `newRecord` không đọc ở đây: khoản +50 đã hiện trong bảng chia nhỏ bên dưới rồi.
-  const { breakdown, levelBefore, levelAfter, streakDays, unlockedNow } = award
+  const { breakdown, levelBefore, levelAfter, streakDays, streakGrew, unlockedNow } = award
 
   // Lượt không hợp lệ được 0 XP, nhưng vẫn có thể mở khoá thành tích (vd "first run").
   // Ẩn cả khối thì thành tích mở khoá xong không ai thấy.
@@ -58,14 +59,18 @@ export function XpAwardCard({ award, t }: XpAwardCardProps) {
         </>
       )}
 
-      {leveledUp && (
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded border border-orange-500/40 bg-orange-500/10 font-mono text-sm text-orange-600 dark:text-orange-400 animate-pop-in">
-          <Trophy className="w-4 h-4" />
-          {t.levelUp} — {t.levelShort} {levelAfter}
-        </div>
-      )}
+      <Celebration
+        leveledUp={leveledUp}
+        level={levelAfter}
+        streakGrew={streakGrew}
+        streakDays={streakDays}
+        t={t}
+      />
 
-      {streakDays > 1 && (
+      {/* Chuỗi ngày KHÔNG dài ra ở lượt này (gõ lượt thứ hai trong ngày) thì chỉ nhắc
+          bằng một dòng xám — vẫn cho biết mình đang giữ chuỗi mấy ngày, nhưng không ăn
+          mừng lại thứ đã ăn mừng lúc nãy. */}
+      {!streakGrew && streakDays > 1 && (
         <div className="flex items-center gap-1.5 font-mono text-xs text-zinc-500 dark:text-zinc-400">
           <Flame className="w-3.5 h-3.5" />
           {streakDays} {t.dayStreak}

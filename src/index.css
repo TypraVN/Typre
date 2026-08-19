@@ -79,12 +79,92 @@ html.dark body {
   animation: pop-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* ---------------------------------------------------------------------------
+   Ăn mừng lên cấp / nối chuỗi ngày.
+
+   Chỉ chạy MỘT LẦN khi sự kiện xảy ra, không lặp: bảng kết quả là chỗ người ta
+   dừng lại đọc số, có thứ nhấp nháy mãi trong tầm mắt là phản tác dụng.
+   --------------------------------------------------------------------------- */
+
+/* Tia bắn ra từ tâm. Hướng và khoảng cách truyền qua biến CSS nên một keyframe
+   dùng được cho mọi tia, không phải sinh 12 keyframe riêng. */
+@keyframes spark {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(0.3);
+  }
+}
+
+.animate-spark {
+  animation: spark 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Huy hiệu nảy mạnh hơn pop-in thường, kèm quầng sáng loe ra rồi tắt */
+@keyframes level-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-level-pop {
+  animation: level-pop 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes glow-ring {
+  from {
+    opacity: 0.55;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+.animate-glow-ring {
+  animation: glow-ring 900ms ease-out both;
+}
+
+/* Ngọn lửa streak: nhún hai nhịp rồi đứng yên */
+@keyframes flame-bounce {
+  0%, 100% { transform: none; }
+  30% { transform: translateY(-5px) scale(1.18); }
+  60% { transform: translateY(-2px) scale(1.06); }
+}
+
+.animate-flame {
+  animation: flame-bounce 780ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* Tôn trọng cài đặt hệ thống: ai tắt animation thì không chạy gì cả */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up,
   .animate-fade-in,
-  .animate-pop-in {
+  .animate-pop-in,
+  .animate-level-pop,
+  .animate-flame {
     animation: none;
+  }
+
+  /* Tia và quầng sáng KHÔNG chỉ tắt animation mà phải ẩn hẳn: chúng nằm đè lên
+     nội dung và chỉ có nghĩa khi đang chuyển động. */
+  .animate-spark,
+  .animate-glow-ring {
+    animation: none;
+    display: none;
   }
 
   .animate-caret-blink {
