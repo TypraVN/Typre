@@ -82,6 +82,15 @@ const LANG_LOADERS: Record<CodeLanguage, () => Promise<{ default: unknown }>> = 
 
 let highlighterPromise: Promise<HighlighterCore> | null = null
 
+/**
+ * Bản đã resolve của core, giữ riêng để đọc ĐỒNG BỘ.
+ *
+ * `highlighterPromise` chỉ đọc được qua `await`, mà chờ một microtask cũng đủ để React
+ * vẽ xong một khung hình không màu — đó chính là cái nháy khi đổi bài trong cùng một
+ * ngôn ngữ đã tải sẵn.
+ */
+let coreInstance: HighlighterCore | null = null
+
 function getCore(): Promise<HighlighterCore> {
   if (!highlighterPromise) {
     highlighterPromise = createHighlighterCore({
@@ -89,6 +98,9 @@ function getCore(): Promise<HighlighterCore> {
       langs: [],
       // Engine JS thuần: tránh tải file WASM ~600kB của Oniguruma.
       engine: createJavaScriptRegexEngine(),
+    }).then((core) => {
+      coreInstance = core
+      return core
     })
   }
   return highlighterPromise
@@ -98,28 +110,71 @@ const loadedLangs = new Set<CodeLanguage>()
 const loadedThemes = new Set<ShikiTheme>()
 
 /**
+ * Core dùng được NGAY nếu ngôn ngữ và theme đã nạp xong, ngược lại `null`.
+ *
+ * Cho phép tô màu ngay trong lúc render thay vì đợi một effect — không có nó thì mỗi lần
+ * đổi bài đều nháy mất màu một nhịp dù chẳng phải tải thêm gì.
+ */
+export function getLoadedHighlighter(
+  lang: CodeLanguage,
+  theme: ShikiTheme,
+): HighlighterCore | null {
+  if (!coreInstance || !loadedLangs.has(lang) || !loadedThemes.has(theme)) return null
+  return coreInstance
+}
+
+/** Ngôn ngữ đang tải dở — chặn nạp trùng khi rê chuột qua lại nhiều lần. */
+const prefetching = new Set<CodeLanguage>()
+
+/**
+ * Nạp trước grammar của một ngôn ngữ, gọi khi người dùng mới RÊ CHUỘT lên nút.
+ *
+ * Khoảng cách giữa lúc rê chuột và lúc bấm thường đủ để tải xong (grammar nặng nhất là
+ * C++ ~46KB), nên cú bấm không còn phải chờ. Ai không rê tới thì không tốn gì — vẫn giữ
+ * nguyên lợi ích của việc tách chunk theo ngôn ngữ.
+ */
+export function prefetchLanguage(lang: CodeLanguage): void {
+  if (loadedLangs.has(lang) || prefetching.has(lang)) return
+
+  prefetching.add(lang)
+  // Phải ĐĂNG KÝ hẳn vào core, không chỉ kéo file về: chỉ tải module thì `loadedLangs`
+  // vẫn rỗng, nên lúc bấm `getLoadedHighlighter` trả null và màu vẫn nháy một nhịp.
+  // Lỗi mạng thì bỏ qua — lát nữa bấm vào sẽ thử lại.
+  void ensureLang(lang).catch(() => prefetching.delete(lang))
+}
+
+/**
  * Trả về highlighter đã đảm bảo `lang` và `theme` được nạp xong.
  * Gọi nhiều lần với cùng cặp thì chỉ nạp 1 lần.
  */
+async function ensureLang(lang: CodeLanguage): Promise<HighlighterCore> {
+  const core = await getCore()
+  if (loadedLangs.has(lang)) return core
+
+  const mod = await LANG_LOADERS[lang]()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await core.loadLanguage(mod.default as any)
+  loadedLangs.add(lang)
+
+  return core
+}
+
+async function ensureTheme(theme: ShikiTheme): Promise<HighlighterCore> {
+  const core = await getCore()
+  if (loadedThemes.has(theme)) return core
+
+  const mod = await THEME_LOADERS[theme]()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await core.loadTheme(mod.default as any)
+  loadedThemes.add(theme)
+
+  return core
+}
+
 export async function getHighlighterFor(
   lang: CodeLanguage,
   theme: ShikiTheme,
 ): Promise<HighlighterCore> {
-  const core = await getCore()
-
-  if (!loadedLangs.has(lang)) {
-    const mod = await LANG_LOADERS[lang]()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await core.loadLanguage(mod.default as any)
-    loadedLangs.add(lang)
-  }
-
-  if (!loadedThemes.has(theme)) {
-    const mod = await THEME_LOADERS[theme]()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await core.loadTheme(mod.default as any)
-    loadedThemes.add(theme)
-  }
-
-  return core
+  await ensureLang(lang)
+  return ensureTheme(theme)
 }

@@ -1,6 +1,14 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import { getHighlighterFor, resolveTheme, type CodeTheme, type CodeLanguage } from '../lib/highlighter'
+import {
+  getHighlighterFor,
+  getLoadedHighlighter,
+  resolveTheme,
+  type CodeTheme,
+  type CodeLanguage,
+  type ShikiTheme,
+} from '../lib/highlighter'
+import type { HighlighterCore } from 'shiki/core'
 import type { CharStatus } from '../types/typing'
 
 type UiMode = 'light' | 'dark'
@@ -37,10 +45,45 @@ function Caret() {
   return <span className="absolute inset-y-0 -left-px w-[2px] bg-orange-400 animate-caret-blink" />
 }
 
+/** Màu của TỪNG ký tự trong bài, phẳng theo đúng thứ tự — khớp 1-1 với `charStatuses`. */
+interface Painted {
+  colors: string[]
+  fg: string
+}
+
+/**
+ * Đổi token của Shiki thành mảng màu theo từng ký tự.
+ *
+ * Tách riêng khỏi component để dùng được cho CẢ hai đường: tô ngay lúc render (khi
+ * grammar đã sẵn) và tô sau khi tải xong.
+ */
+function paint(
+  highlighter: HighlighterCore,
+  code: string,
+  language: CodeLanguage,
+  shikiTheme: ShikiTheme,
+  uiMode: UiMode,
+): Painted {
+  // Màu chữ mặc định lấy từ chính theme, không hardcode — nếu không thì ký tự không có
+  // token màu (khoảng trắng, xuống dòng) sẽ sai màu ở light mode.
+  const fg = highlighter.getTheme(shikiTheme).fg || FALLBACK_FG[uiMode]
+
+  const lines = highlighter.codeToTokensBase(code, { lang: language, theme: shikiTheme })
+  const colors: string[] = []
+
+  lines.forEach((line, lineIndex) => {
+    line.forEach((token) => {
+      for (let i = 0; i < token.content.length; i += 1) colors.push(token.color ?? fg)
+    })
+    if (lineIndex < lines.length - 1) colors.push(fg)
+  })
+
+  return { colors, fg }
+}
+
 export const CodeEditorDisplay = forwardRef<HTMLDivElement, CodeEditorDisplayProps>(
   ({ code, language, theme, uiMode, charStatuses, cursor, onKeyDown }, ref) => {
-    const [colors, setColors] = useState<string[] | null>(null)
-    const [fg, setFg] = useState(FALLBACK_FG[uiMode])
+    const [painted, setPainted] = useState<Painted | null>(null)
 
     // Cần ref nội bộ để tự cuộn khung; ref của App chỉ dùng để focus nên chuyển tiếp là đủ.
     const boxRef = useRef<HTMLDivElement>(null)
@@ -49,35 +92,36 @@ export const CodeEditorDisplay = forwardRef<HTMLDivElement, CodeEditorDisplayPro
 
     const shikiTheme = resolveTheme(theme, uiMode)
 
+    /**
+     * Tô ngay trong lúc render nếu grammar và theme đã nạp sẵn.
+     *
+     * Đây là trường hợp THƯỜNG GẶP NHẤT: bấm "next snippet" trong cùng một ngôn ngữ.
+     * Bản trước luôn `setColors(null)` rồi mới tô lại trong effect, nên lần đổi bài nào
+     * cũng nháy mất màu một nhịp dù chẳng phải tải thêm gì.
+     */
+    const sync = useMemo(() => {
+      const ready = getLoadedHighlighter(language, shikiTheme)
+      return ready ? paint(ready, code, language, shikiTheme, uiMode) : null
+    }, [code, language, shikiTheme, uiMode])
+
     useEffect(() => {
+      // Đã tô xong ngay lúc render thì không cần chạm tới state.
+      if (sync) return
+
       let cancelled = false
-      setColors(null)
-      setFg(FALLBACK_FG[uiMode])
+      setPainted(null)
 
       getHighlighterFor(language, shikiTheme).then((highlighter) => {
-        if (cancelled) return
-
-        // Màu chữ mặc định lấy từ chính theme, không hardcode — nếu không thì
-        // ký tự không có token màu (khoảng trắng, xuống dòng) sẽ sai màu ở light mode.
-        const themeFg = highlighter.getTheme(shikiTheme).fg || FALLBACK_FG[uiMode]
-
-        const lines = highlighter.codeToTokensBase(code, { lang: language, theme: shikiTheme })
-        const flat: string[] = []
-        lines.forEach((line, lineIndex) => {
-          line.forEach((token) => {
-            for (let i = 0; i < token.content.length; i += 1) flat.push(token.color ?? themeFg)
-          })
-          if (lineIndex < lines.length - 1) flat.push(themeFg)
-        })
-
-        setFg(themeFg)
-        setColors(flat)
+        if (!cancelled) setPainted(paint(highlighter, code, language, shikiTheme, uiMode))
       })
 
       return () => {
         cancelled = true
       }
-    }, [code, language, shikiTheme, uiMode])
+    }, [sync, code, language, shikiTheme, uiMode])
+
+    const colors = sync?.colors ?? painted?.colors ?? null
+    const fg = sync?.fg ?? painted?.fg ?? FALLBACK_FG[uiMode]
 
     /*
      * Thanh cuộn bị ẩn nên phải tự kéo khung theo con trỏ, không thì gõ tới đoạn

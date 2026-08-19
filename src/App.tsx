@@ -62,7 +62,7 @@ import { useSoundStore } from './store/useSoundStore'
 import { useUiThemeStore } from './store/useUiThemeStore'
 import { usePreferencesStore } from './store/usePreferencesStore'
 import { translations } from './i18n/translations'
-import { CODE_THEMES, THEME_LABELS, type CodeLanguage } from './lib/highlighter'
+import { CODE_THEMES, THEME_LABELS, prefetchLanguage, type CodeLanguage } from './lib/highlighter'
 
 export const LANGUAGES: SnippetLanguage[] = [
   'javascript',
@@ -671,6 +671,11 @@ function App() {
                   key={lang}
                   type="button"
                   onClick={() => pickNext(lang)}
+                  /* Nạp grammar ngay khi con trỏ vừa chạm vào nút: khoảng cách giữa lúc
+                     rê chuột và lúc bấm thường đủ để tải xong, nên cú bấm không phải chờ
+                     đổi màu. `onFocus` để người dùng bàn phím cũng được lợi. */
+                  onMouseEnter={() => prefetchLanguage(SHIKI_LANG[lang])}
+                  onFocus={() => prefetchLanguage(SHIKI_LANG[lang])}
                   className={lang === language ? TAB_BTN_ACTIVE : TAB_BTN}
                 >
                   {lang}
