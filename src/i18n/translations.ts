@@ -113,6 +113,7 @@ export const translations = {
   pendingSubmitted: 'submitted to the leaderboard',
   pendingSubmitFailed: 'could not send your score',
   dismiss: 'Dismiss',
+  dialogError: 'Something broke while opening this. Your typing is unaffected.',
   accountMenu: 'Account menu',
   menuUserStats: 'User stats',
   menuFriends: 'Friends',

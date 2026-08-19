@@ -3,6 +3,7 @@ import { lazyChunk } from '../lib/lazyChunk'
 import { LogIn } from 'lucide-react'
 import type { AppUser } from '../lib/auth'
 import { AccountMenu, type AccountMenuAction } from './AccountMenu'
+import { DialogBoundary } from './DialogBoundary'
 import { getMyProfile } from '../lib/profiles'
 import { isLeaderboardEnabled } from '../lib/supabase'
 import type { SnippetLanguage } from '../data/types'
@@ -69,6 +70,9 @@ export function AuthButton({ user, loading, languages, timeLimits, t }: AuthButt
       <>
         <AccountMenu user={shown} t={t} onAction={handleAction} />
 
+        {/* Boundary bọc NGOÀI Suspense: nó phải bắt được cả lỗi ném ra lúc tải chunk lẫn
+            lỗi lúc render nội dung hộp thoại. */}
+        <DialogBoundary closeLabel={t.close} message={t.dialogError} onClose={close}>
         <Suspense fallback={null}>
           {panel === 'stats' && (
             <UserStatsDialog
@@ -91,6 +95,7 @@ export function AuthButton({ user, loading, languages, timeLimits, t }: AuthButt
             />
           )}
         </Suspense>
+        </DialogBoundary>
       </>
     )
   }

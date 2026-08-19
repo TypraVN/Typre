@@ -32,10 +32,22 @@ export function UserStatsDialog({
   onClose,
   t,
 }: UserStatsDialogProps) {
-  const results = useHistoryStore((s) => s.results)
+  /**
+   * Mọi thứ đọc từ store đều phải chịu được dữ liệu lưu từ phiên bản CŨ.
+   *
+   * `results`, `totals`, `progress` nằm trong localStorage của người dùng từ trước khi có
+   * XP và thành tích. Zustand merge nông nên thiếu khoá thì lấy giá trị khởi tạo — nhưng
+   * khoá tồn tại với hình dạng cũ thì lọt thẳng xuống đây. Hộp thoại này nằm trong
+   * `Suspense` KHÔNG có error boundary: một lỗi lúc render là mất sạch giao diện, không
+   * phải chỉ mất hộp thoại.
+   */
+  const results = useHistoryStore((s) => (Array.isArray(s.results) ? s.results : []))
   const totals = useHistoryStore((s) => s.totals)
-  // Bản lưu cũ chưa có `unlocked` → mặc định rỗng thay vì để undefined xuống UI.
-  const unlocked = useHistoryStore((s) => s.progress.unlocked ?? {})
+  const unlocked = useHistoryStore((s) => s.progress?.unlocked ?? {})
+
+  const started = Number(totals?.started) || 0
+  const completed = Number(totals?.completed) || 0
+  const typingSeconds = Number(totals?.typingSeconds) || 0
 
   const summary = summarize(results)
   const bests = computeBests(results)
@@ -64,9 +76,9 @@ export function UserStatsDialog({
             </div>
 
             <div className="flex flex-wrap gap-x-10 gap-y-3">
-              <Tile label={t.testsStarted} value={String(totals.started)} />
-              <Tile label={t.testsCompleted} value={String(totals.completed)} />
-              <Tile label={t.timeTyping} value={formatDuration(totals.typingSeconds)} />
+              <Tile label={t.testsStarted} value={String(started)} />
+              <Tile label={t.testsCompleted} value={String(completed)} />
+              <Tile label={t.timeTyping} value={formatDuration(typingSeconds)} />
             </div>
           </div>
 
