@@ -31,3 +31,6 @@ client_secret_*.json
 *.njsproj
 *.sln
 *.sw?
+
+# File tạm của Supabase CLI
+supabase/.temp
