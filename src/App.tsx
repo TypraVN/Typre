@@ -9,6 +9,7 @@ import {
   Swords,
   ClipboardPaste,
   Users,
+  Bug,
 } from 'lucide-react'
 import { Toast, ToastStack } from './components/Toast'
 import { useTypingEngine } from './hooks/useTypingEngine'
@@ -31,6 +32,10 @@ const ProgressDialog = lazyChunk('ProgressDialog', () =>
 // Chỉ tải khi người dùng mở ô dán code — không nhét textarea vào bundle đầu.
 const CustomCodeDialog = lazyChunk('CustomCodeDialog', () =>
   import('./components/CustomCodeDialog').then((m) => ({ default: m.CustomCodeDialog })),
+)
+// Báo lỗi: hộp thoại chỉ mở khi người dùng bấm, không nhét vào bundle đầu.
+const ReportDialog = lazyChunk('ReportDialog', () =>
+  import('./components/ReportDialog').then((m) => ({ default: m.ReportDialog })),
 )
 // Chỉ cần khi người dùng vào từ link đặt lại mật khẩu — không nhét vào bundle đầu.
 const NewPasswordDialog = lazyChunk('NewPasswordDialog', () =>
@@ -200,6 +205,7 @@ function App() {
   const [linkCopied, setLinkCopied] = useState(false)
   const [customDialogOpen, setCustomDialogOpen] = useState(false)
   const [progressOpen, setProgressOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
 
   const customCode = useCustomCodeStore((s) => s.code)
   const customActive = useCustomCodeStore((s) => s.active)
@@ -653,6 +659,18 @@ function App() {
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
 
+            {/* Báo lỗi phải dùng được KHI CHƯA đăng nhập: phần lớn lỗi xảy ra đúng lúc
+                người ta chưa kịp tạo tài khoản, mà đó lại là lúc cần nghe nhất. */}
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              title={t.reportTitle}
+              aria-label={t.reportTitle}
+              className="p-1.5 rounded border cursor-pointer transition-colors duration-150 border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-orange-500 dark:hover:border-orange-400 hover:text-orange-500 dark:hover:text-orange-400"
+            >
+              <Bug className="w-4 h-4" />
+            </button>
+
             <AuthButton
               user={user}
               loading={authLoading}
@@ -1037,6 +1055,12 @@ function App() {
       {progressOpen && (
         <Suspense fallback={null}>
           <ProgressDialog progress={progress} onClose={() => setProgressOpen(false)} t={t} />
+        </Suspense>
+      )}
+
+      {reportOpen && (
+        <Suspense fallback={null}>
+          <ReportDialog userId={user?.id ?? null} onClose={() => setReportOpen(false)} t={t} />
         </Suspense>
       )}
 

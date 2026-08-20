@@ -7,6 +7,7 @@ import { translations } from './i18n/translations'
 import { Analytics } from '@vercel/analytics/react'
 import { clearLanguageParam, readLanguageParam } from './lib/langParam'
 import { usePreferencesStore } from './store/usePreferencesStore'
+import { startErrorCapture } from './lib/report'
 
 // Trang profile công khai là màn duy nhất cần có địa chỉ riêng để chia sẻ. Dùng hash
 // (`#/u/<username>`) thay vì thêm router: không cần cấu hình rewrite trên hosting
@@ -59,6 +60,12 @@ function Root() {
     </>
   )
 }
+
+/**
+ * Bắt lỗi toàn cục TRƯỚC khi render: lỗi hay xảy ra sớm nhất là lúc dựng cây component,
+ * gắn muộn là bỏ lỡ đúng cái cần bắt — mà đó lại là cái người dùng cần gửi đi nhất.
+ */
+startErrorCapture()
 
 /**
  * Áp dụng `?lang=` TRƯỚC khi render.

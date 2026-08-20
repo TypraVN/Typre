@@ -114,6 +114,20 @@ export const translations = {
   pendingSubmitFailed: 'could not send your score',
   dismiss: 'Dismiss',
   dialogError: 'Something broke while opening this. Your typing is unaffected.',
+
+  // Báo lỗi
+  reportTitle: 'Report a problem',
+  reportSubtitle:
+    'Tell us what went wrong. Technical details are attached automatically so we can find it.',
+  reportPlaceholder: 'What happened? What were you doing just before?',
+  reportWhatIsSent: 'what gets sent with this',
+  reportSend: 'Send',
+  reportSending: 'sending...',
+  reportSent: 'Thanks — got it.',
+  reportFailed: 'Could not send. Copy the report and open an issue on GitHub instead.',
+  reportCopy: 'copy report',
+  reportCopied: 'copied!',
+  reportCooldown: 'you can send again in',
   accountMenu: 'Account menu',
   menuUserStats: 'User stats',
   menuFriends: 'Friends',

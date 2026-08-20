@@ -99,6 +99,7 @@ fresh project:
 6. `add-leaderboard-periods.sql` — weekly and daily views
 7. `add-xp-sync.sql` — XP column and the capped increment function
 8. `add-scale-indexes.sql` — indexes the leaderboard views and player search actually need
+9. `add-reports.sql` — table that receives in-app bug reports
 
 Then set two environment variables:
 

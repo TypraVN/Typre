@@ -1,5 +1,6 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
+import { recordError } from '../lib/report'
 
 interface DialogBoundaryProps {
   children: ReactNode
@@ -37,6 +38,10 @@ export class DialogBoundary extends Component<DialogBoundaryProps, DialogBoundar
   componentDidCatch(error: Error, info: ErrorInfo) {
     // Ghi log để còn lần ra được: người dùng chỉ nói "nó lỗi", không ai chụp được stack.
     console.error('[Typre] lỗi trong hộp thoại:', error, info.componentStack)
+
+    // Đẩy vào bộ nhớ báo lỗi: `window.onerror` KHÔNG thấy lỗi mà boundary đã bắt, nên
+    // không có dòng này thì người dùng bấm "báo lỗi" ngay sau đó lại gửi đi tay trắng.
+    recordError(error)
   }
 
   render() {
