@@ -101,6 +101,8 @@ fresh project:
 8. `add-scale-indexes.sql` — indexes the leaderboard views and player search actually need
 9. `add-reports.sql` — table that receives in-app bug reports
 
+To get an email when a report arrives, see [supabase/functions/README.md](supabase/functions/README.md).
+
 Then set two environment variables:
 
 ```
