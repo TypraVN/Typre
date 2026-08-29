@@ -238,20 +238,10 @@ export function Leaderboard({
           </div>
         </div>
 
-        <div className="flex flex-col gap-1 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-          <div className={`${GROUP_LABEL} mb-1`}>{t.langFilterLabel}</div>
-          {languages.map((lang) => (
-            <button
-              key={lang}
-              type="button"
-              onClick={() => setLanguage(lang)}
-              className={lang === language ? FILTER_BTN_ACTIVE : FILTER_BTN}
-            >
-              {lang}
-            </button>
-          ))}
-        </div>
-
+        {/* Mốc thời gian đứng TRƯỚC ngôn ngữ dù chỉ có 3 nút: mỗi mốc là một bảng xếp
+            hạng riêng, đổi nó là đổi cả nội dung — ngang hàng với "khoảng thời gian" ở
+            trên. Xếp sau danh sách 14 ngôn ngữ thì nó rơi khỏi màn hình và người dùng
+            không biết là có. */}
         <div className="flex flex-col gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
           <div className={GROUP_LABEL}>{t.timeFilterLabel}</div>
           <div className="flex gap-0.5 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-800/70">
@@ -266,6 +256,22 @@ export function Leaderboard({
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Ngôn ngữ xuống cuối: đây là nhóm DÀI nhất (14 mục), nên bất cứ thứ gì đặt
+            sau nó đều bị đẩy khỏi tầm nhìn. */}
+        <div className="flex flex-col gap-1 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+          <div className={`${GROUP_LABEL} mb-1`}>{t.langFilterLabel}</div>
+          {languages.map((lang) => (
+            <button
+              key={lang}
+              type="button"
+              onClick={() => setLanguage(lang)}
+              className={lang === language ? FILTER_BTN_ACTIVE : FILTER_BTN}
+            >
+              {lang}
+            </button>
+          ))}
         </div>
       </aside>
 
