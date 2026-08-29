@@ -48,6 +48,29 @@ export interface LifetimeTotals {
 }
 
 /**
+ * Số liệu gộp của MỘT ngày. Cùng lý do với `totals`: `results` chỉ giữ 50 lượt gần nhất
+ * nên không thể vẽ được tiến bộ dài hạn từ nó — người gõ chăm chỉ chỉ còn thấy vài ngày.
+ *
+ * Lưu tổng thay vì lưu trung bình để cộng thêm một lượt mới là phép cộng, không phải
+ * tính lại trung bình từ số đã làm tròn.
+ */
+export interface DailyStat {
+  runs: number
+  wpmSum: number
+  accuracySum: number
+  bestWpm: number
+}
+
+/** YYYY-MM-DD (giờ máy) → số liệu ngày đó. Ngày không gõ thì KHÔNG có khoá. */
+export type DailyLog = Record<string, DailyStat>
+
+/**
+ * Trần số ngày lưu lại. Mỗi ngày ~60 byte nên 400 ngày ≈ 24 KB trong localStorage —
+ * đủ hơn một năm mà vẫn không đáng kể so với hạn mức 5 MB.
+ */
+const MAX_DAILY_DAYS = 400
+
+/**
  * Tiến trình XP. Phải là bộ đếm CỘNG DỒN, không được tính lại bằng cách cộng `results`:
  * `results` chỉ giữ 50 lượt gần nhất nên tới lượt thứ 51 là XP tự tụt xuống.
  */
@@ -90,10 +113,68 @@ interface HistoryState {
   results: TypingResult[]
   totals: LifetimeTotals
   progress: Progress
+  daily: DailyLog
   lastAward: XpAward | null
   addResult: (result: TypingResult) => void
   markStarted: () => void
   clear: () => void
+}
+
+/**
+ * Lượt gõ có được tính vào biểu đồ tiến bộ không.
+ *
+ * Bỏ lượt code tự dán vì độ khó do người dùng tự chọn — dán một dòng `console.log` rồi
+ * dán tiếp một hàm regex thì đường biểu đồ nhảy loạn mà tốc độ gõ chẳng đổi. Cùng lý do
+ * với việc kỷ lục cá nhân không tính lượt custom.
+ *
+ * Bỏ luôn lượt wpm ≤ 0: mở bài rồi thoát ngay cũng ghi kết quả, và một điểm 0 kéo tụt
+ * trung bình cả ngày.
+ */
+function countsTowardDaily(result: TypingResult): boolean {
+  return !result.custom && result.wpm > 0
+}
+
+function addToDay(stat: DailyStat | undefined, result: TypingResult): DailyStat {
+  const base = stat ?? { runs: 0, wpmSum: 0, accuracySum: 0, bestWpm: 0 }
+  return {
+    runs: base.runs + 1,
+    wpmSum: base.wpmSum + result.wpm,
+    accuracySum: base.accuracySum + result.accuracy,
+    bestWpm: Math.max(base.bestWpm, result.wpm),
+  }
+}
+
+/** Cắt bớt ngày cũ nhất khi vượt trần. Khoá dạng YYYY-MM-DD nên sắp xếp chuỗi là đúng thứ tự. */
+function trimDaily(daily: DailyLog): DailyLog {
+  const keys = Object.keys(daily)
+  if (keys.length <= MAX_DAILY_DAYS) return daily
+
+  const keep = keys.sort().slice(-MAX_DAILY_DAYS)
+  const trimmed: DailyLog = {}
+  for (const key of keep) trimmed[key] = daily[key]
+  return trimmed
+}
+
+/**
+ * Dựng lại `daily` từ `results` cho người đã dùng app TRƯỚC khi có tính năng này.
+ *
+ * Chỉ khôi phục được tối đa 50 lượt gần nhất — đó là tất cả những gì còn lưu. Không hoàn
+ * hảo, nhưng hơn hẳn việc bắt họ nhìn biểu đồ trống rồi chờ vài tuần mới có gì để xem.
+ */
+export function seedDailyFromResults(results: TypingResult[]): DailyLog {
+  const daily: DailyLog = {}
+
+  for (const result of results) {
+    if (!countsTowardDaily(result)) continue
+
+    const date = new Date(result.date)
+    if (Number.isNaN(date.getTime())) continue
+
+    const key = toDateKey(date)
+    daily[key] = addToDay(daily[key], result)
+  }
+
+  return trimDaily(daily)
 }
 
 const EMPTY_TOTALS: LifetimeTotals = { started: 0, completed: 0, typingSeconds: 0 }
@@ -112,6 +193,7 @@ export const useHistoryStore = create<HistoryState>()(
       results: [],
       totals: EMPTY_TOTALS,
       progress: EMPTY_PROGRESS,
+      daily: {},
       lastAward: null,
       addResult: (result) =>
         set((state) => {
@@ -144,6 +226,13 @@ export const useHistoryStore = create<HistoryState>()(
           const xp = state.progress.xp + breakdown.total
 
           const results = [result, ...state.results].slice(0, 50)
+
+          // Gộp vào ngày HÔM NAY chứ không đọc `result.date`: hai giá trị luôn trùng nhau
+          // ở đây, và `today` đã tính sẵn ở trên cho phần chuỗi ngày.
+          const daily = countsTowardDaily(result)
+            ? trimDaily({ ...state.daily, [today]: addToDay(state.daily?.[today], result) })
+            : (state.daily ?? {})
+
           const totals = {
             ...state.totals,
             completed: state.totals.completed + 1,
@@ -175,6 +264,7 @@ export const useHistoryStore = create<HistoryState>()(
             results,
             totals,
             progress,
+            daily,
             lastAward: {
               breakdown,
               levelBefore: levelFromXp(state.progress.xp).level,
@@ -208,7 +298,20 @@ export const useHistoryStore = create<HistoryState>()(
         results: state.results,
         totals: state.totals,
         progress: state.progress,
+        daily: state.daily,
       }),
+      /**
+       * Người đã dùng app trước khi có `daily` sẽ rehydrate ra một object rỗng. Dựng lại
+       * từ 50 lượt còn lưu để họ có biểu đồ ngay, thay vì phải chờ vài tuần.
+       *
+       * Chỉ chạy khi RỖNG, nên đúng một lần: sau lượt gõ đầu tiên là đã có dữ liệu và
+       * lần rehydrate sau bỏ qua. Chạy lại lần nữa sẽ đếm trùng.
+       */
+      onRehydrateStorage: () => (state) => {
+        if (!state) return
+        if (state.daily && Object.keys(state.daily).length > 0) return
+        state.daily = seedDailyFromResults(Array.isArray(state.results) ? state.results : [])
+      },
     },
   ),
 )

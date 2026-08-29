@@ -1,8 +1,9 @@
 import { AchievementGrid } from './AchievementGrid'
 import { Avatar } from './Avatar'
 import { Modal } from './Modal'
+import { ProgressChart } from './ProgressChart'
 import { WpmChart } from './WpmChart'
-import { useHistoryStore, type TypingResult } from '../store/useHistoryStore'
+import { useHistoryStore, type DailyLog, type TypingResult } from '../store/useHistoryStore'
 import { computeBests, formatDuration, formatJoinDate, summarize } from '../lib/stats'
 import type { AppUser } from '../lib/auth'
 import type { SnippetLanguage } from '../data/types'
@@ -24,6 +25,7 @@ interface UserStatsDialogProps {
  */
 const NO_RESULTS: TypingResult[] = []
 const NO_UNLOCKED: Record<string, string> = {}
+const NO_DAILY: DailyLog = {}
 
 function Tile({ label, value }: { label: string; value: string }) {
   return (
@@ -58,9 +60,11 @@ export function UserStatsDialog({
   const rawResults = useHistoryStore((s) => s.results)
   const totals = useHistoryStore((s) => s.totals)
   const rawUnlocked = useHistoryStore((s) => s.progress?.unlocked)
+  const rawDaily = useHistoryStore((s) => s.daily)
 
   const results = Array.isArray(rawResults) ? rawResults : NO_RESULTS
   const unlocked = rawUnlocked ?? NO_UNLOCKED
+  const daily = rawDaily ?? NO_DAILY
 
   const started = Number(totals?.started) || 0
   const completed = Number(totals?.completed) || 0
@@ -114,6 +118,10 @@ export function UserStatsDialog({
               />
             </div>
           </div>
+
+          {/* Đặt ngay sau phần tóm tắt: "tôi có đang khá lên không" là câu người quay lại
+              muốn biết trước tiên, còn thành tích và kỷ lục là thứ xem sau. */}
+          <ProgressChart daily={daily} t={t} />
 
           <AchievementGrid unlocked={unlocked} t={t} />
 

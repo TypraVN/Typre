@@ -153,6 +153,18 @@ export const translations = {
   noBestsYet: 'no completed runs yet — type something first',
   statsLocalNote: 'counted on this device only, not synced to your account',
 
+  // Biểu đồ tiến bộ theo ngày
+  progressTitle: 'progress',
+  progressRange7: '7 days',
+  progressRange30: '30 days',
+  progressRange90: '90 days',
+  progressEmpty: 'type on two different days to see your progress here',
+  progressRunsLabel: 'runs',
+  progressBestLabel: 'best',
+  progressAvgLabel: 'avg',
+  progressRestDay: 'no runs',
+  progressCustomNote: 'daily average of your own snippets is excluded — you pick their difficulty',
+
   // XP và cấp độ
   levelShort: 'lv',
   levelLabel: 'level',
