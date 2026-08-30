@@ -29,10 +29,15 @@ interface LeaderboardProps {
   t: Translation
 }
 
+/**
+ * Ngôn ngữ xếp lưới 2 cột chứ không phải một cột dọc: 14 mục một cột cao hơn 540px,
+ * đứng đầu cột lọc là đẩy hết các nhóm sau xuống dưới mép màn hình. Padding ngang hẹp
+ * hơn các nút khác (px-2) để "javascript"/"typescript" không bị xuống dòng trong ô hẹp.
+ */
 const FILTER_BTN =
-  'w-full px-3 py-1.5 text-sm text-left rounded cursor-pointer transition-colors duration-150 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+  'w-full px-2 py-1.5 text-sm text-left rounded cursor-pointer transition-colors duration-150 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
 const FILTER_BTN_ACTIVE =
-  'w-full px-3 py-1.5 text-sm text-left rounded cursor-pointer transition-colors duration-150 bg-orange-500/15 text-orange-600 dark:text-orange-400 font-medium'
+  'w-full px-2 py-1.5 text-sm text-left rounded cursor-pointer transition-colors duration-150 bg-orange-500/15 text-orange-600 dark:text-orange-400 font-medium'
 
 /**
  * Thời gian cố ý làm dạng "segmented control" nằm ngang, KHÁC hẳn danh sách dọc của
@@ -191,7 +196,7 @@ export function Leaderboard({
   return (
     <div className="w-full max-w-4xl flex flex-col sm:flex-row gap-6">
       {/* Sidebar filter */}
-      <aside className="sm:w-40 shrink-0 flex flex-col gap-5">
+      <aside className="sm:w-48 shrink-0 flex flex-col gap-4">
         {/* Tra người chơi đứng ĐẦU cột lọc, không phải cuối: bảng xếp hạng chỉ hiện những
             người top, nên với hầu hết người dùng thì tra tên là việc duy nhất họ làm được
             ở đây. Không bắt đăng nhập — hồ sơ công khai vốn đã mở cho khách. */}
@@ -200,10 +205,29 @@ export function Leaderboard({
           <PlayerSearch t={t} />
         </div>
 
+        {/* Ngôn ngữ đứng đầu các bộ lọc: đây là thứ người dùng đổi nhiều nhất, và mỗi
+            ngôn ngữ là một bảng khác hẳn. Lưới 2 cột để nhóm dài nhất vẫn không đẩy
+            "khoảng thời gian" và "mốc" xuống dưới mép màn hình. */}
+        <div className="flex flex-col gap-1 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+          <div className={`${GROUP_LABEL} mb-1`}>{t.langFilterLabel}</div>
+          <div className="grid grid-cols-2 gap-x-1 gap-y-0.5">
+            {languages.map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLanguage(lang)}
+                className={lang === language ? FILTER_BTN_ACTIVE : FILTER_BTN}
+              >
+                {lang}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Chỉ hiện khi đã đăng nhập: chưa đăng nhập thì không có danh sách bạn nào để
             lọc, hiện nút bấm vào không có tác dụng chỉ làm người dùng bối rối. */}
         {currentUser && (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
             <div className={GROUP_LABEL}>{t.scopeFilterLabel}</div>
             <div className="flex flex-col gap-0.5 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-800/70">
               {(['all', 'friends'] as const).map((s) => (
@@ -220,9 +244,9 @@ export function Leaderboard({
           </div>
         )}
 
-        {/* Khoảng thời gian đứng đầu vì nó đổi ý nghĩa của cả bảng, không chỉ lọc bớt.
-            Dạng khay dọc — khác cả danh sách trần của ngôn ngữ và khay ngang của mốc. */}
-        <div className={`flex flex-col gap-2${currentUser ? ' pt-4 border-t border-zinc-200 dark:border-zinc-800' : ''}`}>
+        {/* Khoảng thời gian đổi ý nghĩa của cả bảng, không chỉ lọc bớt. Dạng khay dọc —
+            khác cả danh sách trần của ngôn ngữ và khay ngang của mốc. */}
+        <div className="flex flex-col gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
           <div className={GROUP_LABEL}>{t.periodFilterLabel}</div>
           <div className="flex flex-col gap-0.5 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-800/70">
             {PERIODS.map((p) => (
@@ -238,10 +262,8 @@ export function Leaderboard({
           </div>
         </div>
 
-        {/* Mốc thời gian đứng TRƯỚC ngôn ngữ dù chỉ có 3 nút: mỗi mốc là một bảng xếp
-            hạng riêng, đổi nó là đổi cả nội dung — ngang hàng với "khoảng thời gian" ở
-            trên. Xếp sau danh sách 14 ngôn ngữ thì nó rơi khỏi màn hình và người dùng
-            không biết là có. */}
+        {/* Mốc thời gian: mỗi mốc là một bảng xếp hạng riêng, đổi nó là đổi cả nội dung.
+            Khay ngang vì chỉ có 3 lựa chọn ngắn. */}
         <div className="flex flex-col gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
           <div className={GROUP_LABEL}>{t.timeFilterLabel}</div>
           <div className="flex gap-0.5 p-1 rounded-lg bg-zinc-100 dark:bg-zinc-800/70">
@@ -256,22 +278,6 @@ export function Leaderboard({
               </button>
             ))}
           </div>
-        </div>
-
-        {/* Ngôn ngữ xuống cuối: đây là nhóm DÀI nhất (14 mục), nên bất cứ thứ gì đặt
-            sau nó đều bị đẩy khỏi tầm nhìn. */}
-        <div className="flex flex-col gap-1 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-          <div className={`${GROUP_LABEL} mb-1`}>{t.langFilterLabel}</div>
-          {languages.map((lang) => (
-            <button
-              key={lang}
-              type="button"
-              onClick={() => setLanguage(lang)}
-              className={lang === language ? FILTER_BTN_ACTIVE : FILTER_BTN}
-            >
-              {lang}
-            </button>
-          ))}
         </div>
       </aside>
 
