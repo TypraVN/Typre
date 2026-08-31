@@ -207,4 +207,57 @@ function loop(now) {
 }
 
 frame = requestAnimationFrame(loop);`,
+  `switch (run.status) {
+    case "finished":
+        return summarize(run);
+    case "typing":
+        return { wpm: 0 };
+    default:
+        throw new Error(\`unknown status: \${run.status}\`);
+}`,
+  `const active = Object.fromEntries(
+    Object.entries(flags).filter(([, enabled]) => enabled),
+);`,
+  `const observer = new ResizeObserver(([entry]) => {
+    const { width } = entry.contentRect;
+    setColumns(width < 640 ? 1 : 2);
+});
+
+observer.observe(container);`,
+  `const res = await fetch("/api/runs", {
+    signal: AbortSignal.timeout(5000),
+});
+
+if (!res.ok) throw new Error(\`HTTP \${res.status}\`);`,
+  `const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+const days = Math.round((then - Date.now()) / 86400000);
+
+return rtf.format(days, "day");`,
+  `element.dispatchEvent(
+    new CustomEvent("run:finished", {
+        detail: { wpm, accuracy },
+        bubbles: true,
+    }),
+);`,
+  `const byLanguage = rows.reduce((map, row) => {
+    const bucket = map.get(row.language) ?? [];
+    bucket.push(row);
+    return map.set(row.language, bucket);
+}, new Map());`,
+  `const run = {
+    _wpm: 0,
+    get wpm() { return Math.round(this._wpm); },
+    set wpm(value) { this._wpm = Math.max(0, value); },
+};`,
+  `let attempt = 0;
+
+do {
+    result = await tryConnect();
+    attempt += 1;
+} while (!result && attempt < 3);`,
+  `addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+        navigator.sendBeacon("/api/close", JSON.stringify(state));
+    }
+});`,
 ])

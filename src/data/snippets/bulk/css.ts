@@ -52,4 +52,15 @@ export const cssBulk = defineSnippets('css', 'css-x', [
   `a { color: inherit; text-decoration: none; }`,
   `.mt-2 { margin-top: 0.5rem; }`,
   `.stack > * + * { margin-block-start: 1rem; }`,
+
+  `.stack { gap: clamp(0.5rem, 2vw, 1.5rem); }`,
+  `.wide { width: min(100%, 42rem); }`,
+  `.pad { padding-inline: max(1rem, 4vw); }`,
+  `.chip { border-radius: 999px; padding: 0.125rem 0.5rem; }`,
+  `.grid { grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }`,
+  `.sticky { position: sticky; top: 0; z-index: 10; }`,
+  `.scroll { overscroll-behavior: contain; }`,
+  `.touch { touch-action: manipulation; }`,
+  `.card:hover { translate: 0 -2px; }`,
+  `.title { text-wrap: balance; }`,
 ])

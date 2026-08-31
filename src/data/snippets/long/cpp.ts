@@ -807,4 +807,258 @@ public:
                   << "%\\n";
     }
 }`,
+
+  `template <typename T>
+class RingBuffer {
+public:
+    explicit RingBuffer(std::size_t capacity)
+        : buffer_(capacity), capacity_(capacity) {}
+
+    void push(T value) {
+        buffer_[head_] = std::move(value);
+        head_ = (head_ + 1) % capacity_;
+        size_ = std::min(size_ + 1, capacity_);
+    }
+
+    [[nodiscard]] std::size_t size() const noexcept { return size_; }
+
+private:
+    std::vector<T> buffer_;
+    std::size_t capacity_;
+    std::size_t head_{0};
+    std::size_t size_{0};
+};`,
+  `int levenshtein(std::string_view a, std::string_view b) {
+    std::vector<int> previous(b.size() + 1);
+    std::vector<int> current(b.size() + 1);
+
+    std::iota(previous.begin(), previous.end(), 0);
+
+    for (std::size_t i = 1; i <= a.size(); ++i) {
+        current[0] = static_cast<int>(i);
+
+        for (std::size_t j = 1; j <= b.size(); ++j) {
+            int cost = a[i - 1] == b[j - 1] ? 0 : 1;
+            current[j] = std::min({
+                previous[j] + 1,
+                current[j - 1] + 1,
+                previous[j - 1] + cost,
+            });
+        }
+
+        std::swap(previous, current);
+    }
+
+    return previous[b.size()];
+}`,
+  `std::vector<std::pair<int, int>> mergeIntervals(
+    std::vector<std::pair<int, int>> spans) {
+    if (spans.empty()) {
+        return {};
+    }
+
+    std::ranges::sort(spans);
+
+    std::vector<std::pair<int, int>> merged{spans.front()};
+
+    for (const auto& [start, end] : spans | std::views::drop(1)) {
+        auto& last = merged.back();
+
+        if (start <= last.second) {
+            last.second = std::max(last.second, end);
+        } else {
+            merged.emplace_back(start, end);
+        }
+    }
+
+    return merged;
+}`,
+  `class ScopedTimer {
+public:
+    explicit ScopedTimer(std::string label)
+        : label_(std::move(label)), start_(Clock::now()) {}
+
+    ~ScopedTimer() {
+        auto elapsed = Clock::now() - start_;
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed);
+        std::cout << label_ << ": " << ms.count() << " ms\\n";
+    }
+
+    ScopedTimer(const ScopedTimer&) = delete;
+    ScopedTimer& operator=(const ScopedTimer&) = delete;
+
+private:
+    using Clock = std::chrono::steady_clock;
+
+    std::string label_;
+    Clock::time_point start_;
+};`,
+  `template <typename Key, typename Value>
+class LruCache {
+public:
+    explicit LruCache(std::size_t capacity) : capacity_(capacity) {}
+
+    std::optional<Value> get(const Key& key) {
+        auto it = index_.find(key);
+        if (it == index_.end()) {
+            return std::nullopt;
+        }
+
+        order_.splice(order_.begin(), order_, it->second);
+        return it->second->second;
+    }
+
+    void put(const Key& key, Value value) {
+        if (auto it = index_.find(key); it != index_.end()) {
+            it->second->second = std::move(value);
+            order_.splice(order_.begin(), order_, it->second);
+            return;
+        }
+
+        order_.emplace_front(key, std::move(value));
+        index_[key] = order_.begin();
+
+        if (index_.size() > capacity_) {
+            index_.erase(order_.back().first);
+            order_.pop_back();
+        }
+    }
+
+private:
+    std::size_t capacity_;
+    std::list<std::pair<Key, Value>> order_;
+    std::unordered_map<Key, typename std::list<std::pair<Key, Value>>::iterator>
+        index_;
+};`,
+  `std::string formatDuration(int seconds) {
+    if (seconds <= 0) {
+        return "0s";
+    }
+
+    const std::array<std::pair<const char*, int>, 3> units{{
+        {"h", 3600},
+        {"m", 60},
+        {"s", 1},
+    }};
+
+    std::string out;
+
+    for (const auto& [label, size] : units) {
+        if (int value = seconds / size; value > 0) {
+            if (!out.empty()) {
+                out += ' ';
+            }
+
+            out += std::to_string(value);
+            out += label;
+            seconds -= value * size;
+        }
+    }
+
+    return out;
+}`,
+  `class ThreadPool {
+public:
+    explicit ThreadPool(std::size_t workers) {
+        for (std::size_t i = 0; i < workers; ++i) {
+            threads_.emplace_back([this] { run(); });
+        }
+    }
+
+    ~ThreadPool() {
+        {
+            std::lock_guard lock(mutex_);
+            stopping_ = true;
+        }
+
+        condition_.notify_all();
+    }
+
+    void submit(std::function<void()> job) {
+        {
+            std::lock_guard lock(mutex_);
+            jobs_.push(std::move(job));
+        }
+
+        condition_.notify_one();
+    }
+
+private:
+    void run() {
+        while (true) {
+            std::unique_lock lock(mutex_);
+            condition_.wait(lock, [this] { return stopping_ || !jobs_.empty(); });
+
+            if (stopping_ && jobs_.empty()) {
+                return;
+            }
+
+            auto job = std::move(jobs_.front());
+            jobs_.pop();
+            lock.unlock();
+            job();
+        }
+    }
+
+    std::vector<std::jthread> threads_;
+    std::queue<std::function<void()>> jobs_;
+    std::mutex mutex_;
+    std::condition_variable condition_;
+    bool stopping_{false};
+};`,
+  `std::vector<std::string> splitCsvLine(std::string_view line) {
+    std::vector<std::string> fields;
+    std::string current;
+    bool quoted = false;
+
+    for (char ch : line) {
+        if (ch == '"') {
+            quoted = !quoted;
+        } else if (ch == ',' && !quoted) {
+            fields.push_back(current);
+            current.clear();
+        } else {
+            current.push_back(ch);
+        }
+    }
+
+    fields.push_back(current);
+    return fields;
+}`,
+  `template <typename T>
+std::expected<T, std::string> parseNumber(std::string_view text) {
+    T value{};
+    auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
+
+    if (ec == std::errc::invalid_argument) {
+        return std::unexpected("not a number");
+    }
+
+    if (ec == std::errc::result_out_of_range) {
+        return std::unexpected("out of range");
+    }
+
+    if (ptr != text.data() + text.size()) {
+        return std::unexpected("trailing characters");
+    }
+
+    return value;
+}`,
+  `void rotate90(std::vector<std::vector<int>>& grid) {
+    const std::size_t size = grid.size();
+
+    for (std::size_t layer = 0; layer < size / 2; ++layer) {
+        const std::size_t last = size - 1 - layer;
+
+        for (std::size_t i = layer; i < last; ++i) {
+            const std::size_t offset = i - layer;
+            const int top = grid[layer][i];
+
+            grid[layer][i] = grid[last - offset][layer];
+            grid[last - offset][layer] = grid[last][last - offset];
+            grid[last][last - offset] = grid[i][last];
+            grid[i][last] = top;
+        }
+    }
+}`,
 ])

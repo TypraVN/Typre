@@ -44,4 +44,15 @@ export const jsonBulk = defineSnippets('json', 'json-x', [
   `{ "exp": 1.6e-9 }`,
   `{ "list": [true, false, null] }`,
   `{\n  "nested": { "deep": { "value": 1 } }\n}`,
+
+  `{ "streak": 7, "xp": 12450 }`,
+  `{ "bucket": "short", "limit": 15 }`,
+  `{ "locale": "vi-VN", "tz": "Asia/Ho_Chi_Minh" }`,
+  `{ "retries": 0, "backoffMs": 250 }`,
+  `{ "unlocked": {} }`,
+  `{ "keys": ["a", "b"], "values": [1, 2] }`,
+  `{\n  "sw": { "version": "v3" }\n}`,
+  `{\n  "flags": { "sound": false, "caret": true }\n}`,
+  `{ "hash": "\\u0023", "slash": "\\/" }`,
+  `{ "minus": -0, "tiny": 5e-324 }`,
 ])

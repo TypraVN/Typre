@@ -711,4 +711,168 @@ public void append(String line) {
         .sorted()
         .toList();
 }`,
+
+  `public static <T> List<List<T>> chunk(List<T> items, int size) {
+    if (size < 1) throw new IllegalArgumentException("size must be positive");
+
+    var chunks = new ArrayList<List<T>>();
+
+    for (var start = 0; start < items.size(); start += size) {
+        var end = Math.min(start + size, items.size());
+        chunks.add(List.copyOf(items.subList(start, end)));
+    }
+
+    return chunks;
+}`,
+  `public static String encode(String text) {
+    if (text.isEmpty()) return "";
+
+    var out = new StringBuilder();
+    var run = 1;
+
+    for (var i = 1; i <= text.length(); i++) {
+        if (i < text.length() && text.charAt(i) == text.charAt(i - 1)) {
+            run++;
+            continue;
+        }
+
+        out.append(text.charAt(i - 1));
+        if (run > 1) out.append(run);
+        run = 1;
+    }
+
+    return out.toString();
+}`,
+  `public final class Debouncer implements AutoCloseable {
+    private final ScheduledExecutorService pool =
+        Executors.newSingleThreadScheduledExecutor();
+    private ScheduledFuture<?> pending;
+
+    public synchronized void run(Runnable task, long delayMs) {
+        if (pending != null) pending.cancel(false);
+        pending = pool.schedule(task, delayMs, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void close() {
+        pool.shutdownNow();
+    }
+}`,
+  `public static List<int[]> merge(List<int[]> intervals) {
+    var sorted = new ArrayList<>(intervals);
+    sorted.sort(Comparator.comparingInt(range -> range[0]));
+
+    var merged = new ArrayList<int[]>();
+
+    for (var range : sorted) {
+        if (!merged.isEmpty() && range[0] <= merged.getLast()[1]) {
+            merged.getLast()[1] = Math.max(merged.getLast()[1], range[1]);
+        } else {
+            merged.add(new int[] {range[0], range[1]});
+        }
+    }
+
+    return merged;
+}`,
+  `public static Map<String, Object> flatten(
+    Map<String, Object> source,
+    String prefix) {
+    var flat = new LinkedHashMap<String, Object>();
+
+    source.forEach((key, value) -> {
+        var path = prefix.isEmpty() ? key : prefix + "." + key;
+
+        if (value instanceof Map<?, ?> nested) {
+            @SuppressWarnings("unchecked")
+            var typed = (Map<String, Object>) nested;
+            flat.putAll(flatten(typed, path));
+        } else {
+            flat.put(path, value);
+        }
+    });
+
+    return flat;
+}`,
+  `public static int compareVersions(String left, String right) {
+    var a = left.split("\\.");
+    var b = right.split("\\.");
+
+    for (var i = 0; i < Math.max(a.length, b.length); i++) {
+        var x = i < a.length ? Integer.parseInt(a[i]) : 0;
+        var y = i < b.length ? Integer.parseInt(b[i]) : 0;
+
+        if (x != y) return Integer.compare(x, y);
+    }
+
+    return 0;
+}`,
+  `public final class Trie {
+    private final Map<Character, Trie> children = new HashMap<>();
+    private boolean terminal;
+
+    public void insert(String word) {
+        var node = this;
+
+        for (var ch : word.toCharArray()) {
+            node = node.children.computeIfAbsent(ch, key -> new Trie());
+        }
+
+        node.terminal = true;
+    }
+
+    public boolean contains(String word) {
+        var node = this;
+
+        for (var ch : word.toCharArray()) {
+            node = node.children.get(ch);
+            if (node == null) return false;
+        }
+
+        return node.terminal;
+    }
+}`,
+  `public static <T> T retry(
+    Callable<T> task,
+    int attempts) throws Exception {
+    Exception last = null;
+
+    for (var attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            return task.call();
+        } catch (Exception error) {
+            last = error;
+            Thread.sleep(200L * attempt);
+        }
+    }
+
+    throw last;
+}`,
+  `public static List<String> topWords(String text, int limit) {
+    var counts = new HashMap<String, Integer>();
+
+    for (var word : text.toLowerCase().split("[^a-z]+")) {
+        if (word.length() > 2) counts.merge(word, 1, Integer::sum);
+    }
+
+    return counts.entrySet().stream()
+        .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+        .limit(limit)
+        .map(Map.Entry::getKey)
+        .toList();
+}`,
+  `public sealed interface Event
+    permits Event.Started, Event.Finished, Event.Failed {
+
+    record Started(Instant at) implements Event {}
+    record Finished(int wpm, double accuracy) implements Event {}
+    record Failed(String reason) implements Event {}
+
+    static String describe(Event event) {
+        return switch (event) {
+            case Started started -> "started at " + started.at();
+            case Finished done -> done.wpm() + " wpm";
+            case Failed failed -> "failed: " + failed.reason();
+        };
+    }
+}`,
 ])

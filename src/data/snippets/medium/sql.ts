@@ -218,4 +218,41 @@ limit 10;`,
   `refresh materialized view concurrently leaderboard_daily;
 
 select count(*) as rows_now from leaderboard_daily;`,
+
+  `select language,
+    percentile_cont(0.5) within group (order by wpm) as median_wpm
+from scores
+group by language;`,
+  `select display_name, wpm,
+    wpm - lag(wpm) over (partition by user_id order by created_at) as delta
+from scores;`,
+  `select language, count(*) filter (where wpm >= 60) as fast,
+    count(*) as total
+from scores
+group by language;`,
+  `update scores
+set accuracy = least(accuracy, 100)
+where accuracy > 100
+returning id, accuracy;`,
+  `select coalesce(s.language, 'total') as language, sum(s.wpm)
+from scores s
+group by rollup (s.language);`,
+  `select * from scores
+where created_at >= current_date - interval '7 days'
+order by wpm desc
+fetch first 10 rows only;`,
+  `insert into profiles (id, username)
+values ($1, $2)
+on conflict (id) do update set username = excluded.username;`,
+  `select jsonb_array_elements_text(payload -> 'tags') as tag
+from events
+where payload ? 'tags';`,
+  `create index scores_recent_idx on scores (created_at desc)
+where created_at > now() - interval '30 days';`,
+  `select u.display_name, count(f.*) as friends
+from profiles u
+left join lateral (
+    select 1 from friendships f where f.user_id = u.id
+) f on true
+group by u.display_name;`,
 ])

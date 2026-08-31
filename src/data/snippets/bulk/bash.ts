@@ -44,4 +44,15 @@ export const bashBulk = defineSnippets('bash', 'sh-x', [
   `ps aux | grep node | grep -v grep`,
   `kill -9 $(lsof -t -i:5180)`,
   `du -sh ./* | sort -h`,
+
+  `command -v jq >/dev/null || exit 1`,
+  `trap 'rm -f "$tmp"' EXIT`,
+  `readonly ROOT=$(cd "$(dirname "$0")" && pwd)`,
+  `printf '%s\\n' "\${files[@]}"`,
+  `: "\${API_URL:?API_URL is required}"`,
+  `wc -l < scores.csv`,
+  `basename "$path" .ts`,
+  `touch -d '2 hours ago' marker`,
+  `stat -c '%s %n' dist/assets/*.js`,
+  `nl -ba README.md | sed -n '10,20p'`,
 ])

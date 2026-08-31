@@ -49,4 +49,15 @@ export const pythonBulk = defineSnippets('python', 'py-x', [
   `assert wpm > 0, "wpm must be positive"`,
   `values = list(range(0, 100, 5))`,
   `name = name.strip().casefold()`,
+
+  `combined = [*head, *tail]`,
+  `ok = any(s["wpm"] > 100 for s in scores)`,
+  `pairs = list(zip(names, scores, strict=True))`,
+  `print(*labels, sep=", ")`,
+  `defaults |= {"retries": 3, "timeout": 30}`,
+  `label = f"{amount:>10,.2f}"`,
+  `mode = sys.argv[1] if len(sys.argv) > 1 else "run"`,
+  `os.makedirs(out_dir, exist_ok=True)`,
+  `head, sep, tail = line.partition("=")`,
+  `nearest = min(points, key=lambda p: abs(p - target))`,
 ])

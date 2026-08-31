@@ -564,4 +564,210 @@ echo "all scripts parse cleanly"`,
     done
 
 journalctl -u typre -f --since '10 min ago' --no-pager`,
+
+  `#!/usr/bin/env bash
+set -euo pipefail
+
+readonly ROOT=$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)
+readonly DIST="$ROOT/dist"
+
+build() {
+    printf 'building...\\n'
+    npm --prefix "$ROOT" run build
+}
+
+verify() {
+    [[ -f "$DIST/index.html" ]] || {
+        printf 'missing index.html\\n' >&2
+        return 1
+    }
+
+    local count
+    count=$(find "$DIST/assets" -name '*.js' | wc -l)
+    printf 'bundled %s chunks\\n' "$count"
+}
+
+build
+verify`,
+  `#!/usr/bin/env bash
+set -euo pipefail
+
+wait_for() {
+    local url=$1 tries=\${2:-30}
+
+    for (( i = 1; i <= tries; i++ )); do
+        if curl -sf -o /dev/null "$url"; then
+            printf 'ready after %ss\\n' "$i"
+            return 0
+        fi
+
+        sleep 1
+    done
+
+    printf 'timed out waiting for %s\\n' "$url" >&2
+    return 1
+}
+
+wait_for "http://localhost:5180" 20`,
+  `#!/usr/bin/env bash
+set -euo pipefail
+
+declare -A results=()
+
+for url in "$@"; do
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || echo 000)
+    results["$url"]=$code
+done
+
+failed=0
+
+for url in "\${!results[@]}"; do
+    printf '%-40s %s\\n' "$url" "\${results[$url]}"
+    [[ "\${results[$url]}" == 200 ]] || failed=1
+done
+
+exit "$failed"`,
+  `#!/usr/bin/env bash
+set -euo pipefail
+
+readonly KEEP=7
+readonly BACKUP_DIR="\${BACKUP_DIR:-/srv/backups}"
+
+stamp=$(date +%Y%m%d-%H%M%S)
+target="$BACKUP_DIR/db-$stamp.sql.gz"
+
+mkdir -p "$BACKUP_DIR"
+pg_dump "$DATABASE_URL" | gzip -9 > "$target"
+
+printf 'wrote %s (%s)\\n' "$target" "$(du -h "$target" | cut -f1)"
+
+find "$BACKUP_DIR" -name 'db-*.sql.gz' -type f -printf '%T@ %p\\n' |
+    sort -rn |
+    tail -n "+$(( KEEP + 1 ))" |
+    cut -d' ' -f2- |
+    xargs -r rm --`,
+  `#!/usr/bin/env bash
+set -euo pipefail
+
+changed=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.tsx?$' || true)
+
+[[ -z "$changed" ]] && exit 0
+
+if grep -nE 'console\\.(log|debug)' $changed; then
+    printf 'remove debug logging before committing\\n' >&2
+    exit 1
+fi
+
+if ! npx tsc --noEmit; then
+    printf 'typecheck failed\\n' >&2
+    exit 1
+fi
+
+printf 'checked %s files\\n' "$(wc -w <<< "$changed")"`,
+  `#!/usr/bin/env bash
+set -euo pipefail
+
+log() {
+    printf '[%s] %s\\n' "$(date +%H:%M:%S)" "$*"
+}
+
+cleanup() {
+    local code=$?
+    [[ -n "\${tmp:-}" ]] && rm -rf "$tmp"
+    log "exited with $code"
+}
+
+trap cleanup EXIT
+trap 'log interrupted; exit 130' INT TERM
+
+tmp=$(mktemp -d)
+log "workdir $tmp"
+
+cp -r src "$tmp/"
+log "copied $(find "$tmp/src" -type f | wc -l) files"`,
+  `#!/usr/bin/env bash
+set -euo pipefail
+
+threshold=\${1:-80}
+mapfile -t lines < <(df --output=pcent,target -x tmpfs -x devtmpfs | tail -n +2)
+
+alerts=()
+
+for line in "\${lines[@]}"; do
+    used=\${line%%\%*}
+    used=\${used// /}
+    mount=\${line##* }
+
+    (( used >= threshold )) && alerts+=("$mount at \${used}%")
+done
+
+if (( \${#alerts[@]} > 0 )); then
+    printf 'disk warning: %s\\n' "\${alerts[@]}" >&2
+    exit 1
+fi
+
+printf 'all mounts below %s%%\\n' "$threshold"`,
+  `#!/usr/bin/env bash
+set -euo pipefail
+
+readonly LOCK=/tmp/typre-sync.lock
+
+exec 9>"$LOCK"
+
+if ! flock -n 9; then
+    printf 'another sync is running\\n' >&2
+    exit 1
+fi
+
+for attempt in 1 2 3; do
+    if rsync -az --delete --timeout=30 ./dist/ "$DEPLOY_HOST:/srv/typre/"; then
+        printf 'synced on attempt %s\\n' "$attempt"
+        exit 0
+    fi
+
+    printf 'attempt %s failed, retrying\\n' "$attempt" >&2
+    sleep $(( attempt * 5 ))
+done
+
+exit 1`,
+  `#!/usr/bin/env bash
+set -euo pipefail
+
+verbose=0
+output=""
+
+while getopts ":vo:h" opt; do
+    case "$opt" in
+        v) verbose=1 ;;
+        o) output=$OPTARG ;;
+        h) printf 'usage: %s [-v] [-o file] <input>\\n' "$0"; exit 0 ;;
+        :) printf 'option -%s needs an argument\\n' "$OPTARG" >&2; exit 2 ;;
+        ?) printf 'unknown option -%s\\n' "$OPTARG" >&2; exit 2 ;;
+    esac
+done
+
+shift $(( OPTIND - 1 ))
+
+(( $# == 1 )) || { printf 'expected one input\\n' >&2; exit 2; }
+(( verbose )) && printf 'reading %s\\n' "$1"
+
+wc -l < "$1" > "\${output:-/dev/stdout}"`,
+  `#!/usr/bin/env bash
+set -euo pipefail
+
+awk -F',' '
+NR == 1 { next }
+{
+    runs[$1]++
+    total[$1] += $2
+    if ($2 > best[$1]) best[$1] = $2
+}
+END {
+    printf "%-14s %6s %8s %6s\\n", "language", "runs", "avg wpm", "best"
+    for (language in runs) {
+        printf "%-14s %6d %8.1f %6d\\n",
+            language, runs[language], total[language] / runs[language], best[language]
+    }
+}
+' scores.csv | sort -k3 -rn`,
 ])

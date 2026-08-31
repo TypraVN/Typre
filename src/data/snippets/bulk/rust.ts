@@ -51,4 +51,15 @@ export const rustBulk = defineSnippets('rust', 'rs-x', [
   `let count = text.chars().count();`,
   `values.retain(|v| *v > 0);`,
   `let sum: i32 = values.iter().sum();`,
+
+  `let first = values.first().copied().unwrap_or(0);`,
+  `values.sort_unstable_by_key(|s| s.wpm);`,
+  `let joined = names.join(", ");`,
+  `let ok = matches!(status, Status::Done);`,
+  `let clamped = wpm.clamp(1, 300);`,
+  `let bytes = text.as_bytes();`,
+  `let pairs: Vec<_> = a.iter().zip(b.iter()).collect();`,
+  `let text = format!("{wpm:>5} wpm");`,
+  `let mut set: HashSet<&str> = HashSet::new();`,
+  `let total = values.iter().copied().fold(0, i32::wrapping_add);`,
 ])

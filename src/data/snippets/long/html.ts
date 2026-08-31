@@ -726,4 +726,140 @@ npm run build</code></pre>
 
     <button type="submit">Create account</button>
 </form>`,
+
+  `<figure class="run">
+    <figcaption>
+        Fastest run this week
+        <time datetime="2026-08-28T09:14:00Z">28 Aug</time>
+    </figcaption>
+
+    <table>
+        <thead>
+            <tr>
+                <th scope="col">language</th>
+                <th scope="col">wpm</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <th scope="row">rust</th>
+                <td>96</td>
+            </tr>
+        </tbody>
+    </table>
+</figure>`,
+  `<form class="report" action="/api/reports" method="post">
+    <label for="message">What went wrong?</label>
+    <textarea
+        id="message"
+        name="message"
+        rows="5"
+        required
+        minlength="10"
+        maxlength="2000"
+    ></textarea>
+
+    <details>
+        <summary>What gets sent</summary>
+        <p>Build hash, viewport size, browser, last console errors.</p>
+    </details>
+
+    <button type="submit">Send report</button>
+</form>`,
+  `<nav class="languages" aria-label="Languages">
+    <ul role="list">
+        <li><a href="/practice/javascript/">JavaScript</a></li>
+        <li><a href="/practice/typescript/">TypeScript</a></li>
+        <li><a href="/practice/python/" aria-current="page">Python</a></li>
+        <li><a href="/practice/rust/">Rust</a></li>
+        <li><a href="/practice/go/">Go</a></li>
+    </ul>
+</nav>`,
+  `<dialog id="share" aria-labelledby="share-title">
+    <h2 id="share-title">Challenge a friend</h2>
+
+    <p>They type the same snippet and try to beat your score.</p>
+
+    <input
+        type="url"
+        readonly
+        value="https://www.typre.dev/#/c/rust/30/rs-x-12/96"
+    />
+
+    <form method="dialog">
+        <button value="close">Close</button>
+    </form>
+</dialog>`,
+  `<section class="pricing">
+    <h2>Free, and staying free</h2>
+
+    <ul role="list">
+        <li>All 14 languages</li>
+        <li>Every snippet, no paywall</li>
+        <li>Works offline once installed</li>
+    </ul>
+
+    <p>
+        The source is
+        <a href="https://github.com/TypraVN/Typre" rel="noopener">on GitHub</a>
+        under the MIT licence.
+    </p>
+</section>`,
+  `<template id="score-row">
+    <tr>
+        <td class="rank"></td>
+        <td class="player">
+            <img class="avatar" alt="" width="20" height="20" />
+            <span class="name"></span>
+        </td>
+        <td class="wpm"></td>
+        <td class="accuracy"></td>
+    </tr>
+</template>`,
+  `<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Practice typing Rust code | Typre</title>
+    <meta
+        name="description"
+        content="Type real Rust snippets in 15, 30 or 60 second runs."
+    />
+    <link rel="canonical" href="https://www.typre.dev/practice/rust/" />
+    <meta property="og:image" content="https://www.typre.dev/og.png" />
+</head>`,
+  `<div class="run-controls" role="group" aria-label="Run length">
+    <button type="button" aria-pressed="false" value="15">15s</button>
+    <button type="button" aria-pressed="true" value="30">30s</button>
+    <button type="button" aria-pressed="false" value="60">60s</button>
+</div>
+
+<p id="hint" class="hint">
+    Each length draws from its own pool of snippets.
+</p>`,
+  `<details class="faq" name="faq">
+    <summary>Why does it need a physical keyboard?</summary>
+    <p>
+        A touch keyboard has no home row and no modifier chords, so the
+        practice does not carry over. On a phone the app says so instead of
+        pretending.
+    </p>
+</details>
+
+<details class="faq" name="faq">
+    <summary>Is my history stored on a server?</summary>
+    <p>No. It lives in this browser unless you sign in.</p>
+</details>`,
+  `<article class="release" itemscope itemtype="https://schema.org/TechArticle">
+    <h2 itemprop="headline">Progress chart</h2>
+
+    <p>
+        Published
+        <time itemprop="datePublished" datetime="2026-08-30">30 Aug 2026</time>
+    </p>
+
+    <p itemprop="description">
+        Your average speed per day, with rest days left as gaps rather than
+        drawn as zeroes.
+    </p>
+</article>`,
 ])

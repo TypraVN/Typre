@@ -50,4 +50,15 @@ export const cppBulk = defineSnippets('cpp', 'cpp-x', [
   `std::string_view view{text};`,
   `constexpr int kMaxWpm = 300;`,
   `values.shrink_to_fit();`,
+
+  `auto count = std::ranges::count(v, 0);`,
+  `std::ranges::sort(scores, std::greater{});`,
+  `if (v.contains(key)) { return v.at(key); }`,
+  `auto text = std::format("{} wpm", wpm);`,
+  `for (int i : std::views::iota(0, 10)) {\n    sum += i;\n}`,
+  `v.assign(other.begin(), other.end());`,
+  `auto ptr = std::make_unique<Panel>("W1");`,
+  `std::print("{} chunks\\n", chunks);`,
+  `using Clock = std::chrono::steady_clock;`,
+  `[[nodiscard]] int total() const noexcept;`,
 ])

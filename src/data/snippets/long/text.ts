@@ -367,4 +367,85 @@ r"raw\\dstring"
 lookahead(?=yes) lookbehind(?<=no)
 a{2,5}? lazy quantifier
 ^\\s*$ blank line`,
+
+  `{ } [ ] ( ) < > | \\ / ~ \`
+! @ # $ % ^ & * - _ = +
+; : ' " , . ? \u00b0 \u00b1 \u00d7 \u00f7
+&& || ?? ?. ?: => -> <- |>
+== != === !== <= >= <=> =~
++= -= *= /= %= **= ??= ||= &&=
+<< >> >>> & | ^ ~ ! %`,
+  `^(?<scheme>https?)://(?<host>[^/:]+)(?::(?<port>\\d+))?
+(?<path>/[^?#]*)?(?:\\?(?<query>[^#]*))?(?:#(?<hash>.*))?$
+
+^\\s*(?<key>[A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*(?<value>.*?)\\s*$
+^(?!#)(?<flag>--[a-z][a-z-]*)(?:=(?<arg>.+))?$
+(?<=\\b)(?<num>-?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?)(?=\\b)`,
+  `git switch -c fix/leaderboard-filter-order
+git add -p src/components/Leaderboard.tsx
+git commit -m "move time filter above the language list"
+git rebase -i origin/main
+git push --force-with-lease origin fix/leaderboard-filter-order
+gh pr create --fill --base main
+git tag -a v1.2.0 -m "progress chart"
+git push origin --tags`,
+  `HTTP/2 200
+content-type: application/json; charset=utf-8
+cache-control: public, max-age=31536000, immutable
+content-encoding: br
+etag: W/"1f2e3d4c"
+x-vercel-cache: HIT
+strict-transport-security: max-age=63072000; includeSubDomains
+content-security-policy: default-src 'self'; img-src 'self' data:`,
+  `D:\\nhat.tran\\CodeTyping\\src\\data\\snippets\\bulk\\rust.ts
+/usr/local/share/typre/dist/assets/index-BAo6nlUo.js
+~/.config/typre/settings.json
+../../../scripts/generate-seo-pages.mjs
+file:///C:/Users/nhat/AppData/Local/Temp/build.log
+\\\\?\\UNC\\server\\share\\folder\\file.txt
+s3://typre-backups/db-20260830-104204.sql.gz`,
+  `#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\\n\\t'
+
+: "\${API_URL:?missing}" "\${TOKEN:?missing}"
+
+curl -sf -X POST "$API_URL/scores" \\
+    -H "Authorization: Bearer $TOKEN" \\
+    -H 'Content-Type: application/json' \\
+    -d '{"wpm":96,"accuracy":97.4}' \\
+    | jq -r '.id // empty' \\
+    || { echo "submit failed" >&2; exit 1; }`,
+  `\\u0000 \\u001b[0m \\u00a0 \\u2028 \\u2029
+\\uFEFF (BOM)  \\u200B (zero width)  \\u00AD (soft hyphen)
+\\U0001F680 \\U0001F4A9 \\U0001F1FB\\U0001F1F3
+&amp; &lt; &gt; &quot; &#39; &#x2764;
+%20 %2F %3A %3F %23 %5B %5D
+\\x41\\x42\\x43 = ABC
+\\r\\n vs \\n vs \\r`,
+  `SELECT DISTINCT ON (s.user_id) s.*
+FROM public.scores AS s
+WHERE s.created_at >= now() - INTERVAL '7 days'
+    AND s.wpm BETWEEN 1 AND 300
+    AND s.language = ANY($1::text[])
+ORDER BY s.user_id, s.wpm DESC, s.created_at ASC
+LIMIT $2 OFFSET $3;`,
+  `Ctrl+Shift+P    Cmd+Shift+P     command palette
+Ctrl+\`          Cmd+\`           toggle terminal
+Alt+Up          Option+Up       move line up
+Ctrl+D          Cmd+D           add next occurrence
+Ctrl+Shift+K    Cmd+Shift+K     delete line
+F2                              rename symbol
+dd  gg  G  :wq  ciw  ci"  %  *  n  .`,
+  `--- a/src/components/Leaderboard.tsx
++++ b/src/components/Leaderboard.tsx
+@@ -223,7 +223,7 @@ export function Leaderboard({
+-        <div className="flex flex-col gap-1 pt-4 border-t">
++        <div className="grid grid-cols-2 gap-x-1 gap-y-0.5">
+             {languages.map((lang) => (
+                 <button key={lang} type="button">
+-                    {lang}
++                    {lang}
+                 </button>
+             ))}`,
 ])

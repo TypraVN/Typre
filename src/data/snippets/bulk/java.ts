@@ -56,4 +56,15 @@ export const javaBulk = defineSnippets('java', 'java-x', [
   `throw new IllegalStateException("no rows");`,
   `var trimmed = raw.strip().toLowerCase();`,
   `scores.removeIf(s -> s.wpm() <= 0);`,
+
+  `var copy = new ArrayList<>(scores);`,
+  `names.sort(Comparator.naturalOrder());`,
+  `var max = Collections.max(values);`,
+  `var chars = text.chars().distinct().count();`,
+  `if (!map.containsKey(key)) map.put(key, 0);`,
+  `var arr = names.toArray(String[]::new);`,
+  `var parts = List.of(line.split(","));`,
+  `System.out.println(Arrays.toString(values));`,
+  `var ok = Pattern.matches("[a-z-]+", slug);`,
+  `var total = values.stream().reduce(0, Integer::sum);`,
 ])

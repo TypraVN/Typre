@@ -46,4 +46,15 @@ export const goBulk = defineSnippets('go', 'go-x', [
   `defer cancel()`,
   `nums := make([]int, 0, 10)`,
   `total := Sum(values[:3])`,
+
+  `total := min(a, b)`,
+  `clear(counts)`,
+  `idx := slices.Index(names, target)`,
+  `slices.Reverse(items)`,
+  `values = slices.Compact(values)`,
+  `line := fmt.Appendf(nil, "%d wpm", wpm)`,
+  `mu := new(sync.RWMutex)\nmu.RLock()`,
+  `t.Cleanup(func() { os.Remove(path) })`,
+  `err = errors.Join(errClose, errFlush)`,
+  `after, ok := strings.CutPrefix(name, "tmp_")`,
 ])

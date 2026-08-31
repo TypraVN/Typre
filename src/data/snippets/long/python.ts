@@ -627,4 +627,136 @@ print(transpose([[1, 2], [3, 4]]))`,
             high = mid - 1
 
     return -1`,
+
+  `def breadth_first(graph, start):
+    seen = {start}
+    queue = collections.deque([start])
+    order = []
+
+    while queue:
+        node = queue.popleft()
+        order.append(node)
+
+        for neighbour in graph.get(node, ()):
+            if neighbour not in seen:
+                seen.add(neighbour)
+                queue.append(neighbour)
+
+    return order`,
+  `def merge_intervals(intervals):
+    if not intervals:
+        return []
+
+    ordered = sorted(intervals)
+    merged = [list(ordered[0])]
+
+    for start, end in ordered[1:]:
+        if start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+
+    return [tuple(pair) for pair in merged]`,
+  `def flatten(source, parent="", sep="."):
+    flat = {}
+
+    for key, value in source.items():
+        path = f"{parent}{sep}{key}" if parent else key
+
+        if isinstance(value, dict):
+            flat.update(flatten(value, path, sep))
+        else:
+            flat[path] = value
+
+    return flat`,
+  `def encode(text):
+    if not text:
+        return ""
+
+    parts = []
+    for char, group in itertools.groupby(text):
+        length = len(list(group))
+        parts.append(char if length == 1 else f"{char}{length}")
+
+    return "".join(parts)`,
+  `def moving_average(values, window=3):
+    if window < 1:
+        raise ValueError("window must be positive")
+
+    buffer = collections.deque(maxlen=window)
+    averages = []
+
+    for value in values:
+        buffer.append(value)
+        averages.append(sum(buffer) / len(buffer))
+
+    return averages`,
+  `def parse_duration(text):
+    units = {"h": 3600, "m": 60, "s": 1}
+    total = 0
+
+    for amount, unit in re.findall(r"(\d+)([hms])", text):
+        total += int(amount) * units[unit]
+
+    if total == 0:
+        raise ValueError(f"cannot parse duration: {text!r}")
+
+    return total`,
+  `def fetch_all(urls, workers=8):
+    results = {}
+
+    with concurrent.futures.ThreadPoolExecutor(workers) as pool:
+        futures = {pool.submit(requests.get, url): url for url in urls}
+
+        for future in concurrent.futures.as_completed(futures):
+            url = futures[future]
+            try:
+                results[url] = future.result().status_code
+            except Exception as error:
+                results[url] = repr(error)
+
+    return results`,
+  `@dataclass
+class Score:
+    language: str
+    wpm: int
+    accuracy: float
+
+    def __post_init__(self):
+        if not 0 < self.wpm <= 300:
+            raise ValueError(f"wpm out of range: {self.wpm}")
+
+        if not 0 <= self.accuracy <= 100:
+            raise ValueError(f"bad accuracy: {self.accuracy}")`,
+  `class LruCache:
+    def __init__(self, capacity=128):
+        self.capacity = capacity
+        self.items = collections.OrderedDict()
+
+    def get(self, key, default=None):
+        if key not in self.items:
+            return default
+
+        self.items.move_to_end(key)
+        return self.items[key]
+
+    def put(self, key, value):
+        self.items[key] = value
+        self.items.move_to_end(key)
+
+        if len(self.items) > self.capacity:
+            self.items.popitem(last=False)`,
+  `def diff_rows(before, after, key="id"):
+    old = {row[key]: row for row in before}
+    new = {row[key]: row for row in after}
+
+    added = [new[k] for k in new.keys() - old.keys()]
+    removed = [old[k] for k in old.keys() - new.keys()]
+    changed = [
+        (old[k], new[k])
+        for k in old.keys() & new.keys()
+        if old[k] != new[k]
+    ]
+
+    return {"added": added, "removed": removed, "changed": changed}`,
 ])

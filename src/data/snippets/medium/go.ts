@@ -270,4 +270,70 @@ process(job)`,
 for range 3 {
     fmt.Println("tick")
 }`,
+
+  `maps.Copy(defaults, overrides)
+
+for key, value := range defaults {
+    fmt.Println(key, value)
+}`,
+  `best := slices.MaxFunc(scores, func(a, b Score) int {
+    return cmp.Compare(a.WPM, b.WPM)
+})`,
+  `func chunk[T any](items []T, size int) [][]T {
+    var out [][]T
+
+    for size < len(items) {
+        items, out = items[size:], append(out, items[0:size:size])
+    }
+
+    return append(out, items)
+}`,
+  `ticker := time.NewTicker(time.Second)
+defer ticker.Stop()
+
+for range ticker.C {
+    if err := flush(); err != nil {
+        return err
+    }
+}`,
+  `group, ctx := errgroup.WithContext(ctx)
+
+for _, url := range urls {
+    group.Go(func() error { return fetch(ctx, url) })
+}
+
+return group.Wait()`,
+  `func (s *Store) Close() error {
+    s.once.Do(func() {
+        close(s.jobs)
+    })
+
+    return s.db.Close()
+}`,
+  `var buf bytes.Buffer
+
+if err := json.NewEncoder(&buf).Encode(score); err != nil {
+    return fmt.Errorf("encode score: %w", err)
+}`,
+  `func seqOf(values []int) iter.Seq2[int, int] {
+    return func(yield func(int, int) bool) {
+        for i, value := range values {
+            if !yield(i, value) {
+                return
+            }
+        }
+    }
+}`,
+  `req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+if err != nil {
+    return nil, fmt.Errorf("build request: %w", err)
+}
+
+req.Header.Set("Accept", "application/json")`,
+  `stmt, err := db.PrepareContext(ctx, "insert into scores values (?, ?)")
+if err != nil {
+    return err
+}
+
+defer stmt.Close()`,
 ])

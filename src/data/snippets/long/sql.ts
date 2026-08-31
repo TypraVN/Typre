@@ -559,4 +559,153 @@ from scores s
 group by s.language
 having count(*) >= 5
 order by fast_share desc;`,
+
+  `with streaks as (
+    select
+        user_id,
+        created_at::date as day,
+        created_at::date
+            - (row_number() over (
+                  partition by user_id order by created_at::date
+              ))::int as grp
+    from (select distinct user_id, created_at::date as created_at from scores) d
+)
+select
+    user_id,
+    min(day) as started,
+    max(day) as ended,
+    count(*) as days
+from streaks
+group by user_id, grp
+order by days desc
+limit 10;`,
+  `create or replace function bump_xp(
+    p_user_id uuid,
+    p_amount int
+) returns int
+language plpgsql
+security definer
+as $$
+declare
+    new_total int;
+begin
+    if p_amount < 0 or p_amount > 5000 then
+        raise exception 'xp out of range: %', p_amount;
+    end if;
+
+    update profiles
+    set xp = xp + p_amount
+    where id = p_user_id
+    returning xp into new_total;
+
+    return new_total;
+end;
+$$;`,
+  `with monthly as (
+    select
+        date_trunc('month', created_at) as month,
+        language,
+        avg(wpm) as avg_wpm
+    from scores
+    group by 1, 2
+)
+select
+    month,
+    language,
+    round(avg_wpm, 1) as avg_wpm,
+    round(
+        avg_wpm - lag(avg_wpm) over (partition by language order by month),
+        1
+    ) as change
+from monthly
+order by language, month;`,
+  `create table audit_log (
+    id bigserial primary key,
+    table_name text not null,
+    action text not null check (action in ('insert', 'update', 'delete')),
+    row_id text not null,
+    changed_by uuid references auth.users (id),
+    changed_at timestamptz not null default now(),
+    before jsonb,
+    after jsonb
+);
+
+create index audit_log_lookup_idx
+    on audit_log (table_name, row_id, changed_at desc);`,
+  `select
+    p.username,
+    count(s.*) as runs,
+    round(avg(s.wpm), 1) as avg_wpm,
+    max(s.wpm) as best_wpm,
+    round(
+        100.0 * count(*) filter (where s.accuracy >= 95) / count(*),
+        1
+    ) as clean_pct
+from profiles p
+join scores s on s.user_id = p.id
+where s.created_at >= now() - interval '30 days'
+group by p.username
+having count(s.*) >= 5
+order by avg_wpm desc;`,
+  `with recursive fib (n, current, next) as (
+    select 1, 0::bigint, 1::bigint
+    union all
+    select n + 1, next, current + next
+    from fib
+    where n < 20
+)
+select n, current as value from fib;`,
+  `create or replace view leaderboard_month
+with (security_invoker = on) as
+select distinct on (s.language, s.time_limit, s.user_id)
+    s.user_id,
+    s.language,
+    s.time_limit,
+    s.wpm,
+    s.accuracy,
+    s.created_at
+from scores s
+where s.created_at >= date_trunc('month', now())
+order by s.language, s.time_limit, s.user_id, s.wpm desc, s.created_at asc;
+
+grant select on public.leaderboard_month to anon, authenticated;`,
+  `explain (analyze, buffers, timing)
+select
+    s.language,
+    s.time_limit,
+    count(*) as runs
+from scores s
+where s.created_at between $1 and $2
+    and s.wpm between 1 and 300
+group by s.language, s.time_limit
+order by runs desc;`,
+  `begin;
+
+alter table scores add column device text;
+
+update scores
+set device = case
+    when user_agent ilike '%mobile%' then 'phone'
+    else 'desktop'
+end;
+
+alter table scores alter column device set not null;
+alter table scores add constraint scores_device_check
+    check (device in ('phone', 'desktop'));
+
+commit;`,
+  `select
+    d.day::date as day,
+    coalesce(count(s.id), 0) as runs,
+    coalesce(round(avg(s.wpm), 1), 0) as avg_wpm
+from generate_series(
+    current_date - interval '29 days',
+    current_date,
+    interval '1 day'
+) as d (day)
+left join scores s
+    on s.created_at::date = d.day::date
+    and s.user_id = $1
+group by d.day
+order by d.day;`,
 ])

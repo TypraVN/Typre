@@ -809,4 +809,234 @@ func (s Set) Sorted() []string {
     _, err = io.Copy(writer, in)
     return err
 }`,
+
+  `func mergeIntervals(intervals [][2]int) [][2]int {
+    if len(intervals) == 0 {
+        return nil
+    }
+
+    slices.SortFunc(intervals, func(a, b [2]int) int {
+        return cmp.Compare(a[0], b[0])
+    })
+
+    merged := [][2]int{intervals[0]}
+
+    for _, span := range intervals[1:] {
+        last := &merged[len(merged)-1]
+
+        if span[0] <= last[1] {
+            last[1] = max(last[1], span[1])
+            continue
+        }
+
+        merged = append(merged, span)
+    }
+
+    return merged
+}`,
+  `type RateLimiter struct {
+    mu     sync.Mutex
+    hits   []time.Time
+    limit  int
+    window time.Duration
+}
+
+func (r *RateLimiter) Allow() bool {
+    r.mu.Lock()
+    defer r.mu.Unlock()
+
+    cutoff := time.Now().Add(-r.window)
+    r.hits = slices.DeleteFunc(r.hits, func(t time.Time) bool {
+        return t.Before(cutoff)
+    })
+
+    if len(r.hits) >= r.limit {
+        return false
+    }
+
+    r.hits = append(r.hits, time.Now())
+    return true
+}`,
+  `func retry(ctx context.Context, attempts int, fn func() error) error {
+    var last error
+
+    for attempt := 1; attempt <= attempts; attempt++ {
+        last = fn()
+        if last == nil {
+            return nil
+        }
+
+        select {
+        case <-ctx.Done():
+            return ctx.Err()
+        case <-time.After(time.Duration(attempt) * 200 * time.Millisecond):
+        }
+    }
+
+    return fmt.Errorf("after %d attempts: %w", attempts, last)
+}`,
+  `func flatten(source map[string]any, prefix string) map[string]any {
+    flat := map[string]any{}
+
+    for key, value := range source {
+        path := key
+        if prefix != "" {
+            path = prefix + "." + key
+        }
+
+        if nested, ok := value.(map[string]any); ok {
+            maps.Copy(flat, flatten(nested, path))
+            continue
+        }
+
+        flat[path] = value
+    }
+
+    return flat
+}`,
+  `func formatDuration(seconds int) string {
+    if seconds <= 0 {
+        return "0s"
+    }
+
+    units := []struct {
+        label string
+        size  int
+    }{{"h", 3600}, {"m", 60}, {"s", 1}}
+
+    var parts []string
+
+    for _, unit := range units {
+        if value := seconds / unit.size; value > 0 {
+            parts = append(parts, fmt.Sprintf("%d%s", value, unit.label))
+            seconds -= value * unit.size
+        }
+    }
+
+    return strings.Join(parts, " ")
+}`,
+  `func levenshtein(a, b string) int {
+    previous := make([]int, len(b)+1)
+    current := make([]int, len(b)+1)
+
+    for j := range previous {
+        previous[j] = j
+    }
+
+    for i := 1; i <= len(a); i++ {
+        current[0] = i
+
+        for j := 1; j <= len(b); j++ {
+            cost := 1
+            if a[i-1] == b[j-1] {
+                cost = 0
+            }
+
+            current[j] = min(previous[j]+1, current[j-1]+1, previous[j-1]+cost)
+        }
+
+        previous, current = current, previous
+    }
+
+    return previous[len(b)]
+}`,
+  `type Node struct {
+    ID       int
+    ParentID int
+    Children []*Node
+}
+
+func buildTree(rows []*Node) []*Node {
+    byID := make(map[int]*Node, len(rows))
+    for _, row := range rows {
+        byID[row.ID] = row
+    }
+
+    var roots []*Node
+
+    for _, node := range rows {
+        parent, ok := byID[node.ParentID]
+        if !ok {
+            roots = append(roots, node)
+            continue
+        }
+
+        parent.Children = append(parent.Children, node)
+    }
+
+    return roots
+}`,
+  `func streamCSV(ctx context.Context, path string) (<-chan []string, error) {
+    file, err := os.Open(path)
+    if err != nil {
+        return nil, fmt.Errorf("open %s: %w", path, err)
+    }
+
+    rows := make(chan []string)
+
+    go func() {
+        defer close(rows)
+        defer file.Close()
+
+        reader := csv.NewReader(file)
+
+        for {
+            record, err := reader.Read()
+            if err != nil {
+                return
+            }
+
+            select {
+            case rows <- record:
+            case <-ctx.Done():
+                return
+            }
+        }
+    }()
+
+    return rows, nil
+}`,
+  `func compareVersions(left, right string) int {
+    a := strings.Split(left, ".")
+    b := strings.Split(right, ".")
+
+    for i := 0; i < max(len(a), len(b)); i++ {
+        var x, y int
+
+        if i < len(a) {
+            x, _ = strconv.Atoi(a[i])
+        }
+
+        if i < len(b) {
+            y, _ = strconv.Atoi(b[i])
+        }
+
+        if x != y {
+            return cmp.Compare(x, y)
+        }
+    }
+
+    return 0
+}`,
+  `func groupConsecutive(rows []Score) [][]Score {
+    var groups [][]Score
+
+    for _, row := range rows {
+        if len(groups) == 0 {
+            groups = append(groups, []Score{row})
+            continue
+        }
+
+        last := groups[len(groups)-1]
+
+        if last[len(last)-1].Language == row.Language {
+            groups[len(groups)-1] = append(last, row)
+            continue
+        }
+
+        groups = append(groups, []Score{row})
+    }
+
+    return groups
+}`,
 ])

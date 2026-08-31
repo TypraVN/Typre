@@ -215,4 +215,53 @@ inline double toKn(double kg) {
   `std::cout << std::left << std::setw(14) << user
           << std::right << std::setw(5) << wpm
           << std::fixed << std::setprecision(1) << accuracy << "\\n";`,
+
+  `auto fast = scores
+    | std::views::filter([](const Score& s) { return s.wpm >= 60; })
+    | std::views::transform(&Score::user);`,
+  `std::span<const int> window(values.data() + start, length);
+
+for (int value : window) {
+    total += value;
+}`,
+  `template <typename T>
+concept Numeric = std::integral<T> || std::floating_point<T>;
+
+template <Numeric T>
+T mean(const std::vector<T>& values);`,
+  `std::vector<int> out;
+out.reserve(values.size());
+
+std::ranges::copy_if(values, std::back_inserter(out), [](int n) {
+    return n % 2 == 0;
+});`,
+  `auto [it, inserted] = seen.emplace(mark);
+
+if (!inserted) {
+    std::cerr << "duplicate mark: " << mark << '\\n';
+}`,
+  `struct Score {
+    std::string user;
+    int wpm{};
+
+    auto operator<=>(const Score&) const = default;
+};`,
+  `std::jthread worker([&stop = flag](std::stop_token token) {
+    while (!token.stop_requested()) {
+        step();
+    }
+});`,
+  `if (auto pos = line.find(','); pos != std::string::npos) {
+    key = line.substr(0, pos);
+    value = line.substr(pos + 1);
+}`,
+  `std::error_code ec;
+auto size = std::filesystem::file_size(path, ec);
+
+if (ec) {
+    return std::unexpected(ec.message());
+}`,
+  `std::ranges::for_each(panels, [total = 0.0](const Panel& p) mutable {
+    total += p.weight;
+});`,
 ])

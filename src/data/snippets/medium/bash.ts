@@ -169,4 +169,33 @@ done`,
   `echo "\${PIPESTATUS[@]}"
 echo "exit code: $?"
 [ "$?" -eq 0 ] || exit 1`,
+
+  `usage() {
+    printf 'usage: %s [-v] <path>\\n' "$(basename "$0")" >&2
+    exit 2
+}`,
+  `tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
+
+curl -sf "$API_URL/scores" -o "$tmp" || exit 1`,
+  `while IFS= read -r -d '' file; do
+    printf 'checking %s\\n' "$file"
+done < <(find src -name '*.ts' -print0)`,
+  `if ! output=$(npm run build 2>&1); then
+    printf '%s\\n' "$output" >&2
+    exit 1
+fi`,
+  `size=$(stat -c%s dist/assets/index.js)
+printf 'bundle: %s KB\\n' "$(( size / 1024 ))"`,
+  `git log --pretty=format:'%h %s' "$(git describe --tags --abbrev=0)"..HEAD`,
+  `find . -maxdepth 2 -name node_modules -prune -o -name '*.ts' -print |
+    xargs wc -l |
+    sort -n |
+    tail -5`,
+  `envsubst < deploy.tmpl.yaml > deploy.yaml
+kubectl apply -f deploy.yaml --namespace "\${NAMESPACE:-default}"`,
+  `read -rp "delete $count files? [y/N] " reply
+[[ "$reply" =~ ^[Yy]$ ]] || exit 0`,
+  `duration=$SECONDS
+printf 'done in %dm %ds\\n' "$(( duration / 60 ))" "$(( duration % 60 ))"`,
 ])

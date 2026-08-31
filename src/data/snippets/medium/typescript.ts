@@ -252,4 +252,51 @@ export function check(input: unknown, shape: Shape): boolean {
         ([key, kind]) => typeof (input as never)[key] === kind,
     );
 }`,
+
+  `type ApiResult<T> =
+    | { status: "ok"; data: T }
+    | { status: "error"; message: string };`,
+  `function hasKey<K extends string>(
+    value: object,
+    key: K,
+): value is Record<K, unknown> {
+    return key in value;
+}`,
+  `const counts = new Map<string, number>();
+
+for (const row of rows) {
+    counts.set(row.language, (counts.get(row.language) ?? 0) + 1);
+}`,
+  `export function toEntries<T extends object>(value: T) {
+    return Object.entries(value) as [keyof T, T[keyof T]][];
+}`,
+  `type Props = {
+    label: string;
+    onSelect: (id: string) => void;
+} & React.HTMLAttributes<HTMLButtonElement>;`,
+  `function assertDefined<T>(value: T | undefined): asserts value is T {
+    if (value === undefined) throw new Error("missing value");
+}`,
+  `const handlers: Partial<Record<Status, () => void>> = {
+    error: () => retry(),
+    ready: () => focusInput(),
+};`,
+  `export function unique<T, K>(items: T[], key: (item: T) => K): T[] {
+    const seen = new Set<K>();
+    return items.filter((item) => !seen.has(key(item)) && seen.add(key(item)));
+}`,
+  `type Theme = typeof THEMES[keyof typeof THEMES];
+
+function apply(theme: Theme): void {
+    document.documentElement.dataset.theme = theme;
+}`,
+  `export async function tryCatch<T>(
+    task: () => Promise<T>,
+): Promise<[T, null] | [null, Error]> {
+    try {
+        return [await task(), null];
+    } catch (error) {
+        return [null, error as Error];
+    }
+}`,
 ])

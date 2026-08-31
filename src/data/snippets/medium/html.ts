@@ -211,4 +211,51 @@ npm run build</code></pre>`,
     <h2 itemprop="name">Nhat Tran</h2>
     <span itemprop="jobTitle">BIM engineer</span>
 </div>`,
+
+  `<search>
+    <form role="search" action="/players">
+        <input type="search" name="q" aria-label="Find a player" />
+    </form>
+</search>`,
+  `<button popovertarget="tips" popovertargetaction="show">
+    Shortcuts
+</button>
+
+<div id="tips" popover>Press Esc to restart.</div>`,
+  `<input
+    type="text"
+    name="username"
+    autocomplete="username"
+    spellcheck="false"
+    autocapitalize="none"
+/>`,
+  `<link rel="preload" href="/fonts/jetbrains.woff2" as="font"
+    type="font/woff2" crossorigin />`,
+  `<img
+    src="/screenshot.png"
+    srcset="/screenshot.png 1x, /screenshot@2x.png 2x"
+    loading="lazy"
+    decoding="async"
+    alt="Typing a Rust snippet"
+/>`,
+  `<table>
+    <caption>Best run per language</caption>
+    <colgroup>
+        <col span="1" style="width: 40%" />
+    </colgroup>
+</table>`,
+  `<form method="dialog">
+    <button value="cancel">Cancel</button>
+    <button value="confirm">Delete history</button>
+</form>`,
+  `<ul role="list" aria-describedby="hint">
+    <li><a href="/practice/rust/">Rust</a></li>
+    <li><a href="/practice/go/">Go</a></li>
+</ul>`,
+  `<script type="application/ld+json">
+    { "@context": "https://schema.org", "@type": "WebApplication" }
+</script>`,
+  `<div class="wrap" inert>
+    <button type="button">Cannot be focused</button>
+</div>`,
 ])

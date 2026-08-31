@@ -680,4 +680,205 @@ export const jsonLong = defineSnippets('json', 'json-long', [
   ],
   "fallback": "/index.html"
 }`,
+
+  `{
+  "leaderboard": {
+    "language": "typescript",
+    "timeLimit": 30,
+    "period": "week",
+    "page": 1,
+    "pageSize": 10,
+    "total": 3,
+    "rows": [
+      {
+        "rank": 1,
+        "userId": "9f2c1a44-0b7e-4c8f-9a11-2d3e4f5a6b7c",
+        "displayName": "TypraVN",
+        "wpm": 96,
+        "rawWpm": 101,
+        "accuracy": 97.4,
+        "consistency": 88,
+        "createdAt": "2026-08-29T09:14:02.881Z"
+      }
+    ]
+  }
+}`,
+  `{
+  "openapi": "3.1.0",
+  "info": { "title": "Typre API", "version": "1.0.0" },
+  "paths": {
+    "/scores": {
+      "post": {
+        "summary": "Submit a run",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Score" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Created" },
+          "422": { "description": "Score outside allowed range" }
+        }
+      }
+    }
+  }
+}`,
+  `{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Score",
+  "type": "object",
+  "required": ["language", "timeLimit", "wpm", "accuracy"],
+  "properties": {
+    "language": {
+      "type": "string",
+      "enum": ["javascript", "typescript", "python", "rust", "go"]
+    },
+    "timeLimit": { "type": "integer", "enum": [15, 30, 60] },
+    "wpm": { "type": "integer", "minimum": 1, "maximum": 300 },
+    "accuracy": { "type": "number", "minimum": 50, "maximum": 100 }
+  },
+  "additionalProperties": false
+}`,
+  `{
+  "name": "Typre",
+  "short_name": "Typre",
+  "description": "Typing practice on real code, in 14 languages.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#18181b",
+  "theme_color": "#f97316",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    {
+      "src": "/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}`,
+  `{
+  "state": {
+    "results": [
+      {
+        "id": "1788185927298",
+        "date": "2026-08-30T03:38:47.298Z",
+        "language": "rust",
+        "wpm": 96,
+        "cpm": 480,
+        "accuracy": 97.4,
+        "timeLimit": 30,
+        "durationSeconds": 30,
+        "completed": false,
+        "mistakeCounts": { "{": 2, "&": 1 }
+      }
+    ],
+    "totals": { "started": 214, "completed": 198, "typingSeconds": 6420 }
+  },
+  "version": 0
+}`,
+  `{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src"]
+}`,
+  `{
+  "type": "INSERT",
+  "table": "reports",
+  "schema": "public",
+  "record": {
+    "id": 42,
+    "message": "the language filter jumps when I switch tabs",
+    "context": {
+      "build": "index-BAo6nlUo.js",
+      "viewport": "1512x945",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      "errors": []
+    },
+    "created_at": "2026-08-30T10:22:04.117Z"
+  },
+  "old_record": null
+}`,
+  `{
+  "workflows": {
+    "deploy": {
+      "on": { "push": { "branches": ["main"] } },
+      "jobs": {
+        "build": {
+          "runs-on": "ubuntu-latest",
+          "steps": [
+            { "uses": "actions/checkout@v4" },
+            {
+              "uses": "actions/setup-node@v4",
+              "with": { "node-version": "22", "cache": "npm" }
+            },
+            { "run": "npm ci" },
+            { "run": "npm run build" }
+          ]
+        }
+      }
+    }
+  }
+}`,
+  `[
+  {
+    "id": "js-x-53",
+    "language": "javascript",
+    "code": "const last = history.at(-1);",
+    "bucket": "short",
+    "length": 28
+  },
+  {
+    "id": "js-med-39",
+    "language": "javascript",
+    "code": "const active = Object.fromEntries(...)",
+    "bucket": "medium",
+    "length": 96
+  },
+  {
+    "id": "js-long-51",
+    "language": "javascript",
+    "code": "function levenshtein(a, b) { ... }",
+    "bucket": "long",
+    "length": 512
+  }
+]`,
+  `{
+  "policies": [
+    {
+      "name": "read all scores",
+      "table": "public.scores",
+      "command": "select",
+      "roles": ["anon", "authenticated"],
+      "using": "true"
+    },
+    {
+      "name": "insert own score",
+      "table": "public.scores",
+      "command": "insert",
+      "roles": ["authenticated"],
+      "withCheck": "auth.uid() = user_id and wpm between 1 and 300"
+    }
+  ]
+}`,
 ])

@@ -274,4 +274,36 @@ timeout = settings.get("timeout", 30)
 theme = settings.pop("theme", "dark")
 
 print(timeout, theme, len(settings))`,
+
+  `with contextlib.suppress(FileNotFoundError):
+    Path("cache.json").unlink()`,
+  `for language, group in itertools.groupby(rows, key=lambda r: r["language"]):
+    print(language, len(list(group)))`,
+  `newest = max(
+    Path("logs").glob("*.log"),
+    key=lambda p: p.stat().st_mtime,
+)`,
+  `with open("scores.csv", newline="", encoding="utf-8") as f:
+    for row in csv.DictReader(f):
+        print(row["language"], row["wpm"])`,
+  `@dataclass
+class Run:
+    language: str
+    tags: list[str] = field(default_factory=list)`,
+  `def running_total(values: Iterable[int]) -> Iterator[int]:
+    total = 0
+    for value in values:
+        total += value
+        yield total`,
+  `to_wpm = functools.partial(round, ndigits=1)
+speeds = [to_wpm(chars / 5 / minutes) for chars in totals]`,
+  `match payload:
+    case {"type": "run", "wpm": int(wpm)}:
+        record(wpm)
+    case _:
+        raise ValueError("unknown payload")`,
+  `started = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh"))
+elapsed = (datetime.now(ZoneInfo("UTC")) - started).total_seconds()`,
+  `def top_n(rows, n=5):
+    return heapq.nlargest(n, rows, key=operator.itemgetter("wpm"))`,
 ])

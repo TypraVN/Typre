@@ -198,4 +198,49 @@ for (var ch : text.toCharArray()) {
         this.weight = weight;
     }
 }`,
+
+  `var top = scores.stream()
+    .sorted(Comparator.comparingInt(Score::wpm).reversed())
+    .limit(3)
+    .toList();`,
+  `var summary = scores.stream()
+    .collect(Collectors.teeing(
+        Collectors.counting(),
+        Collectors.averagingInt(Score::wpm),
+        (count, mean) -> count + " runs, " + mean + " wpm"));`,
+  `var deque = new ArrayDeque<Integer>();
+
+for (var value : values) {
+    while (!deque.isEmpty() && deque.peekLast() < value) deque.pollLast();
+    deque.addLast(value);
+}`,
+  `record Pair<A, B>(A first, B second) {
+    static <A, B> Pair<A, B> of(A first, B second) {
+        return new Pair<>(first, second);
+    }
+}`,
+  `var counts = new TreeMap<String, Integer>();
+
+for (var word : text.split("\\s+")) {
+    counts.merge(word.toLowerCase(), 1, Integer::sum);
+}`,
+  `try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+    var user = scope.fork(() -> loadUser(id));
+    var runs = scope.fork(() -> loadRuns(id));
+
+    scope.join().throwIfFailed();
+}`,
+  `var text = switch (level) {
+    case LOW, MEDIUM -> "keep going";
+    case HIGH -> "excellent";
+};`,
+  `var iso = DateTimeFormatter.ISO_LOCAL_DATE.format(day);
+var parsed = LocalDate.parse(iso, DateTimeFormatter.ISO_LOCAL_DATE);`,
+  `var partitions = scores.stream()
+    .collect(Collectors.partitioningBy(score -> score.wpm() >= 60));`,
+  `var thread = Thread.ofVirtual().start(() -> {
+    process(job);
+});
+
+thread.join();`,
 ])

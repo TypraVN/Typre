@@ -247,4 +247,44 @@ public void Append(string line)
     score.Wpm,
     score.Language,
     elapsed.TotalMilliseconds);`,
+
+  `var lookup = scores
+    .GroupBy(s => s.Language)
+    .ToDictionary(g => g.Key, g => g.Max(s => s.Wpm));`,
+  `public static string Truncate(this string value, int max) =>
+    value.Length <= max ? value : value[..(max - 1)] + "\u2026";`,
+  `await foreach (var line in ReadLinesAsync(path, token))
+{
+    if (line.Length > 0) rows.Add(line);
+}`,
+  `var window = scores
+    .Chunk(10)
+    .Select(chunk => chunk.Average(s => s.Wpm))
+    .ToList();`,
+  `if (payload is not { Wpm: > 0, Language.Length: > 0 })
+{
+    throw new ArgumentException("invalid payload", nameof(payload));
+}`,
+  `public sealed class Counter
+{
+    private int _value;
+
+    public int Next() => Interlocked.Increment(ref _value);
+}`,
+  `var options = new ParallelOptions { MaxDegreeOfParallelism = 4 };
+
+await Parallel.ForEachAsync(urls, options, async (url, token) =>
+{
+    await DownloadAsync(url, token);
+});`,
+  `static string Format(TimeSpan span) => span switch
+{
+    { TotalHours: >= 1 } => $"{span:h\hm\m}",
+    { TotalMinutes: >= 1 } => $"{span:m\ms\s}",
+    _ => $"{span.Seconds}s",
+};`,
+  `var json = JsonSerializer.Serialize(score, JsonOptions);
+await File.WriteAllTextAsync(path, json, token);`,
+  `public int Compare(Score? left, Score? right) =>
+    (right?.Wpm ?? 0).CompareTo(left?.Wpm ?? 0);`,
 ])

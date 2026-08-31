@@ -49,4 +49,15 @@ export const htmlBulk = defineSnippets('html', 'html-x', [
   `<output for="speed">60 wpm</output>`,
   `<button type="reset">Clear</button>`,
   `<abbr title="words per minute">wpm</abbr>`,
+
+  `<time datetime="2026-08-30">30 Aug</time>`,
+  `<mark>wpm</mark> counts correct words only`,
+  `<code>const wpm = 78;</code>`,
+  `<input type="range" min="15" max="60" step="15" />`,
+  `<meter value="0.82" min="0" max="1">82%</meter>`,
+  `<slot name="footer"></slot>`,
+  `<hgroup>\n    <h2>Result</h2>\n    <p>30s run</p>\n</hgroup>`,
+  `<track kind="captions" src="/caps.vtt" srclang="en" />`,
+  `<base href="https://www.typre.dev/" />`,
+  `<noscript>JavaScript is required.</noscript>`,
 ])

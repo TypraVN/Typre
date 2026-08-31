@@ -341,4 +341,56 @@ body {
     overflow: hidden;
     clip-path: inset(50%);
 }`,
+
+  `.wrap {
+    container-type: inline-size;
+}
+
+@container (min-width: 30rem) {
+    .card {
+        grid-template-columns: 8rem 1fr;
+    }
+}`,
+  `.sidebar {
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: span 3;
+}`,
+  `.badge {
+    background: color-mix(in oklch, var(--accent) 20%, transparent);
+    color: oklch(0.72 0.17 45);
+}`,
+  `.list li {
+    animation: slide-in 200ms ease-out backwards;
+    animation-delay: calc(var(--index) * 40ms);
+}`,
+  `.panel {
+    transition: display 200ms allow-discrete, opacity 200ms;
+}
+
+.panel[hidden] {
+    opacity: 0;
+}`,
+  `.code {
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) transparent;
+    scrollbar-gutter: stable both-edges;
+}`,
+  `.row:nth-child(odd of :not([hidden])) {
+    background: rgba(255, 255, 255, 0.03);
+}`,
+  `@media (hover: hover) and (pointer: fine) {
+    .btn:hover {
+        border-color: var(--accent);
+    }
+}`,
+  `.field {
+    field-sizing: content;
+    min-height: 3lh;
+    max-height: 12lh;
+}`,
+  `.caret {
+    view-transition-name: caret;
+    contain: layout paint;
+}`,
 ])

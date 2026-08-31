@@ -703,4 +703,216 @@ builder.Services.Configure<LeaderboardOptions>(
         .Cast<Element>()
         .ToList();
 }`,
+
+  `public static IEnumerable<IReadOnlyList<T>> Window<T>(
+    this IEnumerable<T> source,
+    int size)
+{
+    var buffer = new Queue<T>(size);
+
+    foreach (var item in source)
+    {
+        buffer.Enqueue(item);
+
+        if (buffer.Count == size)
+        {
+            yield return buffer.ToArray();
+            buffer.Dequeue();
+        }
+    }
+}`,
+  `public sealed class RateLimiter
+{
+    private readonly Queue<DateTime> _hits = new();
+    private readonly int _limit;
+    private readonly TimeSpan _window;
+
+    public RateLimiter(int limit, TimeSpan window)
+    {
+        _limit = limit;
+        _window = window;
+    }
+
+    public bool Allow()
+    {
+        var now = DateTime.UtcNow;
+
+        while (_hits.Count > 0 && now - _hits.Peek() > _window)
+        {
+            _hits.Dequeue();
+        }
+
+        if (_hits.Count >= _limit) return false;
+
+        _hits.Enqueue(now);
+        return true;
+    }
+}`,
+  `public static async Task<T> RetryAsync<T>(
+    Func<CancellationToken, Task<T>> action,
+    int attempts = 3,
+    CancellationToken token = default)
+{
+    for (var attempt = 1; ; attempt++)
+    {
+        try
+        {
+            return await action(token);
+        }
+        catch (Exception) when (attempt < attempts)
+        {
+            await Task.Delay(200 * attempt, token);
+        }
+    }
+}`,
+  `public sealed record Money(decimal Amount, string Currency)
+    : IComparable<Money>
+{
+    public static Money operator +(Money left, Money right)
+    {
+        if (left.Currency != right.Currency)
+        {
+            throw new InvalidOperationException("currency mismatch");
+        }
+
+        return left with { Amount = left.Amount + right.Amount };
+    }
+
+    public int CompareTo(Money? other) =>
+        Amount.CompareTo(other?.Amount ?? 0m);
+}`,
+  `public static Dictionary<string, List<Score>> Bucket(
+    IReadOnlyList<Score> scores)
+{
+    var buckets = new Dictionary<string, List<Score>>();
+
+    foreach (var score in scores)
+    {
+        var key = score.Wpm switch
+        {
+            >= 100 => "fast",
+            >= 60 => "steady",
+            _ => "learning",
+        };
+
+        if (!buckets.TryGetValue(key, out var list))
+        {
+            list = [];
+            buckets[key] = list;
+        }
+
+        list.Add(score);
+    }
+
+    return buckets;
+}`,
+  `public sealed class AsyncLazy<T>
+{
+    private readonly Lazy<Task<T>> _inner;
+
+    public AsyncLazy(Func<Task<T>> factory)
+    {
+        _inner = new Lazy<Task<T>>(
+            factory,
+            LazyThreadSafetyMode.ExecutionAndPublication);
+    }
+
+    public Task<T> Value => _inner.Value;
+
+    public TaskAwaiter<T> GetAwaiter() => Value.GetAwaiter();
+}`,
+  `public static IReadOnlyList<string> SplitCsvLine(string line)
+{
+    var fields = new List<string>();
+    var current = new StringBuilder();
+    var inQuotes = false;
+
+    foreach (var ch in line)
+    {
+        if (ch == '"')
+        {
+            inQuotes = !inQuotes;
+        }
+        else if (ch == ',' && !inQuotes)
+        {
+            fields.Add(current.ToString());
+            current.Clear();
+        }
+        else
+        {
+            current.Append(ch);
+        }
+    }
+
+    fields.Add(current.ToString());
+    return fields;
+}`,
+  `public sealed class Debouncer : IDisposable
+{
+    private CancellationTokenSource? _cts;
+
+    public void Run(Action action, int delayMs)
+    {
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
+        _ = Task.Delay(delayMs, token).ContinueWith(
+            _ => action(),
+            token,
+            TaskContinuationOptions.OnlyOnRanToCompletion,
+            TaskScheduler.Default);
+    }
+
+    public void Dispose() => _cts?.Dispose();
+}`,
+  `public static int Levenshtein(string a, string b)
+{
+    var previous = new int[b.Length + 1];
+    var current = new int[b.Length + 1];
+
+    for (var j = 0; j <= b.Length; j++) previous[j] = j;
+
+    for (var i = 1; i <= a.Length; i++)
+    {
+        current[0] = i;
+
+        for (var j = 1; j <= b.Length; j++)
+        {
+            var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+            current[j] = Math.Min(
+                Math.Min(previous[j] + 1, current[j - 1] + 1),
+                previous[j - 1] + cost);
+        }
+
+        (previous, current) = (current, previous);
+    }
+
+    return previous[b.Length];
+}`,
+  `public sealed class CircuitBreaker
+{
+    private int _failures;
+    private DateTime _openedAt = DateTime.MinValue;
+
+    public bool IsOpen =>
+        _failures >= 5 && DateTime.UtcNow - _openedAt < TimeSpan.FromMinutes(1);
+
+    public async Task<T> ExecuteAsync<T>(Func<Task<T>> action)
+    {
+        if (IsOpen) throw new InvalidOperationException("circuit open");
+
+        try
+        {
+            var result = await action();
+            _failures = 0;
+            return result;
+        }
+        catch
+        {
+            if (++_failures >= 5) _openedAt = DateTime.UtcNow;
+            throw;
+        }
+    }
+}`,
 ])

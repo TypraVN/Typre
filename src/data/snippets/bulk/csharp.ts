@@ -46,4 +46,15 @@ export const csharpBulk = defineSnippets('csharp', 'cs-x', [
   `var parsed = int.TryParse(raw, out var n) ? n : 0;`,
   `var span = text.AsSpan(0, 4);`,
   `[Obsolete("use LoadAsync instead")]`,
+
+  `var slice = items[1..^1];`,
+  `var last = scores[^1];`,
+  `int[] limits = [15, 30, 60];`,
+  `var text = string.Create(null, $"{wpm} wpm");`,
+  `nameof(Panel.Mark);`,
+  `var ok = Enum.TryParse<Level>(raw, out var level);`,
+  `ArgumentNullException.ThrowIfNull(source);`,
+  `var trimmed = raw.AsSpan().Trim();`,
+  `var set = scores.Select(s => s.Language).ToHashSet();`,
+  `var ordered = list.OrderByDescending(s => s.Wpm).Take(5);`,
 ])

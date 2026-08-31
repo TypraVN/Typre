@@ -779,4 +779,210 @@ body {
 .list > li:nth-child(3) {
     animation-delay: 120ms;
 }`,
+
+  `:root {
+    --accent: #f97316;
+    --surface: #18181b;
+    --text: #fafafa;
+    --muted: color-mix(in srgb, var(--text) 55%, transparent);
+    --radius: 12px;
+    --shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+:root[data-theme="light"] {
+    --surface: #ffffff;
+    --text: #18181b;
+    --shadow: 0 8px 24px rgb(0 0 0 / 0.08);
+}
+
+body {
+    background: var(--surface);
+    color: var(--text);
+}`,
+  `.leaderboard {
+    display: grid;
+    grid-template-columns: 3ch 1fr repeat(4, minmax(4ch, auto));
+    align-items: center;
+    gap: 0.25rem 1rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.leaderboard > .rank {
+    justify-self: end;
+    color: var(--muted);
+}
+
+.leaderboard > .me {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-radius: var(--radius);
+}`,
+  `@keyframes level-pop {
+    0% {
+        scale: 0.6;
+        opacity: 0;
+    }
+
+    60% {
+        scale: 1.08;
+        opacity: 1;
+    }
+
+    100% {
+        scale: 1;
+        opacity: 1;
+    }
+}
+
+.level-badge {
+    animation: level-pop 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .level-badge {
+        animation: none;
+    }
+}`,
+  `.chart {
+    --track: color-mix(in srgb, var(--text) 12%, transparent);
+
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 0.5rem;
+    block-size: 10rem;
+}
+
+.chart .line {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.chart .grid-line {
+    stroke: var(--track);
+    stroke-width: 1;
+}`,
+  `.snippet {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0;
+    line-height: 1.6;
+    tab-size: 4;
+    white-space: pre;
+}
+
+.snippet .typed {
+    color: var(--text);
+}
+
+.snippet .pending {
+    color: var(--muted);
+}
+
+.snippet .wrong {
+    color: #f87171;
+    text-decoration: underline wavy;
+}`,
+  `@layer reset, tokens, base, components, utilities;
+
+@layer reset {
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+        margin: 0;
+    }
+
+    img,
+    svg,
+    video {
+        display: block;
+        max-inline-size: 100%;
+    }
+}
+
+@layer base {
+    body {
+        min-block-size: 100dvh;
+        font-family: system-ui, sans-serif;
+    }
+}`,
+  `.dialog {
+    border: 1px solid color-mix(in srgb, var(--text) 15%, transparent);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    max-inline-size: min(32rem, 90vw);
+}
+
+.dialog::backdrop {
+    background: rgb(0 0 0 / 0.55);
+    backdrop-filter: blur(2px);
+}
+
+@starting-style {
+    .dialog[open] {
+        opacity: 0;
+        translate: 0 8px;
+    }
+}`,
+  `.filters {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    inline-size: 12rem;
+}
+
+.filters .group + .group {
+    border-block-start: 1px solid
+        color-mix(in srgb, var(--text) 10%, transparent);
+    padding-block-start: 1rem;
+}
+
+.filters .languages {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.125rem 0.25rem;
+}`,
+  `@media print {
+    nav,
+    .filters,
+    .report-button {
+        display: none;
+    }
+
+    body {
+        color: #000;
+        background: #fff;
+    }
+
+    a[href^="http"]::after {
+        content: " (" attr(href) ")";
+        font-size: 0.8em;
+    }
+
+    .leaderboard {
+        break-inside: avoid;
+    }
+}`,
+  `.progress {
+    --value: 0;
+
+    position: relative;
+    block-size: 0.5rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text) 12%, transparent);
+    overflow: hidden;
+}
+
+.progress::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    inline-size: calc(var(--value) * 1%);
+    background: linear-gradient(90deg, var(--accent), #fdba74);
+    transition: inline-size 300ms ease-out;
+}`,
 ])

@@ -164,4 +164,35 @@ Option<Result<T, E>>`,
   `\\b(?:GET|POST|PUT)\\b
 (?<year>\\d{4})-(?<month>\\d{2})
 lookahead(?=yes) ^\\s*$`,
+
+  `(?<year>\\d{4})-(?<month>\\d{2})-(?<day>\\d{2})
+(?:https?://)?(?<host>[^/]+)/(?<path>.*)
+^\\s*(?!#)(?<key>[A-Z_]+)=(?<value>.*)$`,
+  `git rebase --onto main feature~3 feature
+git cherry-pick -x 4b83e49
+git log --graph --oneline --decorate --all`,
+  `npm pkg set scripts.check="tsc --noEmit"
+npx vite build --mode staging --emptyOutDir
+pnpm dlx @vercel/ncc build src/index.ts`,
+  `select * from t where a <> b and c !~ '^x';
+update t set n = n + 1 where id = any($1::int[]);
+insert into t values (default) on conflict do nothing;`,
+  `Content-Security-Policy: default-src 'self'
+Strict-Transport-Security: max-age=63072000
+Permissions-Policy: camera=(), microphone=()`,
+  `const re = /(?<=\\$)\\d+(?:\\.\\d{2})?/gu;
+const ok = /^[\\p{L}\\p{N}_-]{3,20}$/u.test(name);
+const parts = path.split(/[\\\\/]+/);`,
+  `x |> f |> g |> h
+compose(f, g, h)(x)
+pipe(x, f, g, h)`,
+  `\u2554\u2550\u2550\u2557 \u250c\u2500\u2500\u2510 \u2588\u2593\u2592\u2591
+\u2551  \u2551 \u2502  \u2502 \u2500\u252c\u2500\u253c\u2500
+\u255a\u2550\u2550\u255d \u2514\u2500\u2500\u2518 \u2514\u2534\u2500\u2534`,
+  `0.1 + 0.2 !== 0.3
+Number.EPSILON = 2.220446049250313e-16
+Number.MAX_SAFE_INTEGER = 9007199254740991`,
+  `--dry-run --force --no-verify
+-vvv -q --quiet=false
+--exclude='*.map' --include='*.js'`,
 ])

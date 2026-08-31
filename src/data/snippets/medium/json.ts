@@ -314,4 +314,82 @@ export const jsonMedium = defineSnippets('json', 'json-med', [
     { "path": "*", "component": "NotFound", "status": 404 }
   ]
 }`,
+
+  `{
+  "name": "typre",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build && node scripts/generate-seo-pages.mjs"
+  }
+}`,
+  `{
+  "run": {
+    "language": "rust",
+    "timeLimit": 30,
+    "wpm": 96,
+    "rawWpm": 101,
+    "accuracy": 97.4,
+    "consistency": 88
+  }
+}`,
+  `{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "moduleResolution": "bundler"
+  }
+}`,
+  `{
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
+}`,
+  `{
+  "progress": {
+    "xp": 12450,
+    "streakDays": 7,
+    "lastRunDate": "2026-08-30",
+    "unlocked": { "first-run": "2026-08-08T12:04:11.512Z" }
+  }
+}`,
+  `{
+  "daily": {
+    "2026-08-28": { "runs": 3, "wpmSum": 261, "bestWpm": 94 },
+    "2026-08-29": { "runs": 1, "wpmSum": 88, "bestWpm": 88 }
+  }
+}`,
+  `{
+  "report": {
+    "message": "stats dialog is blank",
+    "build": "index-BAo6nlUo.js",
+    "viewport": "1280x720",
+    "errors": ["Minified React error #185"]
+  }
+}`,
+  `{
+  "manifest_version": 3,
+  "name": "Typre",
+  "display": "standalone",
+  "theme_color": "#18181b",
+  "icons": [{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }]
+}`,
+  `{
+  "friendship": {
+    "userId": "9f2c1a44-0b7e-4c8f-9a11-2d3e4f5a6b7c",
+    "friendId": "1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9",
+    "status": "accepted"
+  }
+}`,
+  `[
+  { "language": "javascript", "short": 61, "medium": 60, "long": 60 },
+  { "language": "rust", "short": 51, "medium": 50, "long": 50 }
+]`,
 ])

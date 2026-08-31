@@ -55,4 +55,15 @@ export const sqlBulk = defineSnippets('sql', 'sql-x', [
   `select pg_size_pretty(pg_database_size('typre'));`,
   `set search_path to public;`,
   `select version();`,
+
+  `select nullif(nickname, '') from profiles;`,
+  `select greatest(wpm, raw_wpm) from scores;`,
+  `select length(trim(display_name)) from profiles;`,
+  `select left(mark, 3) as prefix from panels;`,
+  `select * from scores tablesample system (5);`,
+  `select string_agg(language, ', ') from scores;`,
+  `select mode() within group (order by language) from scores;`,
+  `analyze scores;`,
+  `reindex table concurrently scores;`,
+  `select pg_typeof(created_at) from scores limit 1;`,
 ])

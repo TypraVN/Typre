@@ -49,4 +49,15 @@ export const textBulk = defineSnippets('text', 'txt-x', [
   `a ? b : c ?? d`,
   `... .. . , ; :`,
   `| pipe > redirect >> append 2>&1`,
+
+  `<< >> >>> <<= >>=`,
+  `|| && ?? // ** ::`,
+  `!= !== <> ~= =~`,
+  `#!/usr/bin/env bash`,
+  `\\x41 \\u00e9 \\N{BULLET}`,
+  `a[0].b["c"].d?.e`,
+  `(?<name>\\w+)@(?=\\w)`,
+  `--flag=value -f -- --`,
+  `2>&1 1>/dev/null <<EOF`,
+  `\u00ab \u00bb \u201c \u201d \u2018 \u2019 \u2014 \u2013`,
 ])
