@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import { build } from 'vite'
 import { LANGUAGE_PAGES } from './seo-pages-content.mjs'
 
@@ -385,6 +385,94 @@ ${urls
 `
 }
 
+/**
+ * Thay nội dung giữa `<!--seo:name-->` và `<!--/seo:name-->`.
+ *
+ * NÉM LỖI khi không thấy dấu mốc, thay vì bỏ qua im lặng: ai đó sửa index.html mà xoá
+ * mất dấu mốc thì build phải dừng ngay. Bỏ qua im lặng nghĩa là trang chủ lặng lẽ quay
+ * về số viết cứng và không ai biết — đúng cái đã xảy ra với "2.170 snippets".
+ */
+function replaceRegion(html, name, replacement) {
+  const open = `<!--seo:${name}-->`
+  const close = `<!--/seo:${name}-->`
+  const start = html.indexOf(open)
+  const end = html.indexOf(close)
+
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error(`khong thay vung "${name}" trong index.html (can ${open} ... ${close})`)
+  }
+
+  return html.slice(0, start + open.length) + replacement + html.slice(end)
+}
+
+/**
+ * Ghi lại số liệu thật và danh sách liên kết vào trang chủ đã build.
+ *
+ * Liên kết là phần quan trọng hơn: trước đây trang chủ không trỏ tới trang /practice/
+ * nào, nên Google chỉ tìm ra chúng qua sitemap và chúng không nhận được chút sức mạnh
+ * liên kết nào từ trang được trỏ tới nhiều nhất của site.
+ */
+function patchIndexHtml(snippetCounts) {
+  const path = `${DIST}/index.html`
+  let html = readFileSync(path, 'utf8')
+
+  const pages = LANGUAGE_PAGES.filter((page) => snippetCounts(page.id).total > 0)
+  const total = pages.reduce((sum, page) => sum + snippetCounts(page.id).total, 0)
+
+  /**
+   * Rổ ký tự đặc biệt KHÔNG phải một ngôn ngữ, phải tách riêng ở cả hai chỗ: liệt kê
+   * chung thì câu thành "…JSON, special characters, and a special-characters drill", còn
+   * ghép vào khuôn liên kết thì ra "Practice typing special characters code".
+   *
+   * Cùng lý do file seo-pages-content.mjs phải cho trang này `titleTail` và `intro`
+   * riêng — khuôn chung luôn gãy ở đúng mục này.
+   */
+  const isDrill = (page) => page.slug === 'special-characters'
+  const languages = pages.filter((page) => !isDrill(page))
+
+  // Rổ nhỏ nhất trên toàn bộ ngôn ngữ — câu "ít nhất N bài mỗi mốc" phải đúng với
+  // ngôn ngữ nghèo bài nhất, không thì thành quảng cáo sai.
+  const perBucket = Math.min(
+    ...pages.flatMap((page) => {
+      const c = snippetCounts(page.id)
+      return [c.short, c.medium, c.long]
+    }),
+  )
+
+  /**
+   * Đếm CẢ rổ ký tự đặc biệt: thẻ title, JSON-LD, README và các bài viết đều nói "14
+   * languages". Sửa riêng chỗ này thành 13 là để hai con số khác nhau trên cùng một
+   * trang — tệ hơn hẳn việc gọi rổ ký tự là một "ngôn ngữ".
+   */
+  const stats = `
+        <h2>${pages.length} languages, ${total.toLocaleString('en-US')} code snippets</h2>
+        <p>
+          ${languages.map((page) => page.label).join(', ')}, and a special-characters drill.
+          Every language has at least ${perBucket} snippets for each of the 15, 30 and 60
+          second runs, served in shuffled order so you never repeat one before finishing a
+          full round — even across page reloads.
+        </p>
+        `
+
+  const linkFor = (page) =>
+    isDrill(page)
+      ? `          <li><a href="/practice/${page.slug}/">Practice brackets, operators and symbols</a></li>`
+      : `          <li><a href="/practice/${page.slug}/">Practice typing ${page.label} code</a></li>`
+
+  const links = `
+        <ul>
+${pages.map(linkFor).join('\n')}
+          <li><a href="/practice/">All ${pages.length} languages in one place</a></li>
+        </ul>
+        `
+
+  html = replaceRegion(html, 'stats', stats)
+  html = replaceRegion(html, 'links', links)
+
+  writeFileSync(path, html, 'utf8')
+  console.log(`  index.html (${total} bai, ${pages.length + 1} lien ket noi bo)`)
+}
+
 async function main() {
   const { snippetCounts, sampleSnippets } = await loadSnippetCounts()
 
@@ -413,6 +501,8 @@ async function main() {
 
   writeFileSync(`${DIST}/practice/index.html`, renderHub(LANGUAGE_PAGES, snippetCounts), 'utf8')
   console.log('  /practice/  (trang hub)')
+
+  patchIndexHtml(snippetCounts)
 
   const sitemap = renderSitemap(LANGUAGE_PAGES)
   writeFileSync(`${DIST}/sitemap.xml`, sitemap, 'utf8')

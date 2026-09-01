@@ -119,13 +119,39 @@
           brackets, operators, semicolons and indentation — the characters that actually
           slow you down while programming.
         </p>
-        <h2>14 languages, 2,170 snippets</h2>
+        <!--
+          Vùng số liệu và danh sách liên kết được `scripts/generate-seo-pages.mjs` GHI ĐÈ
+          lúc build bằng số đếm thật từ dữ liệu. Số trong nguồn chỉ là chỗ giữ chỗ cho dev
+          server; bản production luôn đúng.
+
+          Lý do phải tự động: lần trước thêm 420 bài xong thì trang chủ vẫn quảng cáo
+          "2,170 snippets" — không ai phát hiện vì trang vẫn build ra bình thường.
+        -->
+        <!--seo:stats-->
+        <h2>14 languages, 2,590 code snippets</h2>
         <p>
           JavaScript, TypeScript, C#, Python, Java, Go, SQL, Bash, C/C++, Rust, HTML, CSS,
-          JSON, and a special-characters drill. Every language has at least 50 snippets for
+          JSON, and a special-characters drill. Every language has at least 60 snippets for
           each of the 15, 30 and 60 second runs, served in shuffled order so you never
           repeat one before finishing a full round — even across page reloads.
         </p>
+        <!--/seo:stats-->
+
+        <h2>Practice typing code by language</h2>
+        <!--
+          Liên kết nội bộ, KHÔNG phải trang trí: trước đây trang chủ không trỏ tới một
+          trang /practice/ nào, nên Google chỉ tìm ra chúng qua sitemap và không có sức
+          mạnh liên kết nào chảy xuống. Chữ neo cố ý mang đúng từ khoá của từng trang.
+        -->
+        <!--seo:links-->
+        <ul>
+          <li><a href="/practice/javascript/">Practice typing JavaScript code</a></li>
+          <li><a href="/practice/typescript/">Practice typing TypeScript code</a></li>
+          <li><a href="/practice/python/">Practice typing Python code</a></li>
+          <li><a href="/practice/rust/">Practice typing Rust code</a></li>
+          <li><a href="/practice/">All 14 languages</a></li>
+        </ul>
+        <!--/seo:links-->
         <h2>What it measures</h2>
         <p>
           WPM, CPM, accuracy, raw speed and consistency, plus the characters you miss most
@@ -154,6 +180,56 @@
           Install Typre to your home screen and keep practising without a network — the
           whole snippet library ships with the app. No account needed to type, no ads, no
           payment.
+        </p>
+
+        <!--
+          Hỏi–đáp viết bằng đúng câu người ta gõ vào Google ("is there a typing test for
+          programmers", "how do I get faster at typing code"). Cố ý KHÔNG gắn schema
+          FAQPage: từ 2023 Google chỉ hiện kết quả FAQ mở rộng cho trang chính phủ và y
+          tế, nên gắn vào chỉ tốn dòng chứ không được gì. Giá trị nằm ở phần chữ.
+        -->
+        <h2>Questions</h2>
+
+        <h3>Is there a typing test for programmers?</h3>
+        <p>
+          That is what Typre is. Ordinary typing tests feed you English prose, so you never
+          practise the keys that actually slow you down while coding. Here every run is real
+          code, and the timer, WPM and accuracy work the same way you are used to.
+        </p>
+
+        <h3>How do I get faster at typing code?</h3>
+        <p>
+          Practise the characters, not the words. Brackets, operators and punctuation are
+          where most programmers lose time, because they sit on the shifted row and rarely
+          appear in prose. Typre has a drill made of nothing but those characters, plus real
+          snippets in the language you actually write.
+        </p>
+
+        <h3>Is Typre free?</h3>
+        <p>
+          Yes, and there is no account required to type. Signing in only adds the
+          leaderboard, friends and syncing your XP between devices. No ads, no paid tier.
+        </p>
+
+        <h3>Which programming languages can I practise?</h3>
+        <p>
+          Fourteen: JavaScript, TypeScript, C#, Python, Java, Go, SQL, Bash, C/C++, Rust,
+          HTML, CSS, JSON, and a punctuation drill. You can also paste code from your own
+          project and type that instead.
+        </p>
+
+        <h3>Does it work without internet?</h3>
+        <p>
+          Yes. Every snippet ships inside the app, so once it has loaded you can keep
+          practising with no network at all. Only the leaderboard needs a connection.
+        </p>
+
+        <h3>How is WPM measured?</h3>
+        <p>
+          A word counts as five characters, so WPM is correct characters divided by five,
+          divided by minutes elapsed. Raw WPM counts every keystroke including mistakes, and
+          consistency compares your speed second by second — steady typing scores higher
+          than bursts followed by pauses.
         </p>
       </main>
     </div>
