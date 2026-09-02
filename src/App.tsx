@@ -24,6 +24,14 @@ import { WpmChart } from './components/WpmChart'
 const Leaderboard = lazyChunk('Leaderboard', () =>
   import('./components/Leaderboard').then((m) => ({ default: m.Leaderboard })),
 )
+
+/**
+ * Tai dong BAT BUOC, khong phai toi uu cho vui: chess.js nang 723 KB giai nen. Import
+ * tinh la moi nguoi vao trang deu tai no, ke ca nguoi khong bao gio mo che do co.
+ */
+const ChessMode = lazyChunk('ChessMode', () =>
+  import('./components/ChessMode').then((m) => ({ default: m.ChessMode })),
+)
 import { SubmitScore } from './components/SubmitScore'
 // Cấp độ + thành tích: chỉ tải khi người dùng bấm huy hiệu ở header.
 const ProgressDialog = lazyChunk('ProgressDialog', () =>
@@ -627,14 +635,20 @@ function App() {
             <LevelBadge xp={xp} onClick={() => setProgressOpen(true)} t={t} />
 
             <div className="flex gap-2">
-              {(['code', 'shortcuts', 'leaderboard'] as const).map((m) => (
+              {(['code', 'shortcuts', 'chess', 'leaderboard'] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setMode(m)}
                   className={mode === m ? TAB_BTN_ACTIVE : TAB_BTN}
                 >
-                  {m === 'code' ? t.modeCode : m === 'shortcuts' ? t.modeShortcuts : t.modeLeaderboard}
+                  {m === 'code'
+                    ? t.modeCode
+                    : m === 'shortcuts'
+                      ? t.modeShortcuts
+                      : m === 'chess'
+                        ? t.modeChess
+                        : t.modeLeaderboard}
                 </button>
               ))}
             </div>
@@ -992,6 +1006,20 @@ function App() {
             t={t}
           />
         </>
+      )}
+
+      {mode === 'chess' && (
+        <Suspense
+          fallback={<div className="font-mono text-sm text-zinc-500">{t.leaderboardLoading}</div>}
+        >
+          <ChessMode
+            language={language}
+            languages={LANGUAGES}
+            onSelectLanguage={setLanguage}
+            myName={raceName}
+            t={t}
+          />
+        </Suspense>
       )}
 
       {mode === 'leaderboard' && (

@@ -8,11 +8,13 @@
     "build": "tsc -b && vite build && node scripts/generate-seo-pages.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
-    "indexnow": "node scripts/ping-indexnow.mjs"
+    "indexnow": "node scripts/ping-indexnow.mjs",
+    "test:chess": "tsx scripts/chess-parsers.test.mts && tsx scripts/chess-service.test.mts && tsx scripts/chess-bot.test.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.1",
     "@vercel/analytics": "^2.0.1",
+    "chess.js": "^1.4.0",
     "lucide-react": "^1.28.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -27,6 +29,7 @@
     "@vitejs/plugin-react": "^6.0.4",
     "oxlint": "^1.75.0",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
     "typescript": "~6.0.2",
     "vite": "^8.2.0"
   }

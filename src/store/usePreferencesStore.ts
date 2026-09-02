@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { SnippetLanguage } from '../data/types'
 
-export type PracticeMode = 'code' | 'shortcuts' | 'leaderboard'
+export type PracticeMode = 'code' | 'shortcuts' | 'chess' | 'leaderboard'
 export type ShortcutSet = 'vscode' | 'vim'
 
 interface PreferencesState {
