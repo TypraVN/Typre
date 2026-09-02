@@ -28,6 +28,34 @@ export const LANGUAGES: SnippetLanguage[] = [
 ]
 
 /**
+ * Slug trang /practice/ của từng ngôn ngữ.
+ *
+ * Gần như trùng với id, TRỪ `text` — trang của nó nhắm từ khoá "special characters" chứ
+ * không ai tìm "text typing practice". Chính cái ngoại lệ đó là lý do phải có bảng này:
+ * chân trang mà tự suy slug từ id sẽ trỏ vào /practice/text/ và ra 404 lặng lẽ.
+ *
+ * Nguồn thật của các slug là `scripts/seo-pages-content.mjs` (nó sinh ra file HTML).
+ * `scripts/seo-links.test.mts` đối chiếu hai bên, nên lệch nhau là test đỏ chứ không phải
+ * người dùng bấm mới biết.
+ */
+export const PRACTICE_SLUG: Record<SnippetLanguage, string> = {
+  javascript: 'javascript',
+  typescript: 'typescript',
+  csharp: 'csharp',
+  python: 'python',
+  java: 'java',
+  go: 'go',
+  sql: 'sql',
+  bash: 'bash',
+  cpp: 'cpp',
+  rust: 'rust',
+  html: 'html',
+  css: 'css',
+  json: 'json',
+  text: 'special-characters',
+}
+
+/**
  * Ba mốc thời gian.
  *
  * Đổi bộ này thì phải sửa ĐỒNG BỘ cả `check (time_limit in ...)` trong

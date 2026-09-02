@@ -11,7 +11,8 @@
     "indexnow": "node scripts/ping-indexnow.mjs",
     "test:chess": "tsx scripts/chess-parsers.test.mts && tsx scripts/chess-service.test.mts && tsx scripts/chess-bot.test.mts && tsx scripts/chess-clock.test.mts",
     "test:snippets": "tsx scripts/snippets-typeable.test.mts",
-    "test": "npm run test:snippets && npm run test:chess"
+    "test:seo": "tsx scripts/seo-links.test.mts",
+    "test": "npm run test:snippets && npm run test:seo && npm run test:chess"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.1",

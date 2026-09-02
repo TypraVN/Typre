@@ -97,6 +97,53 @@
       }
     </script>
 
+    <!--
+      Khai báo THỰC THỂ thương hiệu, khác với WebApplication ở trên (cái đó tả sản phẩm).
+
+      "Typre" là từ bịa, và với Google nó trông y hệt một lỗi gõ của "typer" — đúng là
+      "typer" đảo hai chữ cuối. Gõ đúng tên mình mà máy tìm hỏi lại "ý bạn là typer?" thì
+      mất trắng lượt tìm kiếm mang tên mình, và đây là lượt dễ chuyển thành người dùng
+      nhất: họ đã biết tên rồi mới gõ.
+
+      Không chữa được bằng cách nhồi từ khoá. Phải cho Google một thực thể để bám: WebSite
+      là thứ nó đọc để hiện TÊN SITE trong kết quả thay vì "www.typre.dev", còn
+      Organization + sameAs nối cái tên đó với một hồ sơ có thật ở nơi khác — mã nguồn
+      trên GitHub, kiểm chứng được, nên cái tên không còn là một chuỗi ký tự lạ.
+
+      Để riêng một khối chứ không gộp vào khối trên: khối trên bị build ghi đè phần số
+      liệu, trộn vào là mỗi lần sinh lại phải đọc cả đống JSON không liên quan.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://www.typre.dev/#website",
+            "url": "https://www.typre.dev/",
+            "name": "Typre",
+            "alternateName": "Typre.dev",
+            "description": "Typre is a free typing trainer for programmers: real code in 14 languages instead of English prose.",
+            "inLanguage": "en",
+            "publisher": { "@id": "https://www.typre.dev/#organization" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://www.typre.dev/#organization",
+            "name": "Typre",
+            "url": "https://www.typre.dev/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://www.typre.dev/icon-512.png",
+              "width": 512,
+              "height": 512
+            },
+            "sameAs": ["https://github.com/TypraVN/Typre"]
+          }
+        ]
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -189,6 +236,27 @@
           tế, nên gắn vào chỉ tốn dòng chứ không được gì. Giá trị nằm ở phần chữ.
         -->
         <h2>Questions</h2>
+
+        <!--
+          Hai câu đầu là cho TRUY VẤN MANG TÊN THƯƠNG HIỆU: người đã biết tên rồi mới gõ,
+          nên đây là lượt tìm kiếm dễ ra người dùng nhất — và cũng là lượt dễ mất nhất,
+          vì "typre" trông y hệt lỗi gõ của "typer" nên máy tìm hay tự sửa. Viết thẳng
+          rằng tên đó là cố ý, và viết luôn cả cách gõ sai, để trang này là thứ hiện ra
+          dù người ta gõ kiểu nào.
+        -->
+        <h3>What is Typre?</h3>
+        <p>
+          Typre is a free typing trainer for programmers, at typre.dev. It works like an
+          ordinary typing test — timer, WPM, accuracy — except you type real code instead of
+          English prose, in 14 programming languages.
+        </p>
+
+        <h3>Is it spelled Typre or Typer?</h3>
+        <p>
+          Typre, with the r before the e. The name is "typer" with the last two letters
+          swapped. If you searched for Typer, Typra or type.dev and landed here, this is the
+          site you were looking for.
+        </p>
 
         <h3>Is there a typing test for programmers?</h3>
         <p>

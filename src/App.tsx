@@ -12,6 +12,7 @@ import {
   Bug,
 } from 'lucide-react'
 import { Toast, ToastStack } from './components/Toast'
+import { SiteFooter } from './components/SiteFooter'
 import { useTypingEngine } from './hooks/useTypingEngine'
 import { CodeEditorDisplay } from './components/CodeEditorDisplay'
 import { ShortcutTrainer } from './components/ShortcutTrainer'
@@ -1059,6 +1060,8 @@ function App() {
         </Suspense>
       )}
       </main>
+
+      <SiteFooter />
 
       <ToastStack>
         {/* Đăng nhập lỗi thì Supabase chỉ trả lý do trong URL rồi thôi — không hiện ra
