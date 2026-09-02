@@ -59,8 +59,10 @@ const BOT_LEVEL: Record<'bot-easy' | 'bot-medium' | 'bot-hard', BotLevel> = {
 
 const BTN =
   'px-3 py-1 text-sm rounded border cursor-pointer transition-colors duration-150 border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500'
-const BTN_ACTIVE =
-  'px-3 py-1 text-sm rounded border cursor-pointer transition-colors duration-150 border-orange-500 dark:border-orange-400 text-orange-500 dark:text-orange-400'
+
+/** Nhãn nhóm trong cột trái. Cùng kiểu với cột lọc của bảng xếp hạng. */
+const GROUP_LABEL =
+  'px-2 text-[11px] font-mono font-bold text-orange-600 dark:text-orange-500 uppercase tracking-widest'
 
 // Nut ngon ngu nho hon: co 14 cai, dung co chu nut doi thu thi tran ra hai ba dong.
 const SMALL_BTN =
@@ -434,125 +436,130 @@ export function ChessMode({
       : null
 
   return (
-    <div className="w-full max-w-3xl flex flex-col gap-5">
-      <p className="font-mono text-sm text-zinc-500 dark:text-zinc-400">{t.chessIntro}</p>
-
+    <div className="w-full max-w-4xl flex flex-col md:flex-row gap-6">
       {/*
-        Bộ chọn ngôn ngữ phải có Ở ĐÂY, không mượn của tab "Type code".
-        Cả điểm hay của chế độ này là gõ lệnh bằng ngôn ngữ khác nhau; bắt người chơi
-        chuyển tab để đổi rồi quay lại là chặn đúng thứ họ tới đây để làm.
+        Cột cài đặt bên trái, cùng khuôn với cột lọc của bảng xếp hạng.
 
-        Đổi giữa ván cũng được: thế cờ không liên quan gì tới ngôn ngữ của câu lệnh.
+        Ba nhóm này trước đây xếp thành ba hàng ngang chiếm hết phần trên màn hình, đẩy
+        bàn cờ xuống dưới nếp gấp. Chúng là thứ chọn MỘT LẦN rồi thôi, không đáng chiếm
+        chỗ của thứ người chơi nhìn suốt ván.
       */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="font-mono text-xs uppercase tracking-wider text-zinc-500 mr-1">
-          {t.langFilterLabel}
-        </span>
-        {languages.map((value) => (
-          <button
-            key={value}
-            type="button"
-            className={value === language ? SMALL_BTN_ACTIVE : SMALL_BTN}
-            onClick={() => onSelectLanguage(value)}
-          >
-            {value}
-          </button>
-        ))}
-      </div>
+      <aside className="md:w-44 shrink-0 flex flex-col gap-4">
+        {/*
+          Bộ chọn ngôn ngữ phải có Ở ĐÂY, không mượn của tab "Type code".
+          Cả điểm hay của chế độ này là gõ lệnh bằng ngôn ngữ khác nhau; bắt người chơi
+          chuyển tab để đổi rồi quay lại là chặn đúng thứ họ tới đây để làm.
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-xs uppercase tracking-wider text-zinc-500">
-          {t.chessOpponent}
-        </span>
-        {(['bot-easy', 'bot-medium', 'bot-hard', 'human', 'online'] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            className={opponent === value ? BTN_ACTIVE : BTN}
-            onClick={() => chooseOpponent(value)}
-            disabled={value === 'online' && !isLeaderboardEnabled}
-          >
-            {value === 'bot-easy'
-              ? t.chessBotEasy
-              : value === 'bot-medium'
-                ? t.chessBotMedium
-                : value === 'bot-hard'
-                  ? t.chessBotHard
-                  : value === 'human'
-                    ? t.chessTwoPlayers
-                    : t.chessOnline}
-          </button>
-        ))}
-      </div>
+          Đổi giữa ván cũng được: thế cờ không liên quan gì tới ngôn ngữ của câu lệnh.
+        */}
+        <div className="flex flex-col gap-1">
+          <div className={`${GROUP_LABEL} mb-1`}>{t.langFilterLabel}</div>
+          {/* Hai cột: 14 mục xếp dọc một cột thì cột này dài gấp đôi bàn cờ. */}
+          <div className="grid grid-cols-2 gap-x-1 gap-y-0.5">
+            {languages.map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={value === language ? SMALL_BTN_ACTIVE : SMALL_BTN}
+                onClick={() => onSelectLanguage(value)}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      {/*
-        Chọn màu quân, chỉ khi đấu bot.
-
-        Trực tuyến thì phòng chia theo thứ tự vào, còn hai người chung máy thì cả hai
-        dùng chung ô nhập nên màu không có nghĩa. Người chơi cờ có gu rõ về việc cầm
-        trắng hay đen, ép luôn cầm trắng là cắt mất một nửa số ván họ muốn chơi.
-      */}
-      {versusBot && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-xs uppercase tracking-wider text-zinc-500">
-            {t.chessPlayAs}
-          </span>
-          {(['w', 'b'] as const).map((value) => (
+        <div className="flex flex-col gap-1 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+          <div className={`${GROUP_LABEL} mb-1`}>{t.chessOpponent}</div>
+          {(['bot-easy', 'bot-medium', 'bot-hard', 'human', 'online'] as const).map((value) => (
             <button
               key={value}
               type="button"
-              className={preferredColor === value ? BTN_ACTIVE : BTN}
-              onClick={() => {
-                setPreferredColor(value)
-                setFlipped(value === 'b')
-                resetLocal()
-              }}
+              className={opponent === value ? SMALL_BTN_ACTIVE : SMALL_BTN}
+              onClick={() => chooseOpponent(value)}
+              disabled={value === 'online' && !isLeaderboardEnabled}
             >
-              {value === 'w' ? t.chessAsWhite : t.chessAsBlack}
+              {value === 'bot-easy'
+                ? t.chessBotEasy
+                : value === 'bot-medium'
+                  ? t.chessBotMedium
+                  : value === 'bot-hard'
+                    ? t.chessBotHard
+                    : value === 'human'
+                      ? t.chessTwoPlayers
+                      : t.chessOnline}
             </button>
           ))}
         </div>
-      )}
 
-      {/*
-        Đồng hồ TẮT ĐƯỢC.
+        {/*
+          Chọn màu quân, chỉ khi đấu bot.
 
-        App này để luyện gõ; ép 15 phút lên người đang mò cú pháp Rust là chặn đúng mục
-        đích chính của họ. Mặc định bật vì cờ có đồng hồ mới ra cờ.
-      */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-xs uppercase tracking-wider text-zinc-500">
-          {t.chessClockLabel}
-        </span>
-        {[true, false].map((value) => (
-          <button
-            key={String(value)}
-            type="button"
-            className={clockOn === value ? BTN_ACTIVE : BTN}
-            onClick={() => {
-              setClockOn(value)
-              resetLocal()
-            }}
-          >
-            {value ? t.chessClock15 : t.chessClockOff}
-          </button>
-        ))}
-      </div>
+          Trực tuyến thì phòng chia theo thứ tự vào, còn hai người chung máy thì cả hai
+          dùng chung ô nhập nên màu không có nghĩa. Người chơi cờ có gu rõ về việc cầm
+          trắng hay đen, ép luôn cầm trắng là cắt mất một nửa số ván họ muốn chơi.
+        */}
+        {versusBot && (
+          <div className="flex flex-col gap-1 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+            <div className={`${GROUP_LABEL} mb-1`}>{t.chessPlayAs}</div>
+            {(['w', 'b'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={preferredColor === value ? SMALL_BTN_ACTIVE : SMALL_BTN}
+                onClick={() => {
+                  setPreferredColor(value)
+                  setFlipped(value === 'b')
+                  resetLocal()
+                }}
+              >
+                {value === 'w' ? t.chessAsWhite : t.chessAsBlack}
+              </button>
+            ))}
+          </div>
+        )}
 
-      {online && (
-        <OnlinePanel
-          roomId={roomId}
-          connected={room.connected}
-          ready={room.ready}
-          myColor={room.myColor}
-          opponentName={room.opponentName}
-          opponentLeft={room.opponentLeft}
-          onLeave={leaveRoom}
-          t={t}
-        />
-      )}
+        {/*
+          Đồng hồ TẮT ĐƯỢC.
 
-      <div className="flex flex-col md:flex-row gap-6">
+          App này để luyện gõ; ép 15 phút lên người đang mò cú pháp Rust là chặn đúng mục
+          đích chính của họ. Mặc định bật vì cờ có đồng hồ mới ra cờ.
+        */}
+        <div className="flex flex-col gap-1 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+          <div className={`${GROUP_LABEL} mb-1`}>{t.chessClockLabel}</div>
+          {[true, false].map((value) => (
+            <button
+              key={String(value)}
+              type="button"
+              className={clockOn === value ? SMALL_BTN_ACTIVE : SMALL_BTN}
+              onClick={() => {
+                setClockOn(value)
+                resetLocal()
+              }}
+            >
+              {value ? t.chessClock15 : t.chessClockOff}
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      <div className="flex-1 min-w-0 flex flex-col gap-5">
+        <p className="font-mono text-sm text-zinc-500 dark:text-zinc-400">{t.chessIntro}</p>
+
+        {online && (
+          <OnlinePanel
+            roomId={roomId}
+            connected={room.connected}
+            ready={room.ready}
+            myColor={room.myColor}
+            opponentName={room.opponentName}
+            opponentLeft={room.opponentLeft}
+            onLeave={leaveRoom}
+            t={t}
+          />
+        )}
+
+        <div className="flex flex-col lg:flex-row gap-6">
         <ChessBoard
           pieces={pieces}
           lastMove={lastMove}
@@ -694,7 +701,8 @@ export function ChessMode({
             {lastCommandRef.current.slice(badToken.at + badToken.text.length)}
           </pre>
         )}
-      </form>
+        </form>
+      </div>
     </div>
   )
 }
