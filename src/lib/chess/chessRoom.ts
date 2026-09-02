@@ -9,6 +9,7 @@
  * cần rewrite trên hosting tĩnh.
  */
 
+import type { ClockSnapshot } from './clock'
 import type { Color, ParsedMove } from './types'
 
 const HASH_RE = /^#\/cg\/([a-z0-9]{6})$/i
@@ -82,9 +83,19 @@ export interface MoveMessage {
    * khác nhau mà không ai biết.
    */
   fen: string
+  /**
+   * Giờ còn lại của hai bên NGAY SAU nước này.
+   *
+   * Bên vừa đi mới là bên biết chính xác họ đã dùng bao lâu, nên giờ họ gửi là nguồn
+   * đúng. Không đồng bộ thì hai đồng hồ trôi dần khỏi nhau, và cuối ván hai người nhìn
+   * hai con số khác hẳn.
+   */
+  clock?: ClockSnapshot
 }
 
 export interface SyncMessage {
   fen: string
   history: string[]
+  /** Giờ hiện tại, để người vào lại giữa ván không được cấp 15 phút mới. */
+  clock?: ClockSnapshot
 }

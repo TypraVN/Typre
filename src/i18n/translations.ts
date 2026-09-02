@@ -205,6 +205,13 @@ export const translations = {
   chessResignConfirm: 'resign this game?',
   chessResigned: 'you resigned',
   chessOpponentResigned: 'your opponent resigned — you win',
+  chessClockLabel: 'clock',
+  chessClock15: '15 min each',
+  chessClockOff: 'no clock',
+  chessFlagWhite: 'white ran out of time — black wins',
+  chessFlagBlack: 'black ran out of time — white wins',
+  chessFlagDraw: 'out of time, but the other side cannot checkmate — draw',
+  chessClockNote: 'Each side has 15 minutes for the whole game.',
 
   // Thông báo lỗi của chế độ cờ. {x} là chỗ ghép dữ liệu vào.
   chessErrEmpty: 'Type a command first.',

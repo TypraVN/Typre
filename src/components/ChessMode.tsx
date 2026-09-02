@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChessBoard } from './ChessBoard'
+import { ChessClock } from './ChessClock'
 import { CopyLinkButton } from './CopyLinkButton'
 import { ChessService } from '../lib/chess/chessService'
 import { pickMove, type BotLevel } from '../lib/chess/chessBot'
 import { examplesFor, parseCommand } from '../lib/chess/commandParsers'
 import { describeMoveError, describeParseError } from '../lib/chess/describe'
+import {
+  INITIAL_MS,
+  flagged,
+  timeoutResult,
+  newClock,
+  remaining,
+  stop,
+  switchTurn,
+  type ClockState,
+} from '../lib/chess/clock'
 import {
   buildRoomUrl,
   clearRoomHash,
@@ -34,6 +45,11 @@ interface ChessModeProps {
 }
 
 type Opponent = 'bot-easy' | 'bot-medium' | 'bot-hard' | 'human' | 'online'
+
+/** Ván dừng không do luật cờ. `draw` chỉ có nghĩa với hết giờ (luật FIDE 6.9). */
+type ManualEnd =
+  | { kind: 'resign'; loser: Color }
+  | { kind: 'timeout'; loser: Color; draw: boolean }
 
 const BOT_LEVEL: Record<'bot-easy' | 'bot-medium' | 'bot-hard', BotLevel> = {
   'bot-easy': 'easy',
@@ -78,8 +94,17 @@ export function ChessMode({
   const [flipped, setFlipped] = useState(false)
   /** Màu người chơi chọn khi đấu bot. Trực tuyến thì phòng chia, không dùng cái này. */
   const [preferredColor, setPreferredColor] = useState<Color>('w')
-  /** Ai đã xin thua. `null` = chưa ai. */
-  const [resignedBy, setResignedBy] = useState<Color | null>(null)
+  /**
+   * Ván kết thúc KHÔNG do luật cờ: xin thua hoặc hết giờ.
+   *
+   * Gộp một chỗ thay vì hai cờ riêng — hai cờ thì mỗi lần thêm cách kết thúc lại phải
+   * nhớ kiểm cả hai ở năm chỗ, và quên một chỗ là ván vẫn cho đi tiếp sau khi đã xong.
+   */
+  const [manualEnd, setManualEnd] = useState<ManualEnd | null>(null)
+  const [clockOn, setClockOn] = useState(true)
+  const [clock, setClock] = useState<ClockState>(() => newClock('w'))
+  /** Chỉ để VẼ LẠI đồng hồ. Giờ thật tính bằng hiệu hai mốc, không bằng số nhịp. */
+  const [now, setNow] = useState(() => Date.now())
   /** Đoạn văn bản gõ sai, để gạch đỏ dưới ô nhập. */
   const [badToken, setBadToken] = useState<{ text: string; at: number } | null>(null)
 
@@ -106,7 +131,8 @@ export function ChessMode({
     setError(null)
     setHintSquares([])
     setBadToken(null)
-    setResignedBy(null)
+    setManualEnd(null)
+    setClock(newClock('w'))
     setInput('')
   }, [service])
 
@@ -134,6 +160,18 @@ export function ChessMode({
 
       setLastMove({ from: message.move.from, to: message.move.to })
       setError(null)
+
+      /**
+       * Nhận giờ từ bên vừa đi.
+       *
+       * Họ mới là bên biết chính xác đã dùng bao lâu. Tự tính ở đây thì độ trễ mạng bị
+       * tính vào giờ của họ, và mỗi nước lại lệch thêm một chút.
+       */
+      setClock((current) => ({
+        base: message.clock ?? remaining(current, Date.now()),
+        turn: service.state.turn,
+        runningSince: Date.now(),
+      }))
 
       // Doi thu di khi minh dang nhin cho khac — khong co tieng thi khong biet toi luot.
       if (service.state.isOver) playFinish()
@@ -164,7 +202,7 @@ export function ChessMode({
   }, [resetLocal])
 
   const onResign = useCallback((color: Color) => {
-    setResignedBy(color)
+    setManualEnd({ kind: 'resign', loser: color })
     playFinish()
   }, [])
 
@@ -187,6 +225,54 @@ export function ChessMode({
 
   const examples = useMemo(() => examplesFor(language), [language])
 
+  const times = clockOn
+    ? remaining(clock, now)
+    : { whiteMs: INITIAL_MS, blackMs: INITIAL_MS }
+
+  /**
+   * Nhịp vẽ lại đồng hồ.
+   *
+   * CHỈ để vẽ. Giờ thật tính bằng hiệu hai mốc thời gian, nên tab chạy nền bị trình duyệt
+   * bóp nhịp cũng không ai được lợi giờ.
+   */
+  useEffect(() => {
+    if (!clockOn || clock.runningSince === null) return
+
+    const id = setInterval(() => setNow(Date.now()), 100)
+    return () => clearInterval(id)
+  }, [clockOn, clock.runningSince])
+
+  /**
+   * Hết giờ.
+   *
+   * Luật FIDE 6.9: hết giờ mà bên kia KHÔNG đủ quân chiếu hết thì HOÀ, không phải thua.
+   * Thiếu vế này thì người còn mỗi vua vẫn "thắng" khi đối thủ hết giờ — ai biết luật
+   * cũng nhận ra ngay.
+   */
+  useEffect(() => {
+    if (!clockOn || manualEnd || state.isOver || clock.runningSince === null) return
+
+    /**
+     * Tính lại giờ NGAY TRONG effect thay vì phụ thuộc vào biến `times` bên ngoài.
+     *
+     * `times` là object mới mỗi lần vẽ, nên đưa nó vào mảng phụ thuộc là effect chạy sau
+     * mọi lần vẽ, kể cả những lần chẳng liên quan gì tới đồng hồ.
+     */
+    const flag = flagged(remaining(clock, now))
+    if (!flag) return
+
+    setManualEnd({ kind: 'timeout', ...timeoutResult(state.fen, flag) })
+    setClock((current) => stop(current, Date.now()))
+    playFinish()
+  }, [clockOn, manualEnd, state.isOver, state.fen, clock, now])
+
+  /** Ván kết thúc theo luật cờ thì cũng phải dừng đồng hồ. */
+  useEffect(() => {
+    if (state.isOver && clock.runningSince !== null) {
+      setClock((current) => stop(current, Date.now()))
+    }
+  }, [state.isOver, clock.runningSince])
+
   /** Cầm quân Đen thì tự lật bàn — không ai muốn chơi mà quân mình ở phía xa. */
   useEffect(() => {
     if (myColor === 'b') setFlipped(true)
@@ -207,7 +293,7 @@ export function ChessMode({
   const resign = useCallback(() => {
     if (myColor === null) return
 
-    setResignedBy(myColor)
+    setManualEnd({ kind: 'resign', loser: myColor })
     playFinish()
     if (online) room.sendResign(myColor)
   }, [myColor, online, room])
@@ -232,7 +318,7 @@ export function ChessMode({
    * chữ "bot đang nghĩ", người chơi thấy trang đơ chứ không thấy phản hồi nào.
    */
   useEffect(() => {
-    if (!versusBot || state.isOver || resignedBy || state.turn === preferredColor) return
+    if (!versusBot || state.isOver || manualEnd || state.turn === preferredColor) return
 
     setThinking(true)
     let cancelled = false
@@ -251,6 +337,12 @@ export function ChessMode({
           setLastMove({ from: move.from, to: move.to })
           if (result.state.isOver) playFinish()
           else playCorrect()
+
+          const at = Date.now()
+          setClock((current) => {
+            const next = switchTurn(current, result.state.turn, at)
+            return result.state.isOver ? stop(next, at) : next
+          })
         }
       }
 
@@ -262,7 +354,7 @@ export function ChessMode({
       clearTimeout(id)
       setThinking(false)
     }
-  }, [state.fen, state.turn, state.isOver, versusBot, opponent, preferredColor, resignedBy, service])
+  }, [state.fen, state.turn, state.isOver, versusBot, opponent, preferredColor, manualEnd, service])
 
   function chooseOpponent(value: Opponent) {
     setOpponent(value)
@@ -288,7 +380,7 @@ export function ChessMode({
   function submit(event: React.FormEvent) {
     event.preventDefault()
 
-    if (state.isOver || resignedBy || thinking || !myTurn) return
+    if (state.isOver || manualEnd || thinking || !myTurn) return
 
     lastCommandRef.current = input
     const parsed = parseCommand(language, input)
@@ -327,7 +419,11 @@ export function ChessMode({
     if (result.state.isOver) playFinish()
     else playCorrect()
 
-    if (online) room.sendMove(parsed.move, result.state.fen)
+    const at = Date.now()
+    const next = switchTurn(clock, result.state.turn, at)
+    setClock(result.state.isOver ? stop(next, at) : next)
+
+    if (online) room.sendMove(parsed.move, result.state.fen, next.base)
   }
 
   const pieces = service.pieces()
@@ -418,6 +514,31 @@ export function ChessMode({
         </div>
       )}
 
+      {/*
+        Đồng hồ TẮT ĐƯỢC.
+
+        App này để luyện gõ; ép 15 phút lên người đang mò cú pháp Rust là chặn đúng mục
+        đích chính của họ. Mặc định bật vì cờ có đồng hồ mới ra cờ.
+      */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-xs uppercase tracking-wider text-zinc-500">
+          {t.chessClockLabel}
+        </span>
+        {[true, false].map((value) => (
+          <button
+            key={String(value)}
+            type="button"
+            className={clockOn === value ? BTN_ACTIVE : BTN}
+            onClick={() => {
+              setClockOn(value)
+              resetLocal()
+            }}
+          >
+            {value ? t.chessClock15 : t.chessClockOff}
+          </button>
+        ))}
+      </div>
+
       {online && (
         <OnlinePanel
           roomId={roomId}
@@ -441,10 +562,19 @@ export function ChessMode({
         />
 
         <div className="flex-1 min-w-0 flex flex-col gap-3 font-mono text-sm">
+          {clockOn && (
+            <ChessClock
+              whiteMs={times.whiteMs}
+              blackMs={times.blackMs}
+              running={clock.runningSince === null ? null : clock.turn}
+              flipped={flipped}
+            />
+          )}
+
           <StatusLine
             state={state}
             thinking={thinking}
-            resignedBy={resignedBy}
+            manualEnd={manualEnd}
             myColor={myColor}
             t={t}
           />
@@ -469,7 +599,7 @@ export function ChessMode({
               {t.chessFlip}
             </button>
             {/* Chỉ có nghĩa khi có đối thủ thật: hai người chung máy thì cứ bảo nhau. */}
-            {(online || versusBot) && !state.isOver && !resignedBy && state.history.length > 0 && (
+            {(online || versusBot) && !state.isOver && !manualEnd && state.history.length > 0 && (
               <button
                 type="button"
                 className={BTN}
@@ -506,7 +636,7 @@ export function ChessMode({
                 setBadToken(null)
               }
             }}
-            disabled={state.isOver || Boolean(resignedBy) || thinking || !myTurn}
+            disabled={state.isOver || Boolean(manualEnd) || thinking || !myTurn}
             placeholder={state.isOver ? '' : !myTurn ? t.chessWaitTurn : t.chessCommandPlaceholder}
             spellCheck={false}
             autoComplete="off"
@@ -515,7 +645,7 @@ export function ChessMode({
           />
           <button
             type="submit"
-            disabled={state.isOver || Boolean(resignedBy) || thinking || !myTurn}
+            disabled={state.isOver || Boolean(manualEnd) || thinking || !myTurn}
             className="px-4 py-2 rounded text-sm font-medium cursor-pointer bg-orange-500 text-zinc-900 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {t.chessSubmit}
@@ -644,21 +774,33 @@ function OnlinePanel({
 function StatusLine({
   state,
   thinking,
-  resignedBy,
+  manualEnd,
   myColor,
   t,
 }: {
   state: GameState
   thinking: boolean
-  resignedBy: Color | null
+  manualEnd: ManualEnd | null
   myColor: Color | null
   t: Translation
 }) {
-  // Xin thua đứng TRƯỚC mọi trạng thái khác: ván dừng ngay, không quan tâm thế cờ.
-  if (resignedBy) {
+  // Xin thua / hết giờ đứng TRƯỚC mọi trạng thái khác: ván dừng ngay, bất kể thế cờ.
+  if (manualEnd) {
+    if (manualEnd.kind === 'resign') {
+      return (
+        <div className="text-orange-600 dark:text-orange-400 font-bold">
+          {manualEnd.loser === myColor ? t.chessResigned : t.chessOpponentResigned}
+        </div>
+      )
+    }
+
     return (
       <div className="text-orange-600 dark:text-orange-400 font-bold">
-        {resignedBy === myColor ? t.chessResigned : t.chessOpponentResigned}
+        {manualEnd.draw
+          ? t.chessFlagDraw
+          : manualEnd.loser === 'w'
+            ? t.chessFlagWhite
+            : t.chessFlagBlack}
       </div>
     )
   }

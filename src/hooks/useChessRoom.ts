@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { getSupabase } from '../lib/supabase'
 import { colorFor, type MoveMessage, type RoomMember, type SyncMessage } from '../lib/chess/chessRoom'
+import type { ClockSnapshot } from '../lib/chess/clock'
 import type { Color, ParsedMove } from '../lib/chess/types'
 
 export interface ChessRoomHandlers {
@@ -34,7 +35,7 @@ export interface ChessRoomState {
    * đối thủ đã bỏ đi từ lâu.
    */
   opponentLeft: boolean
-  sendMove: (move: ParsedMove, fen: string) => void
+  sendMove: (move: ParsedMove, fen: string, clock?: ClockSnapshot) => void
   sendReset: () => void
   sendResign: (color: Color) => void
 }
@@ -154,11 +155,11 @@ export function useChessRoom(
     }
   }, [roomId, myName])
 
-  const sendMove = useCallback((move: ParsedMove, fen: string) => {
+  const sendMove = useCallback((move: ParsedMove, fen: string, clock?: ClockSnapshot) => {
     void channelRef.current?.send({
       type: 'broadcast',
       event: 'move',
-      payload: { move, fen } satisfies MoveMessage,
+      payload: { move, fen, clock } satisfies MoveMessage,
     })
   }, [])
 
