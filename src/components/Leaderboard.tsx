@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Crown, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   fetchLeaderboardPage,
@@ -136,8 +136,18 @@ export function Leaderboard({
     }
   }, [scope, currentUser])
 
-  /** Danh sách truyền xuống truy vấn: `undefined` = không lọc. */
-  const scopeIds = scope === 'friends' ? (friendIds ?? undefined) : undefined
+  /**
+   * Ghi nhớ để dùng làm phụ thuộc của effect được.
+   *
+   * Không có `useMemo` thì đây là mảng MỚI mỗi lần vẽ, nên phải khai `scope` và
+   * `friendIds` thay cho nó trong mảng phụ thuộc — đúng về hành vi nhưng lint không nhìn
+   * ra và cảnh báo. Cảnh báo giả làm lu mờ cảnh báo thật, nên thà sửa cho phụ thuộc
+   * thành thật.
+   */
+  const scopeIds = useMemo(
+    () => (scope === 'friends' ? (friendIds ?? undefined) : undefined),
+    [scope, friendIds],
+  )
   const waitingForFriends = scope === 'friends' && friendIds === null
 
   useEffect(() => {
@@ -167,7 +177,7 @@ export function Leaderboard({
     return () => {
       cancelled = true
     }
-  }, [language, timeLimit, page, period, scope, friendIds, waitingForFriends])
+  }, [language, timeLimit, page, period, scopeIds, waitingForFriends])
 
   useEffect(() => {
     if (!isLeaderboardEnabled || !currentUser) {
@@ -181,7 +191,7 @@ export function Leaderboard({
     return () => {
       cancelled = true
     }
-  }, [language, timeLimit, currentUser, period, scope, friendIds])
+  }, [language, timeLimit, currentUser, period, scopeIds])
 
   if (!isLeaderboardEnabled) {
     return (

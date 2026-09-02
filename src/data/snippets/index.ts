@@ -165,6 +165,33 @@ const POOLS: Record<SnippetLanguage, Record<Bucket, Snippet[]>> = Object.fromEnt
  * phải LẤY TỪ ĐÂY chứ không viết cứng vào trang, không thì thêm bài xong là trang quảng
  * cáo một con số sai — vừa mất uy tín vừa không ai biết để sửa.
  */
+/**
+ * MỌI snippet trong kho, cả ba rổ, không trùng lặp.
+ *
+ * `SNIPPETS` chỉ chứa bài viết tay + bài bổ sung; rổ 30s và 60s nằm ở `MEDIUM_SNIPPETS`
+ * và `LONG_SNIPPETS`. Bộ quét chất lượng dữ liệu phải thấy HẾT — bản quét đầu của tôi
+ * dùng `SNIPPETS` và chỉ chạm được 955 trong 2.590 bài, tức bỏ sót hai phần ba kho.
+ */
+export function allSnippets(): Array<{ language: SnippetLanguage; snippet: Snippet }> {
+  const out: Array<{ language: SnippetLanguage; snippet: Snippet }> = []
+  const seen = new Set<string>()
+
+  for (const language of Object.keys(POOLS) as SnippetLanguage[]) {
+    const pools = POOLS[language]
+
+    for (const snippet of [...pools.short, ...pools.medium, ...pools.long]) {
+      // Bài đủ dài trong `SNIPPETS` được gom vào cả rổ 30s, nên phải lọc trùng.
+      const key = `${language}|${snippet.id}`
+      if (seen.has(key)) continue
+
+      seen.add(key)
+      out.push({ language, snippet })
+    }
+  }
+
+  return out
+}
+
 export function snippetCounts(language: SnippetLanguage): {
   short: number
   medium: number

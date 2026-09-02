@@ -59,5 +59,5 @@ export const textBulk = defineSnippets('text', 'txt-x', [
   `(?<name>\\w+)@(?=\\w)`,
   `--flag=value -f -- --`,
   `2>&1 1>/dev/null <<EOF`,
-  `\u00ab \u00bb \u201c \u201d \u2018 \u2019 \u2014 \u2013`,
+  `<< >> "" '' -- ---`,
 ])

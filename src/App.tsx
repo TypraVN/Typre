@@ -76,25 +76,11 @@ import { useUiThemeStore } from './store/useUiThemeStore'
 import { usePreferencesStore } from './store/usePreferencesStore'
 import { translations } from './i18n/translations'
 import { CODE_THEMES, THEME_LABELS, prefetchLanguage, type CodeLanguage } from './lib/highlighter'
+import { DEFAULT_TIME_LIMIT, LANGUAGES, TIME_LIMITS } from './data/languages'
 
-export const LANGUAGES: SnippetLanguage[] = [
-  'javascript',
-  'typescript',
-  'csharp',
-  'python',
-  'java',
-  'go',
-  'sql',
-  'bash',
-  'cpp',
-  'rust',
-  'html',
-  'css',
-  'json',
-  'text',
-]
-const TIME_LIMITS = [15, 30, 60] as const
-const DEFAULT_TIME_LIMIT = TIME_LIMITS[1]
+// LANGUAGES / TIME_LIMITS chuyển sang `data/languages.ts`: file vừa xuất component vừa
+// xuất hằng số thì React Fast Refresh tắt cho cả file, sửa một dòng JSX là mất trạng thái
+// đang gõ dở.
 
 const SHIKI_LANG: Record<SnippetLanguage, CodeLanguage> = {
   javascript: 'javascript',
@@ -578,6 +564,15 @@ function App() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
+    /*
+      CỐ Ý bỏ `goNext` và `restartSame` khỏi mảng phụ thuộc.
+
+      Hai hàm này tạo lại ở mỗi lần vẽ, nên đưa vào là gỡ và gắn lại trình nghe phím sau
+      MỖI ký tự gõ — vừa phí vừa có nguy cơ mất phím ngay lúc đang chuyển. Chúng chỉ đọc
+      state qua closure của lần vẽ hiện tại, mà effect này đã chạy lại theo `sessionOver`
+      và `snippet.id` rồi, nên closure không bao giờ cũ ở thời điểm người dùng bấm.
+    */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, sessionOver, language, snippet.id])
 
   // Đếm "tests started" theo lần CHUYỂN sang trạng thái đang gõ, không phải theo
@@ -623,6 +618,18 @@ function App() {
         if (earned > 0) void pushXp(earned)
       }
     }
+    /*
+      CỐ Ý chỉ phụ thuộc `sessionOver`.
+
+      Effect này GHI LẠI kết quả đúng một lần khi lượt gõ kết thúc. Đưa `stats` vào mảng
+      phụ thuộc là chạy lại mỗi lần chỉ số nhúc nhích — tức mỗi 250ms trong lúc gõ — và
+      ghi trùng hàng chục bản ghi cho một lượt. `recordedRef` chặn được lần thứ hai,
+      nhưng dựa vào một cái chốt để bù cho mảng phụ thuộc sai thì mong manh.
+
+      Các giá trị đọc trong đây đều là ẢNH CHỤP tại đúng thời điểm kết thúc, và đó chính
+      là thứ cần ghi.
+    */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionOver])
 
   return (

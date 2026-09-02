@@ -2,7 +2,8 @@ import { StrictMode, Suspense, useEffect, useState } from 'react'
 import { lazyChunk } from './lib/lazyChunk'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App, { LANGUAGES } from './App.tsx'
+import App from './App.tsx'
+import { LANGUAGES } from './data/languages'
 import { translations } from './i18n/translations'
 import { Analytics } from '@vercel/analytics/react'
 import { clearLanguageParam, readLanguageParam } from './lib/langParam'
@@ -22,6 +23,12 @@ function readProfileRoute(): string | null {
   return match ? match[1] : null
 }
 
+/*
+  Điểm vào của app: không xuất gì cả, nên React Fast Refresh không nhận diện được tệp này.
+  Sửa "đúng" là tách `Root` ra tệp riêng, nhưng thêm một tệp chỉ để né một cảnh báo của
+  công cụ phát triển thì không đáng.
+*/
+// eslint-disable-next-line react/only-export-components
 function Root() {
   const [username, setUsername] = useState(readProfileRoute)
 

@@ -252,7 +252,7 @@ public void Append(string line)
     .GroupBy(s => s.Language)
     .ToDictionary(g => g.Key, g => g.Max(s => s.Wpm));`,
   `public static string Truncate(this string value, int max) =>
-    value.Length <= max ? value : value[..(max - 1)] + "\u2026";`,
+    value.Length <= max ? value : value[..(max - 3)] + "...";`,
   `await foreach (var line in ReadLinesAsync(path, token))
 {
     if (line.Length > 0) rows.Add(line);
@@ -279,8 +279,8 @@ await Parallel.ForEachAsync(urls, options, async (url, token) =>
 });`,
   `static string Format(TimeSpan span) => span switch
 {
-    { TotalHours: >= 1 } => $"{span:h\hm\m}",
-    { TotalMinutes: >= 1 } => $"{span:m\ms\s}",
+    { TotalHours: >= 1 } => $"{span:h\\hm\\m}",
+    { TotalMinutes: >= 1 } => $"{span:m\\ms\\s}",
     _ => $"{span.Seconds}s",
 };`,
   `var json = JsonSerializer.Serialize(score, JsonOptions);

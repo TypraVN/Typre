@@ -695,7 +695,7 @@ print(transpose([[1, 2], [3, 4]]))`,
     units = {"h": 3600, "m": 60, "s": 1}
     total = 0
 
-    for amount, unit in re.findall(r"(\d+)([hms])", text):
+    for amount, unit in re.findall(r"(\\d+)([hms])", text):
         total += int(amount) * units[unit]
 
     if total == 0:

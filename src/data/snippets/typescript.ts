@@ -59,7 +59,7 @@ export const typescriptSnippets: Snippet[] = [
     id: 'ts-record-type',
     language: 'typescript',
     title: 'Record type',
-    code: `const labels: Record<Status, string> = {\n  idle: 'Chờ',\n  done: 'Xong',\n};`,
+    code: `const labels: Record<Status, string> = {\n  idle: 'Waiting',\n  done: 'Done',\n};`,
   },
   {
     id: 'ts-optional-chain',

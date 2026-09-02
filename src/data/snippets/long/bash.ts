@@ -694,7 +694,7 @@ mapfile -t lines < <(df --output=pcent,target -x tmpfs -x devtmpfs | tail -n +2)
 alerts=()
 
 for line in "\${lines[@]}"; do
-    used=\${line%%\%*}
+    used=\${line%%\\%*}
     used=\${used// /}
     mount=\${line##* }
 

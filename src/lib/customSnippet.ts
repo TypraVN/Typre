@@ -59,6 +59,11 @@ export function normalizeCustomCode(raw: string): NormalizeResult {
   code = code
     .replace(/\t/g, ' '.repeat(TAB_WIDTH))
     // Ký tự điều khiển còn lại, TRỪ newline (\x0A). Tab đã đổi ở trên nên gộp \x09 vào.
+    //
+    // Bắt ký tự điều khiển ở đây là CHỦ ĐÍCH chứ không phải sơ suất: code dán từ trình
+    // soạn thảo hay trang web hay lẫn chúng, mà chúng vô hình nên người gõ không bao giờ
+    // đoán ra vì sao mãi không khớp.
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x09\x0B-\x1F\x7F]/g, '')
 
   const cleaned = code !== beforeClean
