@@ -160,11 +160,6 @@ export class ChessService {
       .map((move) => move.to as Square)
   }
 
-  /** Toàn bộ nước đi hợp lệ của bên đang tới lượt. Bot dùng hàm này. */
-  legalMoves(): Move[] {
-    return this.game.moves({ verbose: true })
-  }
-
   /** Danh sách quân đang trên bàn, phẳng, để component vẽ. */
   pieces(): BoardPiece[] {
     return this.game

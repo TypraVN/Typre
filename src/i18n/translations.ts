@@ -198,6 +198,13 @@ export const translations = {
   chessOnlineOffline:
     'Online play needs the Supabase keys. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then rebuild.',
   chessOpponentLeft: 'your opponent left the room',
+  chessPlayAs: 'you play',
+  chessAsWhite: 'white',
+  chessAsBlack: 'black',
+  chessResign: 'resign',
+  chessResignConfirm: 'resign this game?',
+  chessResigned: 'you resigned',
+  chessOpponentResigned: 'your opponent resigned — you win',
 
   // Thông báo lỗi của chế độ cờ. {x} là chỗ ghép dữ liệu vào.
   chessErrEmpty: 'Type a command first.',

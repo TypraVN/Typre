@@ -13,6 +13,8 @@ export interface ChessRoomHandlers {
   onSyncState: (state: SyncMessage) => void
   /** Đối thủ bắt đầu ván mới. */
   onReset: () => void
+  /** Đối thủ xin thua. Tham số là màu của người xin thua. */
+  onResign: (color: Color) => void
 }
 
 export interface ChessRoomState {
@@ -34,6 +36,7 @@ export interface ChessRoomState {
   opponentLeft: boolean
   sendMove: (move: ParsedMove, fen: string) => void
   sendReset: () => void
+  sendResign: (color: Color) => void
 }
 
 const EMPTY: RoomMember[] = []
@@ -117,6 +120,9 @@ export function useChessRoom(
         .on('broadcast', { event: 'reset' }, () => {
           handlersRef.current.onReset()
         })
+        .on('broadcast', { event: 'resign' }, ({ payload }) => {
+          handlersRef.current.onResign((payload as { color: Color }).color)
+        })
         .subscribe((status) => {
           if (cancelled) return
 
@@ -160,6 +166,10 @@ export function useChessRoom(
     void channelRef.current?.send({ type: 'broadcast', event: 'reset', payload: {} })
   }, [])
 
+  const sendResign = useCallback((color: Color) => {
+    void channelRef.current?.send({ type: 'broadcast', event: 'resign', payload: { color } })
+  }, [])
+
   const myColor = colorFor(members, myKeyRef.current)
   const ready = members.length >= 2
 
@@ -183,5 +193,6 @@ export function useChessRoom(
     opponentLeft: hadOpponentRef.current && connected && members.length < 2,
     sendMove,
     sendReset,
+    sendResign,
   }
 }

@@ -76,6 +76,12 @@ export function ChessMode({
   const [hintSquares, setHintSquares] = useState<Square[]>([])
   const [thinking, setThinking] = useState(false)
   const [flipped, setFlipped] = useState(false)
+  /** Màu người chơi chọn khi đấu bot. Trực tuyến thì phòng chia, không dùng cái này. */
+  const [preferredColor, setPreferredColor] = useState<Color>('w')
+  /** Ai đã xin thua. `null` = chưa ai. */
+  const [resignedBy, setResignedBy] = useState<Color | null>(null)
+  /** Đoạn văn bản gõ sai, để gạch đỏ dưới ô nhập. */
+  const [badToken, setBadToken] = useState<{ text: string; at: number } | null>(null)
 
   /** Mở app bằng link phòng thì vào thẳng chế độ trực tuyến. */
   const initialRoom = useMemo(() => readRoomFromHash(), [])
@@ -83,6 +89,13 @@ export function ChessMode({
   const [opponent, setOpponent] = useState<Opponent>(initialRoom ? 'online' : 'bot-medium')
 
   const inputRef = useRef<HTMLInputElement>(null)
+  /**
+   * Câu lệnh của lần gửi gần nhất.
+   *
+   * Không dùng `input` được: người chơi gõ tiếp là nó đổi ngay, mà vạch đỏ phải chỉ vào
+   * câu ĐÃ GỬI chứ không phải câu đang sửa dở.
+   */
+  const lastCommandRef = useRef('')
 
   const online = opponent === 'online'
   const versusBot = opponent.startsWith('bot-')
@@ -92,6 +105,8 @@ export function ChessMode({
     setLastMove(null)
     setError(null)
     setHintSquares([])
+    setBadToken(null)
+    setResignedBy(null)
     setInput('')
   }, [service])
 
@@ -148,20 +163,26 @@ export function ChessMode({
     resetLocal()
   }, [resetLocal])
 
+  const onResign = useCallback((color: Color) => {
+    setResignedBy(color)
+    playFinish()
+  }, [])
+
   const room = useChessRoom(online ? roomId : null, myName, {
     onRemoteMove,
     onSyncRequest,
     onSyncState,
     onReset,
+    onResign,
   })
 
-  /** Màu của mình: trực tuyến thì do phòng chia, còn lại thì luôn cầm Trắng. */
-  const myColor: Color | null = online ? room.myColor : 'w'
+  /** Màu của mình: trực tuyến thì phòng chia, đấu bot thì do người chơi chọn. */
+  const myColor: Color | null = online ? room.myColor : preferredColor
 
   const myTurn = online
     ? myColor !== null && room.ready && state.turn === myColor
     : versusBot
-      ? state.turn === 'w'
+      ? state.turn === preferredColor
       : true
 
   const examples = useMemo(() => examplesFor(language), [language])
@@ -177,17 +198,31 @@ export function ChessMode({
     inputRef.current?.focus()
   }, [resetLocal, online, room])
 
+  /**
+   * Xin thua.
+   *
+   * Đấu mạng bắt buộc phải có: thua rồi mà không có cách kết thúc thì người ta chỉ đóng
+   * tab, và đối thủ ngồi chờ một nước đi không bao giờ tới.
+   */
+  const resign = useCallback(() => {
+    if (myColor === null) return
+
+    setResignedBy(myColor)
+    playFinish()
+    if (online) room.sendResign(myColor)
+  }, [myColor, online, room])
+
   const undo = useCallback(() => {
     // Đấu bot phải lùi HAI nửa nước: một của bot, một của mình. Lùi một thì tới lượt bot
     // và nó đi lại ngay, người chơi không sửa được gì.
     service.undo()
-    if (versusBot && service.state.turn !== 'w') service.undo()
+    if (versusBot && service.state.turn !== preferredColor) service.undo()
 
     setState(service.state)
     setLastMove(null)
     setError(null)
     inputRef.current?.focus()
-  }, [service, versusBot])
+  }, [service, versusBot, preferredColor])
 
   /**
    * Lượt của bot.
@@ -197,7 +232,7 @@ export function ChessMode({
    * chữ "bot đang nghĩ", người chơi thấy trang đơ chứ không thấy phản hồi nào.
    */
   useEffect(() => {
-    if (!versusBot || state.isOver || state.turn !== 'b') return
+    if (!versusBot || state.isOver || resignedBy || state.turn === preferredColor) return
 
     setThinking(true)
     let cancelled = false
@@ -227,7 +262,7 @@ export function ChessMode({
       clearTimeout(id)
       setThinking(false)
     }
-  }, [state.fen, state.turn, state.isOver, versusBot, opponent, service])
+  }, [state.fen, state.turn, state.isOver, versusBot, opponent, preferredColor, resignedBy, service])
 
   function chooseOpponent(value: Opponent) {
     setOpponent(value)
@@ -253,14 +288,20 @@ export function ChessMode({
   function submit(event: React.FormEvent) {
     event.preventDefault()
 
-    if (state.isOver || thinking || !myTurn) return
+    if (state.isOver || resignedBy || thinking || !myTurn) return
 
+    lastCommandRef.current = input
     const parsed = parseCommand(language, input)
 
     if (!parsed.ok) {
       // Gợi ý cú pháp đã hiện thường trực dưới ô nhập, nên không lặp lại trong lỗi.
       setError(describeParseError(parsed.error, t))
       setHintSquares([])
+      setBadToken(
+        parsed.error.token && parsed.error.at !== undefined && parsed.error.at >= 0
+          ? { text: parsed.error.token, at: parsed.error.at }
+          : null,
+      )
       playWrong()
       return
     }
@@ -270,6 +311,7 @@ export function ChessMode({
     if (!result.ok) {
       setError(describeMoveError(result.error, t))
       setHintSquares(result.error.legalTargets ?? [])
+      setBadToken(null)
       playWrong()
       return
     }
@@ -279,6 +321,7 @@ export function ChessMode({
     setInput('')
     setError(null)
     setHintSquares([])
+    setBadToken(null)
 
     // Tieng phan hoi nhu che do go code: dung lai dung ham do, khong them am moi.
     if (result.state.isOver) playFinish()
@@ -346,6 +389,35 @@ export function ChessMode({
         ))}
       </div>
 
+      {/*
+        Chọn màu quân, chỉ khi đấu bot.
+
+        Trực tuyến thì phòng chia theo thứ tự vào, còn hai người chung máy thì cả hai
+        dùng chung ô nhập nên màu không có nghĩa. Người chơi cờ có gu rõ về việc cầm
+        trắng hay đen, ép luôn cầm trắng là cắt mất một nửa số ván họ muốn chơi.
+      */}
+      {versusBot && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-xs uppercase tracking-wider text-zinc-500">
+            {t.chessPlayAs}
+          </span>
+          {(['w', 'b'] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              className={preferredColor === value ? BTN_ACTIVE : BTN}
+              onClick={() => {
+                setPreferredColor(value)
+                setFlipped(value === 'b')
+                resetLocal()
+              }}
+            >
+              {value === 'w' ? t.chessAsWhite : t.chessAsBlack}
+            </button>
+          ))}
+        </div>
+      )}
+
       {online && (
         <OnlinePanel
           roomId={roomId}
@@ -369,7 +441,13 @@ export function ChessMode({
         />
 
         <div className="flex-1 min-w-0 flex flex-col gap-3 font-mono text-sm">
-          <StatusLine state={state} thinking={thinking} t={t} />
+          <StatusLine
+            state={state}
+            thinking={thinking}
+            resignedBy={resignedBy}
+            myColor={myColor}
+            t={t}
+          />
 
           <div className="flex flex-wrap gap-2">
             <button type="button" className={BTN} onClick={newGame}>
@@ -390,6 +468,18 @@ export function ChessMode({
             <button type="button" className={BTN} onClick={() => setFlipped((f) => !f)}>
               {t.chessFlip}
             </button>
+            {/* Chỉ có nghĩa khi có đối thủ thật: hai người chung máy thì cứ bảo nhau. */}
+            {(online || versusBot) && !state.isOver && !resignedBy && state.history.length > 0 && (
+              <button
+                type="button"
+                className={BTN}
+                onClick={() => {
+                  if (window.confirm(t.chessResignConfirm)) resign()
+                }}
+              >
+                {t.chessResign}
+              </button>
+            )}
           </div>
 
           <div className="flex flex-col gap-1">
@@ -413,9 +503,10 @@ export function ChessMode({
               if (error) {
                 setError(null)
                 setHintSquares([])
+                setBadToken(null)
               }
             }}
-            disabled={state.isOver || thinking || !myTurn}
+            disabled={state.isOver || Boolean(resignedBy) || thinking || !myTurn}
             placeholder={state.isOver ? '' : !myTurn ? t.chessWaitTurn : t.chessCommandPlaceholder}
             spellCheck={false}
             autoComplete="off"
@@ -424,7 +515,7 @@ export function ChessMode({
           />
           <button
             type="submit"
-            disabled={state.isOver || thinking || !myTurn}
+            disabled={state.isOver || Boolean(resignedBy) || thinking || !myTurn}
             className="px-4 py-2 rounded text-sm font-medium cursor-pointer bg-orange-500 text-zinc-900 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {t.chessSubmit}
@@ -456,6 +547,22 @@ export function ChessMode({
           <div role="alert" className="font-mono text-xs text-red-600 dark:text-red-400">
             {error}
           </div>
+        )}
+
+        {/*
+          Chỉ ra ĐÚNG đoạn gõ sai trong câu lệnh.
+
+          Với câu dài như lệnh SQL thì "z9 không phải ô cờ" vẫn bắt người chơi đi dò lại
+          cả dòng. Vẽ lại câu và gạch đỏ đúng chỗ thì mắt bắt được ngay.
+        */}
+        {badToken && (
+          <pre className="font-mono text-xs text-zinc-500 dark:text-zinc-400 overflow-x-auto">
+            {lastCommandRef.current.slice(0, badToken.at)}
+            <span className="text-red-600 dark:text-red-400 underline decoration-wavy decoration-red-500">
+              {badToken.text}
+            </span>
+            {lastCommandRef.current.slice(badToken.at + badToken.text.length)}
+          </pre>
         )}
       </form>
     </div>
@@ -537,12 +644,25 @@ function OnlinePanel({
 function StatusLine({
   state,
   thinking,
+  resignedBy,
+  myColor,
   t,
 }: {
   state: GameState
   thinking: boolean
+  resignedBy: Color | null
+  myColor: Color | null
   t: Translation
 }) {
+  // Xin thua đứng TRƯỚC mọi trạng thái khác: ván dừng ngay, không quan tâm thế cờ.
+  if (resignedBy) {
+    return (
+      <div className="text-orange-600 dark:text-orange-400 font-bold">
+        {resignedBy === myColor ? t.chessResigned : t.chessOpponentResigned}
+      </div>
+    )
+  }
+
   if (state.isOver) {
     const text =
       state.status === 'checkmate'

@@ -88,10 +88,3 @@ export interface SyncMessage {
   fen: string
   history: string[]
 }
-
-export type RoomEvent =
-  | { type: 'move'; payload: MoveMessage }
-  /** Người mới vào xin thế cờ hiện tại. */
-  | { type: 'sync-request' }
-  | { type: 'sync-state'; payload: SyncMessage }
-  | { type: 'reset' }

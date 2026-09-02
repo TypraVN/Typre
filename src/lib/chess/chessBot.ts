@@ -291,14 +291,3 @@ function toParsedMove(move: { from: string; to: string; promotion?: string }): P
 
   return parsed
 }
-
-/**
- * Ngân sách thời gian của một mức, để giao diện biết có cần hiện "bot đang nghĩ" không.
- *
- * Tìm kiếm chạy ĐỒNG BỘ trên luồng chính, nên mức khó khoá giao diện gần một giây. Gọi
- * qua `setTimeout(…, 0)` để trình duyệt kịp vẽ trạng thái "đang nghĩ" trước đã, nếu
- * không thì người chơi thấy trang treo chứ không thấy bot suy nghĩ.
- */
-export function budgetFor(level: BotLevel): number {
-  return BUDGET_MS[level]
-}
