@@ -469,6 +469,18 @@ ${pages.map(linkFor).join('\n')}
   html = replaceRegion(html, 'stats', stats)
   html = replaceRegion(html, 'links', links)
 
+  /**
+   * JSON-LD nằm trong thẻ <script> nên không bọc được bằng dấu mốc HTML — dùng token
+   * thay thế. Đây là dữ liệu Google đọc để hiểu site, để lệch là quảng cáo sai với
+   * chính công cụ mình đang muốn xếp hạng.
+   */
+  const TOKEN = '__SNIPPET_TOTAL__'
+  if (!html.includes(TOKEN)) {
+    throw new Error(`khong thay token ${TOKEN} trong index.html (JSON-LD)`)
+  }
+
+  html = html.replaceAll(TOKEN, String(total))
+
   writeFileSync(path, html, 'utf8')
   console.log(`  index.html (${total} bai, ${pages.length + 1} lien ket noi bo)`)
 }

@@ -151,8 +151,23 @@
           for (const seg of line) {
             ctx.globalAlpha = seg.t ? 1 : 0.34
             ctx.fillStyle = seg.t ? seg.c : ZINC_500
-            ctx.fillText(seg.s, penX, penY)
-            penX += ctx.measureText(seg.s).width
+
+            /*
+              Vẽ TỪNG KÝ TỰ một, không vẽ cả đoạn.
+
+              JetBrains Mono có ligature: vẽ nguyên chuỗi thì canvas gộp "=>" thành "⇒" và
+              "===" thành "≡≡≡". Ảnh quảng cáo khi đó hiện ký tự mà app không bao giờ hiện
+              — chính app đã tắt ligature (`font-variant-ligatures: none` trong
+              CodeEditorDisplay), vì trang luyện gõ phải cho thấy đúng từng ký tự sẽ phải gõ.
+
+              Canvas 2D không có API tắt ligature, nhưng ligature không hình thành được qua
+              hai lần fillText riêng biệt. Font đơn cách nên bề rộng mỗi ký tự bằng nhau,
+              cộng dồn ra đúng vị trí như cũ.
+            */
+            for (const ch of seg.s) {
+              ctx.fillText(ch, penX, penY)
+              penX += ctx.measureText(ch).width
+            }
 
             if (seg.caretAfter) {
               ctx.globalAlpha = 1
@@ -194,7 +209,11 @@
 
         ctx.fillStyle = ZINC_400
         ctx.font = '400 21px "JetBrains Mono", monospace'
-        ctx.fillText('14 languages  ·  2,170 snippets  ·  live races  ·  free', 72, 302)
+        // "2,500+" chứ không phải con số chính xác: ảnh này phải mở trình duyệt sinh lại
+        // bằng tay, nên mọi số chính xác trong đây đều sẽ lệch ngay lần thêm bài kế tiếp
+        // — đúng như "2,170" đã lệch sau khi kho lên 2.590. Số làm tròn xuống thì luôn
+        // đúng, vì kho chỉ tăng.
+        ctx.fillText('14 languages  ·  2,500+ snippets  ·  live races  ·  free', 72, 302)
 
         // Khung code: nền tối hơn + viền, đúng như vùng gõ trong app.
         const cardX = 72

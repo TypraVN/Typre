@@ -15,7 +15,7 @@
 Most typing trainers feed you English prose. But the keys that actually slow you down while
 programming are `{}`, `[]`, `=>`, `&&`, `::`, `?.` — and prose never contains them.
 
-Typre only serves real code: 2,170 hand-picked snippets across 14 languages, in 15, 30 and
+Typre only serves real code: 2,590 hand-picked snippets across 14 languages, in 15, 30 and
 60 second runs.
 
 ## What makes it different
