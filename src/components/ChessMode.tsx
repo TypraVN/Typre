@@ -3,7 +3,8 @@ import { ChessBoard } from './ChessBoard'
 import { CopyLinkButton } from './CopyLinkButton'
 import { ChessService } from '../lib/chess/chessService'
 import { pickMove, type BotLevel } from '../lib/chess/chessBot'
-import { exampleFor, parseCommand } from '../lib/chess/commandParsers'
+import { examplesFor, parseCommand } from '../lib/chess/commandParsers'
+import { describeMoveError, describeParseError } from '../lib/chess/describe'
 import {
   buildRoomUrl,
   clearRoomHash,
@@ -13,6 +14,7 @@ import {
   type MoveMessage,
 } from '../lib/chess/chessRoom'
 import { useChessRoom } from '../hooks/useChessRoom'
+import { playCorrect, playFinish, playWrong } from '../lib/sound'
 import { isLeaderboardEnabled } from '../lib/supabase'
 import type { Color, GameState, Square } from '../lib/chess/types'
 import type { SnippetLanguage } from '../data/types'
@@ -70,6 +72,8 @@ export function ChessMode({
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [lastMove, setLastMove] = useState<{ from: Square; to: Square } | null>(null)
+  /** Ô đi được của quân vừa gõ sai — tô chấm cam lên bàn. */
+  const [hintSquares, setHintSquares] = useState<Square[]>([])
   const [thinking, setThinking] = useState(false)
   const [flipped, setFlipped] = useState(false)
 
@@ -87,6 +91,7 @@ export function ChessMode({
     setState(service.reset())
     setLastMove(null)
     setError(null)
+    setHintSquares([])
     setInput('')
   }, [service])
 
@@ -114,6 +119,10 @@ export function ChessMode({
 
       setLastMove({ from: message.move.from, to: message.move.to })
       setError(null)
+
+      // Doi thu di khi minh dang nhin cho khac — khong co tieng thi khong biet toi luot.
+      if (service.state.isOver) playFinish()
+      else playCorrect()
     },
     [service],
   )
@@ -155,7 +164,7 @@ export function ChessMode({
       ? state.turn === 'w'
       : true
 
-  const example = useMemo(() => exampleFor(language), [language])
+  const examples = useMemo(() => examplesFor(language), [language])
 
   /** Cầm quân Đen thì tự lật bàn — không ai muốn chơi mà quân mình ở phía xa. */
   useEffect(() => {
@@ -205,6 +214,8 @@ export function ChessMode({
         if (result.ok) {
           setState(result.state)
           setLastMove({ from: move.from, to: move.to })
+          if (result.state.isOver) playFinish()
+          else playCorrect()
         }
       }
 
@@ -248,14 +259,18 @@ export function ChessMode({
 
     if (!parsed.ok) {
       // Gợi ý cú pháp đã hiện thường trực dưới ô nhập, nên không lặp lại trong lỗi.
-      setError(parsed.error.message)
+      setError(describeParseError(parsed.error, t))
+      setHintSquares([])
+      playWrong()
       return
     }
 
     const result = service.applyMove(parsed.move)
 
     if (!result.ok) {
-      setError(result.error.message)
+      setError(describeMoveError(result.error, t))
+      setHintSquares(result.error.legalTargets ?? [])
+      playWrong()
       return
     }
 
@@ -263,6 +278,11 @@ export function ChessMode({
     setLastMove({ from: parsed.move.from, to: parsed.move.to })
     setInput('')
     setError(null)
+    setHintSquares([])
+
+    // Tieng phan hoi nhu che do go code: dung lai dung ham do, khong them am moi.
+    if (result.state.isOver) playFinish()
+    else playCorrect()
 
     if (online) room.sendMove(parsed.move, result.state.fen)
   }
@@ -332,6 +352,8 @@ export function ChessMode({
           connected={room.connected}
           ready={room.ready}
           myColor={room.myColor}
+          opponentName={room.opponentName}
+          opponentLeft={room.opponentLeft}
           onLeave={leaveRoom}
           t={t}
         />
@@ -342,6 +364,7 @@ export function ChessMode({
           pieces={pieces}
           lastMove={lastMove}
           checkSquare={checkSquare}
+          hintSquares={hintSquares}
           flipped={flipped}
         />
 
@@ -387,7 +410,10 @@ export function ChessMode({
               setInput(e.target.value)
               // Xoá lỗi ngay khi người chơi sửa: để lỗi cũ nằm đó trong lúc họ gõ lại là
               // vừa gây hoang mang vừa trông như app không phản hồi.
-              if (error) setError(null)
+              if (error) {
+                setError(null)
+                setHintSquares([])
+              }
             }}
             disabled={state.isOver || thinking || !myTurn}
             placeholder={state.isOver ? '' : !myTurn ? t.chessWaitTurn : t.chessCommandPlaceholder}
@@ -405,10 +431,26 @@ export function ChessMode({
           </button>
         </div>
 
-        <div className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-          {t.chessSyntaxLabel}:{' '}
-          <code className="text-orange-600 dark:text-orange-400">{example}</code>
-        </div>
+        {/*
+          Ba dòng, không phải một.
+
+          Nhập thành là "đi vua hai ô" — không ai đoán ra nếu chỉ thấy ví dụ đi thường.
+          Người chơi sẽ thử `O-O`, bị báo sai cú pháp, rồi bỏ giữa ván.
+        */}
+        <dl className="font-mono text-xs text-zinc-500 dark:text-zinc-400 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+          <dt>{t.chessSyntaxLabel}</dt>
+          <dd>
+            <code className="text-orange-600 dark:text-orange-400">{examples.move}</code>
+          </dd>
+          <dt>{t.chessSyntaxCastle}</dt>
+          <dd>
+            <code className="text-orange-600 dark:text-orange-400">{examples.castle}</code>
+          </dd>
+          <dt>{t.chessSyntaxPromote}</dt>
+          <dd>
+            <code className="text-orange-600 dark:text-orange-400">{examples.promote}</code>
+          </dd>
+        </dl>
 
         {error && (
           <div role="alert" className="font-mono text-xs text-red-600 dark:text-red-400">
@@ -425,6 +467,8 @@ function OnlinePanel({
   connected,
   ready,
   myColor,
+  opponentName,
+  opponentLeft,
   onLeave,
   t,
 }: {
@@ -432,6 +476,8 @@ function OnlinePanel({
   connected: boolean
   ready: boolean
   myColor: Color | null
+  opponentName: string | null
+  opponentLeft: boolean
   onLeave: () => void
   t: Translation
 }) {
@@ -473,7 +519,15 @@ function OnlinePanel({
         ) : (
           <span className="text-orange-600 dark:text-orange-400">
             {myColor === 'w' ? t.chessYouAreWhite : t.chessYouAreBlack}
+            {opponentName && (
+              <span className="text-zinc-500 dark:text-zinc-400"> · vs {opponentName}</span>
+            )}
           </span>
+        )}
+
+        {/* Doi thu dong tab: presence tu don nen minh biet ngay, khong ngoi cho mai. */}
+        {opponentLeft && (
+          <div className="mt-1 text-red-600 dark:text-red-400">{t.chessOpponentLeft}</div>
         )}
       </div>
     </div>

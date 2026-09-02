@@ -57,12 +57,15 @@ function play(service: ChessService, lang: ChessLanguage, command: string) {
   const blocked = s.applyMove({ from: 'e2' as Square, to: 'e5' as Square })
   check('di qua xa', !blocked.ok && blocked.error.code, 'illegal')
 
-  // Thông báo phải liệt kê nước đi được, không chỉ nói "không hợp lệ".
-  check(
-    'thong bao co goi y',
-    !blocked.ok && blocked.error.message.includes('e3, e4'),
-    true,
-  )
+  /**
+   * Lỗi phải KÈM các ô đi được, không chỉ nói "không hợp lệ".
+   *
+   * Giao diện vừa ghép chúng vào câu vừa chấm lên bàn cờ. Kiểm dữ liệu chứ không kiểm
+   * câu chữ: câu chữ nằm ở tầng nhãn và đổi lúc nào cũng được, còn dữ liệu là hợp đồng.
+   */
+  check('loi kem cac o di duoc', !blocked.ok && blocked.error.legalTargets, ['e3', 'e4'])
+  check('loi kem quan gi', !blocked.ok && blocked.error.piece, 'p')
+  check('loi kem o xuat phat', !blocked.ok && blocked.error.from, 'e2')
 }
 
 // ── Bị chiếu thì phải đỡ ──────────────────────────────────────────────────────

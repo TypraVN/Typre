@@ -6,8 +6,25 @@
  * viết lại các ca.
  */
 
-import { parseCommand } from '../src/lib/chess/commandParsers'
-import type { ChessLanguage } from '../src/lib/chess/types'
+import { examplesFor, parseCommand, renderCommand } from '../src/lib/chess/commandParsers'
+import type { ChessLanguage, PromotionPiece, Square } from '../src/lib/chess/types'
+
+const ALL_LANGUAGES: ChessLanguage[] = [
+  'javascript',
+  'typescript',
+  'csharp',
+  'python',
+  'java',
+  'go',
+  'sql',
+  'bash',
+  'cpp',
+  'rust',
+  'html',
+  'css',
+  'json',
+  'text',
+]
 
 interface Case {
   lang: ChessLanguage
@@ -153,7 +170,58 @@ for (const c of CASES) {
   )
 }
 
-console.log(`\n${passed}/${CASES.length} ca dat`)
+/**
+ * VÒNG TRÒN: dựng câu lệnh rồi phân tích lại phải ra đúng nước ban đầu.
+ *
+ * Đây là bài kiểm giá trị nhất trong tệp. Ví dụ hiển thị cho người chơi được SINH RA từ
+ * `render`, nên nếu `render` và `parse` lệch nhau thì người chơi gõ đúng y ví dụ vẫn bị
+ * báo sai cú pháp — lỗi khó chịu nhất có thể có, mà không bài kiểm viết tay nào phủ hết
+ * được 14 ngôn ngữ × 3 dạng.
+ */
+const ROUND_TRIP: Array<[Square, Square, PromotionPiece | undefined]> = [
+  ['e2', 'e4', undefined],
+  // Nhập thành: vua đi hai ô.
+  ['e1', 'g1', undefined],
+  ['e7', 'e8', 'q'],
+  ['a7', 'a8', 'n'],
+  ['h1', 'a8', undefined],
+]
+
+for (const lang of ALL_LANGUAGES) {
+  for (const [from, to, promo] of ROUND_TRIP) {
+    const command = renderCommand(lang, from, to, promo)
+    const result = parseCommand(lang, command)
+
+    const got = result.ok
+      ? [result.move.from, result.move.to, result.move.promotion].filter(Boolean).join(' ')
+      : `BI TU CHOI (${result.error.code})`
+    const want = [from, to, promo].filter(Boolean).join(' ')
+
+    if (got === want) {
+      passed++
+      continue
+    }
+
+    failures.push(
+      `  [${lang}] vong tron hong\n` +
+        `      dung ra  : ${JSON.stringify(command)}\n` +
+        `      mong doi : ${want}\n` +
+        `      nhan duoc: ${got}`,
+    )
+  }
+
+  // Ba ví dụ hiện cho người chơi cũng phải tự phân tích được.
+  for (const [label, command] of Object.entries(examplesFor(lang))) {
+    if (parseCommand(lang, command).ok) {
+      passed++
+      continue
+    }
+
+    failures.push(`  [${lang}] vi du "${label}" khong tu phan tich duoc: ${command}`)
+  }
+}
+
+console.log(`\n${passed}/${passed + failures.length} ca dat`)
 
 if (failures.length > 0) {
   console.log(`\n${failures.length} ca HONG:\n`)

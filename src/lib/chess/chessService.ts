@@ -50,18 +50,17 @@ export class ChessService {
    */
   applyMove(move: ParsedMove): MoveResult {
     if (this.game.isGameOver()) {
-      return this.reject('game-over', 'Van co da ket thuc.')
+      return this.reject({ code: 'game-over' })
     }
 
     const piece = this.game.get(toChessSquare(move.from))
 
     if (!piece) {
-      return this.reject('empty-square', `O ${move.from} khong co quan nao.`)
+      return this.reject({ code: 'empty-square', from: move.from })
     }
 
     if (piece.color !== this.game.turn()) {
-      const side = this.game.turn() === 'w' ? 'Trang' : 'Den'
-      return this.reject('wrong-turn', `Den luot ${side}, ma ${move.from} la quan doi thu.`)
+      return this.reject({ code: 'wrong-turn', from: move.from, turn: this.game.turn() })
     }
 
     const legal = this.game.moves({ square: toChessSquare(move.from), verbose: true })
@@ -74,24 +73,26 @@ export class ChessService {
        * câu "nước đi không hợp lệ".
        */
       if (this.game.isCheck()) {
-        return this.reject(
-          'leaves-king-in-check',
-          `Vua dang bi chieu. Nuoc ${move.from}->${move.to} khong go duoc chieu.`,
-        )
+        return this.reject({
+          code: 'leaves-king-in-check',
+          from: move.from,
+          to: move.to,
+          piece: piece.type,
+          legalTargets: legal.map((candidate) => candidate.to as Square),
+        })
       }
 
       if (legal.length === 0) {
-        return this.reject(
-          'leaves-king-in-check',
-          `Quan o ${move.from} dang ghim, di la ho vua.`,
-        )
+        return this.reject({ code: 'pinned', from: move.from, piece: piece.type })
       }
 
-      const options = legal.map((candidate) => candidate.to).join(', ')
-      return this.reject(
-        'illegal',
-        `${piece.type.toUpperCase()} o ${move.from} khong di duoc toi ${move.to}. Duoc: ${options}.`,
-      )
+      return this.reject({
+        code: 'illegal',
+        from: move.from,
+        to: move.to,
+        piece: piece.type,
+        legalTargets: legal.map((candidate) => candidate.to as Square),
+      })
     }
 
     /**
@@ -114,14 +115,14 @@ export class ChessService {
     } catch {
       // Tới đây thì ba kiểm tra trên đã qua, nên đây là trường hợp mình chưa lường được.
       // Trả lỗi chung còn hơn để ngoại lệ thoát ra làm trắng màn hình.
-      return this.reject('illegal', `Nuoc ${move.from}->${move.to} khong hop le.`)
+      return this.reject({ code: 'illegal', from: move.from, to: move.to, piece: piece.type })
     }
 
     return { ok: true, state: this.state, san: result.san }
   }
 
-  private reject(code: MoveError['code'], message: string): MoveResult {
-    return { ok: false, error: { code, message } }
+  private reject(error: MoveError): MoveResult {
+    return { ok: false, error }
   }
 
   get state(): GameState {

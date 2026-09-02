@@ -22,6 +22,16 @@ export interface ChessRoomState {
   myColor: Color | null
   /** Đã đủ hai người chưa. */
   ready: boolean
+  /** Tên người chơi còn lại, để hiện "vs …". `null` khi chưa có ai. */
+  opponentName: string | null
+  /**
+   * Đã từng đủ hai người rồi giờ chỉ còn mình.
+   *
+   * Khác với "đang chờ đối thủ": presence tự dọn khi ai đó đóng tab, nên phân biệt được
+   * "chưa ai vào" với "vào rồi lại đi". Không phân biệt thì người chơi ngồi chờ mãi một
+   * đối thủ đã bỏ đi từ lâu.
+   */
+  opponentLeft: boolean
   sendMove: (move: ParsedMove, fen: string) => void
   sendReset: () => void
 }
@@ -151,12 +161,26 @@ export function useChessRoom(
   }, [])
 
   const myColor = colorFor(members, myKeyRef.current)
+  const ready = members.length >= 2
+
+  /**
+   * Nhớ đã từng đủ hai người.
+   *
+   * Dùng ref chứ không dùng state: chỉ đọc trong lúc render để suy ra `opponentLeft`,
+   * đặt state ở đây sẽ tạo thêm một vòng vẽ lại mà không đổi gì trên màn hình.
+   */
+  const hadOpponentRef = useRef(false)
+  if (ready) hadOpponentRef.current = true
+
+  const opponent = members.find((member) => member.key !== myKeyRef.current)
 
   return {
     connected,
     members,
     myColor,
-    ready: members.length >= 2,
+    ready,
+    opponentName: opponent?.name ?? null,
+    opponentLeft: hadOpponentRef.current && connected && members.length < 2,
     sendMove,
     sendReset,
   }

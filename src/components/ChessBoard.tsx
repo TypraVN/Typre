@@ -7,6 +7,13 @@ interface ChessBoardProps {
   lastMove: { from: Square; to: Square } | null
   /** Ô của vua đang bị chiếu, tô đỏ. */
   checkSquare: Square | null
+  /**
+   * Các ô quân vừa gõ sai ĐI ĐƯỢC.
+   *
+   * Hiện sau khi người chơi nhập một nước không hợp lệ: câu lỗi đã liệt kê bằng chữ,
+   * nhưng chấm trên bàn thì thấy ngay không phải dò.
+   */
+  hintSquares: Square[]
   /** Xoay bàn để bên đen ở dưới. */
   flipped: boolean
 }
@@ -30,7 +37,14 @@ const GLYPH: Record<string, string> = {
   p: '♟',
 }
 
-export function ChessBoard({ pieces, lastMove, checkSquare, flipped }: ChessBoardProps) {
+export function ChessBoard({
+  pieces,
+  lastMove,
+  checkSquare,
+  hintSquares,
+  flipped,
+}: ChessBoardProps) {
+  const hints = new Set(hintSquares)
   const bySquare = new Map(pieces.map((piece) => [piece.square, piece]))
 
   const files = flipped ? [...FILES].reverse() : FILES
@@ -53,6 +67,7 @@ export function ChessBoard({ pieces, lastMove, checkSquare, flipped }: ChessBoar
 
               const isLast = lastMove?.from === square || lastMove?.to === square
               const isCheck = checkSquare === square
+              const isHint = hints.has(square)
 
               return (
                 <div
@@ -69,6 +84,14 @@ export function ChessBoard({ pieces, lastMove, checkSquare, flipped }: ChessBoar
                     .filter(Boolean)
                     .join(' ')}
                 >
+                  {isHint && (
+                    /* Chấm tròn giữa ô, không tô nền: tô nền sẽ đè lên ô tô sáng của
+                       nước vừa đi và người chơi không phân biệt được hai loại. */
+                    <span
+                      aria-hidden
+                      className="absolute w-2.5 h-2.5 rounded-full bg-orange-500/70 dark:bg-orange-400/70"
+                    />
+                  )}
                   {piece && (
                     <span
                       /*

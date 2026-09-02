@@ -50,12 +50,18 @@ export type ParseErrorCode =
   /** Ký hiệu quân phong không phải q/r/b/n. */
   | 'bad-promotion'
 
+/**
+ * Lỗi phân tích: CHỈ mã và dữ liệu, KHÔNG có câu chữ.
+ *
+ * Tầng này không được sinh chuỗi hiển thị. Ban đầu tôi để `message` ở đây và viết sẵn
+ * câu tiếng Việt — kết quả là app tiếng Anh hiện lỗi tiếng Việt, nhìn như hỏng. Trả về
+ * mã thì giao diện ghép câu bằng đúng bộ nhãn của app, và sau này thêm ngôn ngữ giao
+ * diện cũng không phải sửa engine.
+ */
 export interface ParseError {
   code: ParseErrorCode
-  /** Câu ngắn hiện dưới ô nhập. */
-  message: string
-  /** Ví dụ cú pháp đúng của ngôn ngữ đang chọn, để người mới biết phải gõ gì. */
-  hint?: string
+  /** Đoạn văn bản gây lỗi, để ghép vào câu thông báo. */
+  token?: string
   /**
    * Vị trí ký tự gây lỗi (0-based) để giao diện đặt gạch đỏ đúng chỗ.
    *
@@ -79,12 +85,27 @@ export type MoveErrorCode =
   | 'illegal'
   /** Đi xong thì vua của mình bị chiếu — luật cấm. */
   | 'leaves-king-in-check'
+  /** Quân đang ghim: đi là hở vua. */
+  | 'pinned'
   /** Ván đã kết thúc. */
   | 'game-over'
 
+/** Lỗi luật cờ: cũng chỉ mã và dữ liệu, cùng lý do với `ParseError`. */
 export interface MoveError {
   code: MoveErrorCode
-  message: string
+  from?: Square
+  to?: Square
+  /** Ký hiệu quân ở ô xuất phát: p, n, b, r, q, k. */
+  piece?: string
+  /**
+   * Các ô quân đó ĐI ĐƯỢC.
+   *
+   * Giao diện vừa ghép vào câu thông báo vừa tô sáng lên bàn cờ — báo lỗi kèm lối ra
+   * thì người mới học được, báo lỗi cụt thì họ chỉ đoán.
+   */
+  legalTargets?: Square[]
+  /** Bên đang tới lượt, cho lỗi đi nhầm quân đối thủ. */
+  turn?: Color
 }
 
 export type MoveResult =
@@ -117,8 +138,15 @@ export interface GameState {
 
 /** Một bộ parser cho một ngôn ngữ. */
 export interface LanguageParser {
-  /** Câu lệnh mẫu, hiện làm gợi ý và dùng trong thông báo lỗi. */
-  example: string
+  /**
+   * Dựng câu lệnh hợp lệ cho một nước đi.
+   *
+   * Ví dụ hiển thị được SINH RA từ hàm này chứ không viết tay: viết tay thì sửa parser
+   * xong quên sửa ví dụ, và người chơi gõ theo đúng ví dụ lại bị báo sai cú pháp. Có
+   * hàm dựng thì bộ test kiểm được vòng tròn `parse(render(x)) === x` cho cả 14 ngôn
+   * ngữ, nên hai thứ không thể lệch nhau.
+   */
+  render: (from: Square, to: Square, promotion?: PromotionPiece) => string
   parse: (input: string) => ParseResult
 }
 

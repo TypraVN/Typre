@@ -31,13 +31,8 @@ import {
   type Square,
 } from './types'
 
-function fail(
-  code: ParseError['code'],
-  message: string,
-  hint?: string,
-  at?: number,
-): ParseResult {
-  return { ok: false, error: { code, message, hint, at } }
+function fail(code: ParseError['code'], token?: string, at?: number): ParseResult {
+  return { ok: false, error: { code, token, at } }
 }
 
 /**
@@ -48,32 +43,21 @@ function fail(
  */
 function finish(
   raw: { from: string; to: string; promotion?: string },
-  example: string,
   input: string,
 ): ParseResult {
   const from = raw.from.toLowerCase()
   const to = raw.to.toLowerCase()
 
   if (!isSquare(from)) {
-    return fail(
-      'unknown-square',
-      `"${raw.from}" khong phai o co. O hop le tu a1 den h8.`,
-      example,
-      input.indexOf(raw.from),
-    )
+    return fail('unknown-square', raw.from, input.indexOf(raw.from))
   }
 
   if (!isSquare(to)) {
-    return fail(
-      'unknown-square',
-      `"${raw.to}" khong phai o co. O hop le tu a1 den h8.`,
-      example,
-      input.indexOf(raw.to),
-    )
+    return fail('unknown-square', raw.to, input.indexOf(raw.to))
   }
 
   if (from === to) {
-    return fail('same-square', 'O di va o den trung nhau.', example)
+    return fail('same-square', from)
   }
 
   let promotion: PromotionPiece | undefined
@@ -82,12 +66,7 @@ function finish(
     const piece = normalisePromotion(raw.promotion)
 
     if (piece === null) {
-      return fail(
-        'bad-promotion',
-        `"${raw.promotion}" khong phai quan phong. Dung q, r, b hoac n.`,
-        example,
-        input.indexOf(raw.promotion),
-      )
+      return fail('bad-promotion', raw.promotion, input.indexOf(raw.promotion))
     }
 
     promotion = piece
@@ -119,15 +98,12 @@ function normalisePromotion(raw: string): PromotionPiece | null {
 }
 
 /** Chuỗi rỗng là lỗi riêng, không phải lỗi cú pháp — thông báo phải khác. */
-function requireInput(input: string, example: string): ParseResult | null {
-  if (input.trim() === '') {
-    return fail('empty', 'Chua nhap lenh nao.', example)
-  }
-  return null
+function requireInput(input: string): ParseResult | null {
+  return input.trim() === '' ? fail('empty') : null
 }
 
-function syntaxError(example: string): ParseResult {
-  return fail('syntax', 'Sai cu phap.', example)
+function syntaxError(): ParseResult {
+  return fail('syntax')
 }
 
 /**
@@ -136,15 +112,15 @@ function syntaxError(example: string): ParseResult {
  * Regex phải neo cả hai đầu (^…$) — thiếu neo thì `board.move('e2','e4') rm -rf /` cũng
  * lọt, vì phần thừa nằm ngoài vùng khớp.
  */
-function fromPattern(example: string, pattern: RegExp): LanguageParser {
+function fromPattern(render: LanguageParser['render'], pattern: RegExp): LanguageParser {
   return {
-    example,
+    render,
     parse(input) {
-      const empty = requireInput(input, example)
+      const empty = requireInput(input)
       if (empty) return empty
 
       const match = pattern.exec(input.trim())
-      if (!match?.groups) return syntaxError(example)
+      if (!match?.groups) return syntaxError()
 
       return finish(
         {
@@ -152,7 +128,6 @@ function fromPattern(example: string, pattern: RegExp): LanguageParser {
           to: match.groups.to ?? '',
           promotion: match.groups.promotion,
         },
-        example,
         input,
       )
     },
@@ -166,6 +141,14 @@ function fromPattern(example: string, pattern: RegExp): LanguageParser {
  * lỗi giúp phân biệt được "sai cú pháp" với "ô cờ không tồn tại" — gõ `board.move('z9',
  * 'e4')` là cú pháp đúng mà ô sai, thông báo phải nói đúng điều đó.
  */
+/** Tên enum quân cho C++/Rust — không ai viết `Piece::Q`. */
+const PIECE_ENUM: Record<string, string> = {
+  q: 'Queen',
+  r: 'Rook',
+  b: 'Bishop',
+  n: 'Knight',
+}
+
 const TOKEN = '[A-Za-z0-9]+'
 /** Khoảng trắng tuỳ chọn. */
 const SP = '\\s*'
@@ -182,7 +165,7 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
   // Nhận cả ba loại nháy vì JS cho phép cả ba. Chấm phẩy tuỳ chọn: ASI là thật, và
   // `board.move('e2','e4')` không có chấm phẩy vẫn chạy được trong trình duyệt.
   javascript: fromPattern(
-    `board.move('e2', 'e4');`,
+    (from, to, p) => `board.move('${from}', '${to}'${p ? `, '${p}'` : ''});`,
     new RegExp(
       `^board${SP}\\.${SP}move${SP}\\(${SP}${quoted(`'"\``, 'from')}${SP},${SP}` +
         `${quoted(`'"\``, 'to')}${SP}(?:,${SP}${quoted(`'"\``, 'promotion')}${SP})?\\)${SP};?$`,
@@ -197,10 +180,10 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
   // chối một câu lệnh TypeScript hợp lệ thì bộ kiểm cú pháp này sai chứ không phải người
   // gõ sai.
   typescript: {
-    example: `board.move({ from: 'e2', to: 'e4' });`,
+    render: (from, to, p) =>
+      `board.move({ from: '${from}', to: '${to}'${p ? `, promotion: '${p}'` : ''} });`,
     parse(input) {
-      const example = `board.move({ from: 'e2', to: 'e4' });`
-      const empty = requireInput(input, example)
+      const empty = requireInput(input)
       if (empty) return empty
 
       const text = input.trim()
@@ -221,7 +204,6 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
             to: objectMatch.groups.to ?? '',
             promotion: objectMatch.groups.promotion,
           },
-          example,
           input,
         )
       }
@@ -230,7 +212,7 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
       const positional = PARSERS.javascript.parse(input)
       if (positional.ok) return positional
 
-      return syntaxError(example)
+      return syntaxError()
     },
   },
 
@@ -241,10 +223,9 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
   // tự. Chấm phẩy BẮT BUỘC. Tên phương thức `Move` viết hoa theo quy ước C#, nhưng biến
   // nhận cả `board` lẫn `Board`.
   csharp: {
-    example: 'board.Move("e2", "e4");',
+    render: (from, to, p) => `board.Move("${from}", "${to}"${p ? `, '${p}'` : ''});`,
     parse(input) {
-      const example = 'board.Move("e2", "e4");'
-      const empty = requireInput(input, example)
+      const empty = requireInput(input)
       if (empty) return empty
 
       const text = input.trim()
@@ -260,7 +241,7 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
       )
 
       const match = stringForm.exec(text) ?? enumForm.exec(text)
-      if (!match?.groups) return syntaxError(example)
+      if (!match?.groups) return syntaxError()
 
       return finish(
         {
@@ -268,7 +249,6 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
           to: match.groups.to ?? '',
           promotion: match.groups.promotion,
         },
-        example,
         input,
       )
     },
@@ -278,7 +258,7 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
   // Nháy đơn và kép đều được, backtick thì không — Python không có nháy backtick.
   // Chấm phẩy hợp lệ về cú pháp nhưng không ai viết, nên nhận mà không đòi.
   python: fromPattern(
-    'board.move("e2", "e4")',
+    (from_, to, p) => `board.move("${from_}", "${to}"${p ? `, "${p}"` : ''})`,
     new RegExp(
       `^board${SP}\\.${SP}move${SP}\\(${SP}${quoted(`'"`, 'from')}${SP},${SP}` +
         `${quoted(`'"`, 'to')}${SP}(?:,${SP}${quoted(`'"`, 'promotion')}${SP})?\\)${SP};?$`,
@@ -288,7 +268,7 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
   // ── Java ──────────────────────────────────────────────────────────────────────
   // `new Move(...)` là đối tượng, đúng thói quen Java. Chỉ nháy kép, chấm phẩy bắt buộc.
   java: fromPattern(
-    'board.makeMove(new Move("e2", "e4"));',
+    (from, to, p) => `board.makeMove(new Move("${from}", "${to}"${p ? `, '${p}'` : ''}));`,
     new RegExp(
       `^board${SP}\\.${SP}makeMove${SP}\\(${SP}new${SP1}Move${SP}\\(${SP}` +
         `${quoted('"', 'from')}${SP},${SP}${quoted('"', 'to')}` +
@@ -300,7 +280,7 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
   // `Move` viết hoa vì đó là phương thức xuất khẩu — chữ thường là không gọi được từ gói
   // khác. Nhận cả backtick vì chuỗi thô của Go là thật. Không đòi chấm phẩy: gofmt xoá.
   go: fromPattern(
-    'board.Move("e2", "e4")',
+    (from, to, p) => `board.Move("${from}", "${to}"${p ? `, "${p}"` : ''})`,
     new RegExp(
       `^board${SP}\\.${SP}Move${SP}\\(${SP}${quoted('"`', 'from')}${SP},${SP}` +
         `${quoted('"`', 'to')}${SP}(?:,${SP}${quoted('"`', 'promotion')}${SP})?\\)${SP};?$`,
@@ -311,7 +291,8 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
   // Chỉ nháy đơn: trong SQL chuẩn `"e4"` là TÊN CỘT chứ không phải chuỗi. Từ khoá không
   // phân biệt hoa thường nên regex gắn cờ `i`, còn `finish()` tự hạ ô cờ về chữ thường.
   sql: fromPattern(
-    "UPDATE board SET pos = 'e4' WHERE piece = 'e2';",
+    (from, to, p) =>
+      `UPDATE board SET pos = '${to}'${p ? `, promote = '${p}'` : ''} WHERE piece = '${from}';`,
     new RegExp(
       `^UPDATE\\s+board\\s+SET\\s+pos${SP}=${SP}'(?<to>${TOKEN})'` +
         `(?:${SP},${SP}promote${SP}=${SP}'(?<promotion>${TOKEN})')?` +
@@ -324,15 +305,14 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
   // Cờ dòng lệnh đảo thứ tự được, vì thực tế không ai nhớ thứ tự cờ. Giá trị có thể để
   // trần hoặc bọc nháy — cả hai đều hợp lệ trong shell.
   bash: {
-    example: 'chess --from e2 --to e4',
+    render: (from, to, p) => `chess --from ${from} --to ${to}${p ? ` --promote ${p}` : ''}`,
     parse(input) {
-      const example = 'chess --from e2 --to e4'
-      const empty = requireInput(input, example)
+      const empty = requireInput(input)
       if (empty) return empty
 
       const text = input.trim()
 
-      if (!/^chess\s/.test(text)) return syntaxError(example)
+      if (!/^chess\s/.test(text)) return syntaxError()
 
       const flags = new Map<string, string>()
       const flagPattern = /--(from|to|promote)(?:=|\s+)(?:'([^']*)'|"([^"]*)"|(\S+))/g
@@ -347,21 +327,22 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
       }
 
       // Còn chữ thừa sau cờ cuối cùng là sai cú pháp, không phải "cứ có --from là xong".
-      if (text.slice(consumed).trim() !== '') return syntaxError(example)
+      if (text.slice(consumed).trim() !== '') return syntaxError()
 
       const from = flags.get('from')
       const to = flags.get('to')
 
-      if (from === undefined || to === undefined) return syntaxError(example)
+      if (from === undefined || to === undefined) return syntaxError()
 
-      return finish({ from, to, promotion: flags.get('promote') }, example, input)
+      return finish({ from, to, promotion: flags.get('promote') }, input)
     },
   },
 
   // ── C / C++ ───────────────────────────────────────────────────────────────────
   // Enum lồng phạm vi `Square::E2`. Chấm phẩy bắt buộc.
   cpp: fromPattern(
-    'board.move(Square::E2, Square::E4);',
+    (from, to, p) =>
+      `board.move(Square::${from.toUpperCase()}, Square::${to.toUpperCase()}${p ? `, Piece::${PIECE_ENUM[p]}` : ''});`,
     new RegExp(
       `^board${SP}\\.${SP}move${SP}\\(${SP}Square::(?<from>${TOKEN})${SP},${SP}` +
         `Square::(?<to>${TOKEN})${SP}(?:,${SP}Piece::(?<promotion>${TOKEN})${SP})?\\)${SP};$`,
@@ -372,7 +353,8 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
   // `move` là từ khoá của Rust nên phương thức phải tên khác — `move_piece`, đúng lối
   // đặt tên snake_case. Chấm phẩy bắt buộc.
   rust: fromPattern(
-    'board.move_piece(Square::E2, Square::E4);',
+    (from, to, p) =>
+      `board.move_piece(Square::${from.toUpperCase()}, Square::${to.toUpperCase()}${p ? `, Piece::${PIECE_ENUM[p]}` : ''});`,
     new RegExp(
       `^board${SP}\\.${SP}move_piece${SP}\\(${SP}Square::(?<from>${TOKEN})${SP},${SP}` +
         `Square::(?<to>${TOKEN})${SP}(?:,${SP}Piece::(?<promotion>${TOKEN})${SP})?\\)${SP};$`,
@@ -382,16 +364,16 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
   // ── HTML ──────────────────────────────────────────────────────────────────────
   // Thuộc tính đảo thứ tự được và không phân biệt hoa thường — đúng như HTML thật.
   html: {
-    example: '<move from="e2" to="e4" />',
+    render: (from, to, p) =>
+      `<move from="${from}" to="${to}"${p ? ` promote="${p}"` : ''} />`,
     parse(input) {
-      const example = '<move from="e2" to="e4" />'
-      const empty = requireInput(input, example)
+      const empty = requireInput(input)
       if (empty) return empty
 
       const text = input.trim()
 
       const shell = /^<move((?:\s+[a-zA-Z-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*\/?>$/.exec(text)
-      if (!shell) return syntaxError(example)
+      if (!shell) return syntaxError()
 
       const attrs = new Map<string, string>()
       const attrPattern = /([a-zA-Z-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g
@@ -404,16 +386,16 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
       const from = attrs.get('from')
       const to = attrs.get('to')
 
-      if (from === undefined || to === undefined) return syntaxError(example)
+      if (from === undefined || to === undefined) return syntaxError()
 
-      return finish({ from, to, promotion: attrs.get('promote') }, example, input)
+      return finish({ from, to, promotion: attrs.get('promote') }, input)
     },
   },
 
   // ── CSS ───────────────────────────────────────────────────────────────────────
   // Khai báo cuối được phép bỏ chấm phẩy, đúng luật CSS thật.
   css: fromPattern(
-    'piece[from="e2"] { to: e4; }',
+    (from, to, p) => `piece[from="${from}"] { to: ${to};${p ? ` promote: ${p};` : ''} }`,
     new RegExp(
       `^piece\\[from${SP}=${SP}${quoted(`'"`, 'from')}\\]${SP}\\{${SP}` +
         `to${SP}:${SP}(?<to>${TOKEN})${SP}` +
@@ -427,26 +409,22 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
   // thừa, nháy đơn, khoá không bọc nháy) mà regex nào cũng bỏ sót vài cái. Người gõ sai
   // JSON thì phải nhận đúng thông báo của trình phân tích JSON.
   json: {
-    example: '{"from": "e2", "to": "e4"}',
+    render: (from, to, p) =>
+      JSON.stringify(p ? { from, to, promotion: p } : { from, to }),
     parse(input) {
-      const example = '{"from": "e2", "to": "e4"}'
-      const empty = requireInput(input, example)
+      const empty = requireInput(input)
       if (empty) return empty
 
       let parsed: unknown
 
       try {
         parsed = JSON.parse(input)
-      } catch (error) {
-        return fail(
-          'syntax',
-          `JSON khong hop le: ${error instanceof Error ? error.message : 'loi phan tich'}`,
-          example,
-        )
+      } catch {
+        return fail('syntax')
       }
 
       if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        return fail('syntax', 'Can mot doi tuong JSON co khoa from va to.', example)
+        return fail('syntax')
       }
 
       const record = parsed as Record<string, unknown>
@@ -455,14 +433,14 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
       const promotion = record.promotion
 
       if (typeof from !== 'string' || typeof to !== 'string') {
-        return fail('syntax', 'Thieu khoa "from" hoac "to" dang chuoi.', example)
+        return fail('syntax')
       }
 
       if (promotion !== undefined && typeof promotion !== 'string') {
-        return fail('bad-promotion', 'Khoa "promotion" phai la chuoi.', example)
+        return fail('bad-promotion', String(promotion))
       }
 
-      return finish({ from, to, promotion }, example, input)
+      return finish({ from, to, promotion }, input)
     },
   },
 
@@ -471,7 +449,7 @@ const PARSERS: Record<ChessLanguage, LanguageParser> = {
   // ký hiệu: `e2->e4`. Nhận cả `->` và `=>` vì đó đúng là hai cụm toán tử bài luyện nhắm
   // tới. Phong quân viết `=q` như ký hiệu cờ vua chuẩn.
   text: fromPattern(
-    'e2->e4',
+    (from, to, p) => `${from}->${to}${p ? `=${p}` : ''}`,
     new RegExp(
       `^(?<from>${TOKEN})${SP}(?:->|=>)${SP}(?<to>${TOKEN})` +
         `(?:${SP}=${SP}(?<promotion>[A-Za-z]+))?$`,
@@ -487,9 +465,36 @@ export function parseCommand(language: ChessLanguage, input: string): ParseResul
   return PARSERS[language].parse(input)
 }
 
-/** Câu lệnh mẫu của một ngôn ngữ, để giao diện hiện gợi ý dưới ô nhập. */
-export function exampleFor(language: ChessLanguage): string {
-  return PARSERS[language].example
+/**
+ * Ba câu lệnh mẫu của một ngôn ngữ: đi thường, nhập thành, phong quân.
+ *
+ * Nhập thành và phong quân PHẢI có trong gợi ý. Chỉ đưa một ví dụ đi thường thì người
+ * chơi không có cách nào đoán ra nhập thành là "đi vua hai ô" — họ sẽ thử `O-O`, bị báo
+ * sai cú pháp, rồi bỏ cuộc giữa ván.
+ */
+export function examplesFor(language: ChessLanguage): {
+  move: string
+  castle: string
+  promote: string
+} {
+  const { render } = PARSERS[language]
+
+  return {
+    move: render('e2', 'e4'),
+    // Nhập thành gần: vua e1 đi hai ô sang g1. Engine tự hiểu và ghi biên bản là O-O.
+    castle: render('e1', 'g1'),
+    promote: render('e7', 'e8', 'q'),
+  }
+}
+
+/** Câu lệnh mẫu cho một nước cụ thể — dùng trong gợi ý và thông báo. */
+export function renderCommand(
+  language: ChessLanguage,
+  from: Square,
+  to: Square,
+  promotion?: PromotionPiece,
+): string {
+  return PARSERS[language].render(from, to, promotion)
 }
 
 export { PARSERS }

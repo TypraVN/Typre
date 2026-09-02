@@ -180,7 +180,9 @@ export const translations = {
   chessFlip: 'flip board',
   chessHistory: 'moves',
   chessNoMoves: 'no moves yet',
-  chessSyntaxLabel: 'syntax',
+  chessSyntaxLabel: 'move',
+  chessSyntaxCastle: 'castle',
+  chessSyntaxPromote: 'promote',
   chessCommandPlaceholder: 'type your move…',
   chessSubmit: 'move',
   chessWaitTurn: 'wait for your turn',
@@ -196,6 +198,28 @@ export const translations = {
   chessOnlineOffline:
     'Online play needs the Supabase keys. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then rebuild.',
   chessOpponentLeft: 'your opponent left the room',
+
+  // Thông báo lỗi của chế độ cờ. {x} là chỗ ghép dữ liệu vào.
+  chessErrEmpty: 'Type a command first.',
+  chessErrSyntax: 'That is not valid syntax — check the example below.',
+  chessErrUnknownSquare: '"{token}" is not a square. Squares run from a1 to h8.',
+  chessErrSameSquare: 'The from and to squares are both {token}.',
+  chessErrBadPromotion: '"{token}" is not a promotion piece. Use q, r, b or n.',
+  chessErrEmptyFrom: 'There is no piece on {from}.',
+  chessErrWrongTurn: "It is {turn} to move — {from} holds your opponent's piece.",
+  chessErrIllegal: 'The {piece} on {from} cannot reach {to}. It can go to {targets}.',
+  chessErrIllegalNoTargets: 'The {piece} on {from} cannot reach {to}.',
+  chessErrInCheck: 'Your king is in check — {from} to {to} does not stop it.',
+  chessErrPinned: 'The {piece} on {from} is pinned: moving it exposes your king.',
+  chessErrGameOver: 'The game is over. Start a new one.',
+
+  // Tên quân, dùng trong thông báo lỗi.
+  chessPiecePawn: 'pawn',
+  chessPieceKnight: 'knight',
+  chessPieceBishop: 'bishop',
+  chessPieceRook: 'rook',
+  chessPieceQueen: 'queen',
+  chessPieceKing: 'king',
 
   // Biểu đồ tiến bộ theo ngày
   progressTitle: 'progress',
