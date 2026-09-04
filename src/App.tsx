@@ -14,7 +14,6 @@ import {
 } from 'lucide-react'
 import { Toast, ToastStack } from './components/Toast'
 import { SiteFooter } from './components/SiteFooter'
-import { InstallBanner } from './components/InstallBanner'
 import { useTypingEngine } from './hooks/useTypingEngine'
 import { CodeEditorDisplay } from './components/CodeEditorDisplay'
 import { ShortcutTrainer } from './components/ShortcutTrainer'
@@ -1122,8 +1121,6 @@ function App() {
         ("Typre" không được Google nhận ra) — bỏ hẳn thì mất tác dụng đó trên toàn app.
       */}
       {mode !== 'chess' && <SiteFooter />}
-
-      <InstallBanner t={t} />
 
       <ToastStack>
         {/* Đăng nhập lỗi thì Supabase chỉ trả lý do trong URL rồi thôi — không hiện ra

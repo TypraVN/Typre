@@ -358,9 +358,6 @@ export const translations = {
   inviteAccepted: 'friend request sent to whoever invited you',
   inviteSelf: "that's your own invite link — share it with someone else",
   inviteFailed: 'could not send the friend request',
-  installBannerText: 'Install Typre — type offline, one tap from your home screen',
-  installBannerIos: 'Install Typre: tap Share, then "Add to Home Screen"',
-  installButton: 'Install',
 
   // Public profile
   backToApp: 'back to Typre',
