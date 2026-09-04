@@ -1,6 +1,12 @@
 import { ImageResponse } from '@vercel/og'
 
-export const config = { runtime: 'edge' }
+/**
+ * Chạy trên Node.js Function (mặc định), KHÔNG phải Edge — `@vercel/og` dùng WASM
+ * (resvg/yoga) qua module `url` của Node, và Vercel gộp mọi Edge Function cùng dự án
+ * (kể cả `middleware.ts`) vào một bundle kiểm tra tương thích chung. Đặt hàm này ở Edge
+ * làm cả `middleware.ts` bị kéo theo lỗi "referencing unsupported modules" dù middleware
+ * không hề import file này — chỉ ghi URL của nó vào một chuỗi HTML.
+ */
 
 const TIME_LIMITS = new Set(['15', '30', '60'])
 
