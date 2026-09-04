@@ -7,6 +7,8 @@ import { LANGUAGES } from './data/languages'
 import { translations } from './i18n/translations'
 import { Analytics } from '@vercel/analytics/react'
 import { clearLanguageParam, readLanguageParam } from './lib/langParam'
+import { clearShortcutsParam, readShortcutsParam } from './lib/toolParam'
+import { capturePendingInviteFromUrl } from './lib/invite'
 import { usePreferencesStore } from './store/usePreferencesStore'
 import { startErrorCapture } from './lib/report'
 
@@ -75,6 +77,12 @@ function Root() {
 startErrorCapture()
 
 /**
+ * Lưu lời mời kết bạn (`?invite=<id>`) TRƯỚC khi render, cùng lý do `?lang=` ở dưới:
+ * phải xong trước khi người dùng có thể bấm "Sign in" và rời trang.
+ */
+capturePendingInviteFromUrl()
+
+/**
  * Áp dụng `?lang=` TRƯỚC khi render.
  *
  * Phải làm ở đây chứ không phải trong một effect của App: App rút bài đầu tiên ngay trong
@@ -86,6 +94,14 @@ const fromLandingPage = readLanguageParam(LANGUAGES)
 if (fromLandingPage) {
   usePreferencesStore.getState().setLanguage(fromLandingPage)
   clearLanguageParam()
+}
+
+/** Cùng cơ chế, cho trang giới thiệu bộ luyện phím tắt (`/practice/<bo>-shortcuts/`). */
+const shortcutsFromLandingPage = readShortcutsParam()
+if (shortcutsFromLandingPage) {
+  usePreferencesStore.getState().setMode('shortcuts')
+  usePreferencesStore.getState().setShortcutSet(shortcutsFromLandingPage)
+  clearShortcutsParam()
 }
 
 createRoot(document.getElementById('root')!).render(

@@ -10,6 +10,7 @@ import {
   ClipboardPaste,
   Users,
   Bug,
+  Share2,
 } from 'lucide-react'
 import { Toast, ToastStack } from './components/Toast'
 import { SiteFooter } from './components/SiteFooter'
@@ -55,11 +56,13 @@ import { useAuth } from './hooks/useAuth'
 import { readAuthErrorFromUrl } from './lib/auth'
 import {
   buildChallengeUrl,
-  clearChallengeHash,
+  clearChallengeUrl,
   readChallengeFromHash,
+  readChallengeFromPath,
   type Challenge,
 } from './lib/challenge'
 import { usePendingScoreSubmit } from './hooks/usePendingScoreSubmit'
+import { usePendingInvite } from './hooks/usePendingInvite'
 import { getRandomSnippet, getSnippetById } from './data/snippets'
 import { buildCustomSnippet } from './lib/customSnippet'
 import { pushXp } from './lib/xpSync'
@@ -170,7 +173,9 @@ function App() {
    * biết mà so điểm; bấm "next snippet" là bỏ (xem `goNext`).
    */
   const [challenge, setChallenge] = useState(() => {
-    const found = readChallengeFromHash()
+    // Link mới là path thật (`/c/...`); `readChallengeFromHash` chỉ còn để đọc link
+    // dạng cũ ai đó đã copy từ trước.
+    const found = readChallengeFromPath() ?? readChallengeFromHash()
     if (!found) return null
     // Link cũ trỏ bài đã bị xoá khỏi dataset thì bỏ qua, đừng để app trắng bài.
     return getSnippetById(found.snippetId) ? found : null
@@ -208,6 +213,7 @@ function App() {
   const [frozenStats, setFrozenStats] = useState<TypingStats | null>(null)
   const [capsLockOn, setCapsLockOn] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
   const [customDialogOpen, setCustomDialogOpen] = useState(false)
   const [progressOpen, setProgressOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
@@ -236,6 +242,7 @@ function App() {
 
   const { user, loading: authLoading, recovery, clearRecovery } = useAuth()
   const { notice: pendingNotice, dismissNotice } = usePendingScoreSubmit(user)
+  const { inviteNotice, dismissInviteNotice } = usePendingInvite(user)
   // Đọc MỘT LẦN lúc mount: hàm này dọn luôn URL nên gọi trong render sẽ mất thông báo
   // ở lần render thứ hai.
   const [authError, setAuthError] = useState<string | null>(readAuthErrorFromUrl)
@@ -381,6 +388,44 @@ function App() {
     }
   }
 
+  /**
+   * Share kết quả ra ngoài app. Ưu tiên Web Share API (mở share sheet của hệ điều
+   * hành) vì đó là nơi share thật sự xảy ra trên mobile; máy tính không có
+   * `navigator.share` thì copy sẵn text+link vào clipboard.
+   * Code tự dán không có link thách đấu hợp lệ (người nhận không có code của bạn),
+   * nên share về trang chủ thay vì một link mở ra là trượt.
+   */
+  const shareResult = async () => {
+    const url = customOn
+      ? window.location.origin
+      : buildChallengeUrl({
+          language: snippet.language,
+          timeLimit,
+          snippetId: snippet.id,
+          target: displayStats.wpm,
+        })
+    const text = t.shareResultText
+      .replace('{wpm}', String(displayStats.wpm))
+      .replace('{language}', snippet.language)
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ text, url })
+      } catch {
+        // Người dùng bấm huỷ share sheet — không phải lỗi, không cần fallback.
+      }
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`)
+      setShareCopied(true)
+      window.setTimeout(() => setShareCopied(false), 2500)
+    } catch {
+      window.prompt(t.challengeCopyFailed, `${text} ${url}`)
+    }
+  }
+
   /** Gõ lại đúng bài đang mở. */
   const restartSame = () => {
     reset()
@@ -440,7 +485,7 @@ function App() {
     setTimeLimit(next.timeLimit)
     setFrozenStats(null)
     recordedRef.current = false
-    clearChallengeHash()
+    clearChallengeUrl()
   }
 
   useEffect(() => {
@@ -952,6 +997,14 @@ function App() {
                     {linkCopied ? t.challengeCopied : t.challengeFriend}
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={shareResult}
+                  className={`${ACTION_BTN_ON_CARD} flex items-center gap-1.5`}
+                >
+                  <Share2 className="w-4 h-4" />
+                  {shareCopied ? t.shareResultCopied : t.shareResult}
+                </button>
               </div>
 
               <div className="flex gap-4 font-mono text-xs text-zinc-400 dark:text-zinc-500">
@@ -1061,7 +1114,13 @@ function App() {
       )}
       </main>
 
-      <SiteFooter />
+      {/*
+        Ẩn ở tab Chess: trang đó đã dày đặc thông tin riêng (cột cài đặt, đồng hồ, biên
+        bản, ví dụ cú pháp, dòng ghi công bộ quân) — thêm một khối chân trang nữa vào ngay
+        dưới thì rối. Các tab khác vẫn giữ, vì đây là chỗ sửa lỗi SEO thương hiệu
+        ("Typre" không được Google nhận ra) — bỏ hẳn thì mất tác dụng đó trên toàn app.
+      */}
+      {mode !== 'chess' && <SiteFooter />}
 
       <ToastStack>
         {/* Đăng nhập lỗi thì Supabase chỉ trả lý do trong URL rồi thôi — không hiện ra
@@ -1093,6 +1152,28 @@ function App() {
               </>
             )}
             {pendingNotice.status === 'failed' && t.pendingSubmitFailed}
+          </Toast>
+        )}
+
+        {/* Cùng lý do pendingNotice ở trên: lời mời được gửi lúc trang vừa tải lại sau
+            khi đăng nhập, người dùng không hề bấm gì nên phải nói rõ đã xảy ra. */}
+        {inviteNotice && (
+          <Toast
+            kind={
+              inviteNotice === 'done'
+                ? 'success'
+                : inviteNotice === 'failed'
+                  ? 'error'
+                  : 'info'
+            }
+            dismissLabel={t.dismiss}
+            onDismiss={dismissInviteNotice}
+          >
+            {inviteNotice === 'sending' && t.inviteSending}
+            {inviteNotice === 'done' && t.inviteAccepted}
+            {inviteNotice === 'exists' && t.friendAlreadyLinked}
+            {inviteNotice === 'self' && t.inviteSelf}
+            {inviteNotice === 'failed' && t.inviteFailed}
           </Toast>
         )}
       </ToastStack>

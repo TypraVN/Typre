@@ -147,3 +147,34 @@ export const LANGUAGE_PAGES = [
       'Bracket and operator runs, escape sequences, regular expressions, shell-style punctuation, and mixed symbol lines built to hit every awkward reach on the keyboard.',
   },
 ]
+
+/**
+ * Nội dung 2 trang giới thiệu bộ luyện phím tắt (xem `src/data/shortcuts.ts`).
+ *
+ * Cùng lý do tách khỏi LANGUAGE_PAGES: hình dạng trang khác hẳn — không có "snippet",
+ * mà là danh sách phím tắt thật, lấy trực tiếp từ `src/data/shortcuts.ts` lúc build
+ * (xem `loadShortcuts` trong generate-seo-pages.mjs) chứ không hardcode ở đây, để không
+ * bao giờ lệch với bộ phím tắt thật trong app.
+ *
+ * `param` là giá trị `?shortcuts=` mở đúng bộ đó trong app — đọc ở `src/lib/toolParam.ts`.
+ */
+export const SHORTCUT_PAGES = [
+  {
+    id: 'vscode',
+    slug: 'vscode-shortcuts',
+    label: 'VS Code',
+    param: 'vscode',
+    keyword: 'VS Code keyboard shortcuts practice',
+    intro:
+      'A timed drill for VS Code keyboard shortcuts on Windows and Linux — the same shortcuts, practised until your hands do them without thinking, instead of a list you read once and forget.',
+  },
+  {
+    id: 'vim',
+    slug: 'vim-shortcuts',
+    label: 'Vim',
+    param: 'vim',
+    keyword: 'Vim keyboard shortcuts practice',
+    intro:
+      'A timed drill for Vim motions and commands — the same keys, practised until your hands do them without thinking, instead of a cheat sheet you read once and forget.',
+  },
+]

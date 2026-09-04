@@ -17,6 +17,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.112.1",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/og": "^1.0.2",
     "chess.js": "^1.4.0",
     "lucide-react": "^1.28.0",
     "react": "^19.2.8",

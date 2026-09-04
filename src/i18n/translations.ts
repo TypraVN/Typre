@@ -141,6 +141,9 @@ export const translations = {
   challengeBanner: 'beat',
   challengeWon: 'you beat the challenge',
   challengeLost: 'challenge was',
+  shareResult: 'share',
+  shareResultCopied: 'copied!',
+  shareResultText: 'I just typed {wpm} WPM in {language} on Typre — beat my score:',
   joined: 'Joined',
   testsStarted: 'tests started',
   testsCompleted: 'tests completed',
@@ -175,6 +178,13 @@ export const translations = {
   chessDrawFifty: 'draw — fifty move rule',
   chessWhiteWins: 'white wins',
   chessBlackWins: 'black wins',
+  /**
+   * Tiêu đề lớn của tấm kết quả, riêng cho ván có ĐỐI THỦ THẬT (đấu bot hoặc trực tuyến).
+   * Ván hai người chung máy dùng `chessWhiteWins`/`chessBlackWins` — không ai là "bạn" cả.
+   */
+  chessYouWin: 'you win',
+  chessYouLose: 'you lose',
+  chessGameDraw: 'draw',
   chessNewGame: 'new game',
   chessUndo: 'undo',
   chessFlip: 'flip board',
@@ -208,8 +218,19 @@ export const translations = {
   chessClockLabel: 'clock',
   chessClock15: '15 min each',
   chessClockOff: 'no clock',
+  /**
+   * Hai chuỗi này chỉ còn dùng ở nơi KHÔNG có tiêu đề lớn đi kèm (StatusLine cũ đã bỏ),
+   * nhưng giữ lại đề phòng cần một câu độc lập ở chỗ khác. Chỗ đang dùng thật —
+   * `GameOverPanel` — dùng `chessOutOfTime` gọn hơn, vì tiêu đề lớn đã nói ai thắng rồi.
+   */
   chessFlagWhite: 'white ran out of time — black wins',
   chessFlagBlack: 'black ran out of time — white wins',
+  /** Lý do gọn cho tấm kết quả: tiêu đề lớn đã nói ai thắng, dòng này chỉ cần nói vì sao. */
+  chessOutOfTime: 'out of time',
+  /**
+   * Hoà thì PHẢI giải thích, không được gọn: luật "hết giờ nhưng vẫn hoà" (FIDE 6.9) đủ
+   * lạ để người chơi nghĩ ứng dụng có lỗi nếu không thấy lý do ngay tại chỗ.
+   */
   chessFlagDraw: 'out of time, but the other side cannot checkmate — draw',
   chessClockNote: 'Each side has 15 minutes for the whole game.',
 
@@ -332,6 +353,11 @@ export const translations = {
   cancelRequest: 'cancel request',
   noFriendsYet: "You don't have any friends :(",
   friendAlreadyLinked: 'you are already connected with this person',
+  inviteFriendHint: 'invite a friend: anyone who opens this link and signs in becomes your friend automatically',
+  inviteSending: 'connecting you with the friend who invited you...',
+  inviteAccepted: 'friend request sent to whoever invited you',
+  inviteSelf: "that's your own invite link — share it with someone else",
+  inviteFailed: 'could not send the friend request',
 
   // Public profile
   backToApp: 'back to Typre',

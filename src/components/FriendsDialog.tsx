@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Check, Plus, Search, UserMinus, X as XIcon } from 'lucide-react'
 import { Modal } from './Modal'
 import { Avatar } from './Avatar'
+import { CopyLinkButton } from './CopyLinkButton'
 import {
   acceptFriendRequest,
   listFriends,
@@ -11,6 +12,7 @@ import {
   type FriendLists,
 } from '../lib/friends'
 import { searchProfiles, type Profile } from '../lib/profiles'
+import { buildInviteUrl } from '../lib/invite'
 import type { AppUser } from '../lib/auth'
 import type { Translation } from '../i18n/translations'
 
@@ -122,6 +124,13 @@ export function FriendsDialog({ user, onClose, t }: FriendsDialogProps) {
             <Plus className="w-4 h-4" />
             {t.addFriend}
           </button>
+        </div>
+
+        {/* Cách nhanh hơn "search" để kết bạn: gửi thẳng link, người nhận không cần có
+            username hay bị mình tìm ra được — chỉ cần họ mở link rồi đăng nhập. */}
+        <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
+          <span className="font-mono text-xs text-zinc-500">{t.inviteFriendHint}</span>
+          <CopyLinkButton url={buildInviteUrl(user.id)} t={t} className="shrink-0" />
         </div>
 
         {adding && (

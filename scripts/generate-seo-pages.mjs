@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import { build } from 'vite'
-import { LANGUAGE_PAGES } from './seo-pages-content.mjs'
+import { LANGUAGE_PAGES, SHORTCUT_PAGES } from './seo-pages-content.mjs'
 
 /**
  * Sinh 14 trang tĩnh giới thiệu từng ngôn ngữ, chạy SAU `vite build`.
@@ -17,6 +17,7 @@ import { LANGUAGE_PAGES } from './seo-pages-content.mjs'
 const SITE = 'https://www.typre.dev'
 const DIST = 'dist'
 const TMP_DIR = 'node_modules/.typre-seo'
+const SHORTCUTS_TMP_DIR = 'node_modules/.typre-seo-shortcuts'
 
 /**
  * Nạp dữ liệu bài để lấy SỐ THẬT.
@@ -48,6 +49,30 @@ async function loadSnippetCounts() {
 
   const mod = await import(`../${TMP_DIR}/snippets.mjs?t=${Date.now()}`)
   return { snippetCounts: mod.snippetCounts, sampleSnippets: mod.sampleSnippets }
+}
+
+/**
+ * Cùng kỹ thuật với `loadSnippetCounts`, cho bộ phím tắt thật: trang giới thiệu liệt kê
+ * đúng phím tắt app đang dùng, không phải một bản chép tay có thể lệch dần theo thời gian.
+ */
+async function loadShortcuts() {
+  await build({
+    logLevel: 'error',
+    publicDir: false,
+    build: {
+      lib: {
+        entry: 'src/data/shortcuts.ts',
+        formats: ['es'],
+        fileName: () => 'shortcuts.mjs',
+      },
+      outDir: SHORTCUTS_TMP_DIR,
+      emptyOutDir: true,
+      minify: false,
+    },
+  })
+
+  const mod = await import(`../${SHORTCUTS_TMP_DIR}/shortcuts.mjs?t=${Date.now()}`)
+  return { vscode: mod.vscodeShortcuts, vim: mod.vimShortcuts }
 }
 
 function escapeHtml(text) {
@@ -269,6 +294,123 @@ function renderPage(page, counts, samples, siblings) {
 }
 
 /**
+ * Trang giới thiệu bộ luyện phím tắt (VS Code / Vim) — cùng khuôn nhìn với `renderPage`
+ * nhưng hình dạng nội dung khác hẳn nên tách hàm riêng: không có "snippet", chỉ có danh
+ * sách phím tắt thật lấy từ `src/data/shortcuts.ts` lúc build.
+ */
+function renderShortcutsPage(page, shortcuts, otherPage) {
+  const url = `${SITE}/practice/${page.slug}/`
+  const title = `${page.keyword} | Typre`
+  const description = `Practice ${page.label} keyboard shortcuts until they are muscle memory: ${shortcuts.length} real shortcuts, timed drill. Free, no account needed.`
+
+  const rows = shortcuts
+    .map(
+      (s) =>
+        `<li><span>${escapeHtml(s.description)}</span><code>${escapeHtml(s.keys.join(' + '))}</code></li>`,
+    )
+    .join('\n        ')
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(description)}" />
+    <link rel="canonical" href="${url}" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#18181b" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Typre" />
+    <meta property="og:url" content="${url}" />
+    <meta property="og:title" content="${escapeHtml(title)}" />
+    <meta property="og:description" content="${escapeHtml(description)}" />
+    <meta property="og:image" content="${SITE}/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Typre", "item": "${SITE}/" },
+          { "@type": "ListItem", "position": 2, "name": ${JSON.stringify(page.keyword)}, "item": "${url}" }
+        ]
+      }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>${STYLES}
+      .shortcuts { list-style: none; margin: 20px 0; padding: 0; }
+      .shortcuts li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 9px 0;
+        border-bottom: 1px solid #27272a;
+        font-size: 14px;
+      }
+      .shortcuts li:last-child { border-bottom: none; }
+    </style>
+  </head>
+  <body>
+    <div class="bar"></div>
+    <div class="wrap">
+      <header>
+        ${LOGO_SVG}
+        <a href="/">Typre</a>
+      </header>
+
+      <main>
+        <h1>${escapeHtml(page.keyword)}</h1>
+        <p>${escapeHtml(page.intro)}</p>
+
+        <ul class="counts">
+          <li><strong>${shortcuts.length}</strong>${escapeHtml(page.label)} shortcuts</li>
+        </ul>
+
+        <a class="cta" href="/?shortcuts=${page.param}">Start the ${escapeHtml(page.label)} drill</a>
+
+        <h2>What is in the drill</h2>
+        <ul class="shortcuts">
+        ${rows}
+        </ul>
+
+        <h2>How it works</h2>
+        <p>
+          Each round shows one shortcut's description; type the keys it names, in order.
+          Get it right and the next one appears immediately, so the drill moves at the
+          speed of your recall, not a timer.
+        </p>
+
+        <h2>Other tools</h2>
+        <ul class="others">
+          <li><a href="/practice/${otherPage.slug}/">${escapeHtml(otherPage.keyword)}</a></li>
+          <li><a href="/practice/">Practice typing code by language</a></li>
+        </ul>
+      </main>
+
+      <footer>
+        <a href="/">Typre</a> — typing practice for programmers. 14 languages, free, works
+        offline.
+      </footer>
+    </div>
+  </body>
+</html>
+`
+}
+
+/**
  * Trang hub /practice/ — một chỗ liệt kê cả 14 trang.
  *
  * Không phải để xếp hạng cho từ khoá nào cụ thể, mà để con bot có một trang duy nhất dẫn
@@ -357,11 +499,12 @@ function renderHub(pages, countsFor) {
 `
 }
 
-function renderSitemap(pages) {
+function renderSitemap(pages, toolPages) {
   const urls = [
     `${SITE}/`,
     `${SITE}/practice/`,
     ...pages.map((p) => `${SITE}/practice/${p.slug}/`),
+    ...toolPages.map((p) => `${SITE}/practice/${p.slug}/`),
   ]
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -514,13 +657,25 @@ async function main() {
   writeFileSync(`${DIST}/practice/index.html`, renderHub(LANGUAGE_PAGES, snippetCounts), 'utf8')
   console.log('  /practice/  (trang hub)')
 
+  const shortcutsByParam = await loadShortcuts()
+  for (const page of SHORTCUT_PAGES) {
+    const shortcuts = shortcutsByParam[page.param]
+    const otherPage = SHORTCUT_PAGES.find((p) => p.id !== page.id)
+    const dir = `${DIST}/practice/${page.slug}`
+
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(`${dir}/index.html`, renderShortcutsPage(page, shortcuts, otherPage), 'utf8')
+    console.log(`  /practice/${page.slug}/  (${shortcuts.length} phim tat)`)
+  }
+
   patchIndexHtml(snippetCounts)
 
-  const sitemap = renderSitemap(LANGUAGE_PAGES)
+  const sitemap = renderSitemap(LANGUAGE_PAGES, SHORTCUT_PAGES)
   writeFileSync(`${DIST}/sitemap.xml`, sitemap, 'utf8')
   console.log(`  sitemap.xml (${(sitemap.match(/<loc>/g) ?? []).length} URL)`)
 
   rmSync(TMP_DIR, { recursive: true, force: true })
+  rmSync(SHORTCUTS_TMP_DIR, { recursive: true, force: true })
 }
 
 main()
