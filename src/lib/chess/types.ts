@@ -132,6 +132,14 @@ export interface GameState {
   winner?: Color
   /** Lịch sử nước đi dạng ký hiệu chuẩn (SAN), ví dụ 'e4', 'Nf3', 'O-O'. */
   history: string[]
+  /**
+   * Quân đã bị ăn, gom theo màu của quân BỊ ăn — `w` là các quân Trắng đã mất.
+   *
+   * Giữ nguyên THỨ TỰ BỊ ĂN, không sắp lại theo giá trị: khu quân chết bày theo đúng thứ
+   * tự chúng rời bàn thì đọc được cả diễn biến, và quân vừa mất luôn là quân cuối — chính
+   * là thứ hiệu ứng "quân đi sang bên phải" cần biết.
+   */
+  captured: { w: string[]; b: string[] }
   /** Ván đã kết thúc chưa — tiện cho UI, khỏi phải liệt kê lại các status kết thúc. */
   isOver: boolean
 }

@@ -16,6 +16,11 @@ export interface ChessRoomHandlers {
   onReset: () => void
   /** Đối thủ xin thua. Tham số là màu của người xin thua. */
   onResign: (color: Color) => void
+  /**
+   * Bên Trắng vừa phát ra định danh của MỘT ván mới (xem `sendGameStart` bên dưới) — dùng
+   * để cả hai máy cùng gọi `record_chess_result` với đúng CÙNG MỘT `gameId`.
+   */
+  onGameStart: (gameId: string) => void
 }
 
 export interface ChessRoomState {
@@ -28,6 +33,11 @@ export interface ChessRoomState {
   /** Tên người chơi còn lại, để hiện "vs …". `null` khi chưa có ai. */
   opponentName: string | null
   /**
+   * ID tài khoản thật của đối thủ — `null` khi chưa có đối thủ HOẶC đối thủ chưa đăng
+   * nhập. Chỉ dùng để nộp kết quả lên bảng xếp hạng ELO, xem `record_chess_result`.
+   */
+  opponentId: string | null
+  /**
    * Đã từng đủ hai người rồi giờ chỉ còn mình.
    *
    * Khác với "đang chờ đối thủ": presence tự dọn khi ai đó đóng tab, nên phân biệt được
@@ -38,6 +48,13 @@ export interface ChessRoomState {
   sendMove: (move: ParsedMove, fen: string, clock?: ClockSnapshot) => void
   sendReset: () => void
   sendResign: (color: Color) => void
+  /**
+   * Phát định danh của một ván MỚI cho đối thủ — chỉ bên Trắng nên gọi (xem ChessMode.tsx,
+   * chỗ gọi hàm này), để cả hai máy có cùng một `gameId` dùng khi nộp kết quả lên bảng
+   * xếp hạng. Không tự phát khi hết ván — đó là việc của lúc BẮT ĐẦU ván, không phải lúc
+   * kết thúc.
+   */
+  sendGameStart: (gameId: string) => void
 }
 
 const EMPTY: RoomMember[] = []
@@ -51,6 +68,8 @@ const EMPTY: RoomMember[] = []
 export function useChessRoom(
   roomId: string | null,
   myName: string,
+  /** ID tài khoản thật, `null` nếu chưa đăng nhập — xem `RoomMember.userId`. */
+  myUserId: string | null,
   handlers: ChessRoomHandlers,
 ): ChessRoomState {
   const [connected, setConnected] = useState(false)
@@ -103,7 +122,14 @@ export function useChessRoom(
             const latest = entries[entries.length - 1] as unknown as Partial<RoomMember>
             if (!latest || typeof latest.name !== 'string') return []
 
-            return [{ key, name: latest.name, joinedAt: latest.joinedAt ?? 0 }]
+            return [
+              {
+                key,
+                name: latest.name,
+                userId: typeof latest.userId === 'string' ? latest.userId : null,
+                joinedAt: latest.joinedAt ?? 0,
+              },
+            ]
           })
 
           if (!cancelled) setMembers(list)
@@ -124,12 +150,19 @@ export function useChessRoom(
         .on('broadcast', { event: 'resign' }, ({ payload }) => {
           handlersRef.current.onResign((payload as { color: Color }).color)
         })
+        .on('broadcast', { event: 'game-start' }, ({ payload }) => {
+          handlersRef.current.onGameStart((payload as { gameId: string }).gameId)
+        })
         .subscribe((status) => {
           if (cancelled) return
 
           if (status === 'SUBSCRIBED') {
             setConnected(true)
-            void channel?.track({ name: myName, joinedAt: joinedAtRef.current })
+            void channel?.track({
+              name: myName,
+              userId: myUserId,
+              joinedAt: joinedAtRef.current,
+            })
 
             /**
              * Xin thế cờ hiện tại.
@@ -153,7 +186,7 @@ export function useChessRoom(
       void channel?.unsubscribe()
       channelRef.current = null
     }
-  }, [roomId, myName])
+  }, [roomId, myName, myUserId])
 
   const sendMove = useCallback((move: ParsedMove, fen: string, clock?: ClockSnapshot) => {
     void channelRef.current?.send({
@@ -169,6 +202,10 @@ export function useChessRoom(
 
   const sendResign = useCallback((color: Color) => {
     void channelRef.current?.send({ type: 'broadcast', event: 'resign', payload: { color } })
+  }, [])
+
+  const sendGameStart = useCallback((gameId: string) => {
+    void channelRef.current?.send({ type: 'broadcast', event: 'game-start', payload: { gameId } })
   }, [])
 
   const myColor = colorFor(members, myKeyRef.current)
@@ -191,9 +228,11 @@ export function useChessRoom(
     myColor,
     ready,
     opponentName: opponent?.name ?? null,
+    opponentId: opponent?.userId ?? null,
     opponentLeft: hadOpponentRef.current && connected && members.length < 2,
     sendMove,
     sendReset,
     sendResign,
+    sendGameStart,
   }
 }

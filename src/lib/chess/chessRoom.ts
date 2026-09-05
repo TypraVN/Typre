@@ -1,9 +1,14 @@
 /**
  * Phòng cờ hai người, qua Realtime channel của Supabase.
  *
- * Dùng lại đúng cách phần đua thời gian thực đang làm: broadcast + presence, KHÔNG bảng
- * mới, KHÔNG migration. Ván cờ chỉ sống trong lúc hai người còn mở tab, nên không có gì
- * đáng lưu xuống database.
+ * Dùng lại đúng cách phần đua thời gian thực đang làm: broadcast + presence — CHÍNH BẢN
+ * THÂN PHÒNG vẫn không có bảng nào cả, ván cờ (nước đi, thế cờ giữa chừng) chỉ sống trong
+ * lúc hai người còn mở tab.
+ *
+ * Ngoại lệ DUY NHẤT: lúc ván KẾT THÚC, kết quả (ai thắng, ELO đổi bao nhiêu) được ghi
+ * xuống `chess_ratings`/`chess_games` (xem `record_chess_result` trong
+ * add-chess-leaderboard.sql) để có bảng xếp hạng — không phải toàn bộ ván, chỉ đúng một
+ * dòng kết quả cuối cùng.
  *
  * Phòng nằm trong hash (`#/cg/<ma>`) như link thách đấu, nên không cần router và không
  * cần rewrite trên hosting tĩnh.
@@ -45,6 +50,14 @@ export function newRoomId(): string {
 export interface RoomMember {
   key: string
   name: string
+  /**
+   * ID tài khoản thật (Supabase), `null` nếu chưa đăng nhập.
+   *
+   * Chỉ dùng để nộp kết quả lên bảng xếp hạng ELO (xem `record_chess_result` trong
+   * add-chess-leaderboard.sql) — không dùng cho logic chia màu hay đồng bộ nước đi, những
+   * chỗ đó vẫn dựa vào `key`/`joinedAt` như trước.
+   */
+  userId: string | null
   /**
    * Mốc thời gian vào phòng, dùng để chia màu.
    *

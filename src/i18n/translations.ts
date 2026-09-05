@@ -218,6 +218,12 @@ export const translations = {
   chessClockLabel: 'clock',
   chessClock15: '15 min each',
   chessClockOff: 'no clock',
+  chessLeaderboardBtn: 'leaderboard',
+  chessLeaderboardTitle: 'Chess leaderboard',
+  chessLeaderboardSubtitle: 'ELO from rated online games, signed-in players only',
+  chessLeaderboardEmpty: 'no rated games yet',
+  chessLeaderboardMigrationMissing:
+    'Chess leaderboard tables are missing. Run supabase/add-chess-leaderboard.sql, then reload.',
   /**
    * Hai chuỗi này chỉ còn dùng ở nơi KHÔNG có tiêu đề lớn đi kèm (StatusLine cũ đã bỏ),
    * nhưng giữ lại đề phòng cần một câu độc lập ở chỗ khác. Chỗ đang dùng thật —

@@ -12,6 +12,9 @@
  *
  * Bot cố tình đi dở thì người chơi nhận ra ngay và thấy bị coi thường. Bot nghĩ ít thì
  * thua một cách tự nhiên — nó nhìn nông và mắc đúng những lỗi người mới hay mắc.
+ *
+ * Tìm kiếm: negamax + cắt tỉa alpha-beta + đào sâu dần + TÌM KIẾM TĨNH LẶNG. Đánh giá:
+ * vật chất + bảng vị trí riêng từng loại quân.
  */
 
 import { Chess } from 'chess.js'
@@ -42,11 +45,14 @@ const MAX_DEPTH = 8
  * Số nút giữa hai lần xem đồng hồ, trừ 1 để dùng được phép AND bit.
  *
  * Đây là ĐỘ MỊN của việc dừng: bot có thể vọt quá hẹn tối đa bằng thời gian chạy chừng
- * này nút. chess.js chỉ đạt vài chục nghìn nút/giây nên 2048 nút đã là cả trăm mili
- * giây — đo thực tế thấy mức vừa (hẹn 120ms) vọt lên 381ms. 255 đưa độ mịn về khoảng
- * 5ms, còn `Date.now()` gọi thêm thì không đáng kể.
+ * này nút.
+ *
+ * Đã hạ hai lần theo số đo thật: 2048 nút làm mức vừa (hẹn 120ms) chạy 381ms; 255 kéo
+ * xuống 154ms; sau khi thêm tìm kiếm tĩnh lặng thì 255 lại vọt lên 296ms nên hạ tiếp
+ * xuống 63, giờ còn 127-154ms. Gọi `Date.now()` dày hơn không đáng kể so với chi phí
+ * sinh nước đi của chess.js.
  */
-const TIME_CHECK_MASK = 255
+const TIME_CHECK_MASK = 63
 
 /** Ném ra để thoát khỏi đệ quy khi hết giờ. Độ sâu đang dở bị bỏ, dùng kết quả độ sâu trước. */
 const TIMEOUT = Symbol('bot-timeout')
@@ -68,22 +74,83 @@ const PIECE_VALUE: Record<string, number> = {
 }
 
 /**
- * Thưởng cho quân đứng gần trung tâm.
+ * Bảng vị trí RIÊNG cho từng loại quân, đọc theo góc nhìn quân TRẮNG (hàng 0 = hàng 8).
  *
- * Chỉ tính vật chất thì bot đi những nước vô nghĩa ở rìa bàn khi không có gì để ăn —
- * nhìn rất ngớ ngẩn. Một bảng thưởng đơn giản đủ để nó phát triển quân ra giữa như
- * người mới được dạy.
+ * Bản đầu dùng CHUNG một bảng "thưởng trung tâm" cho mọi quân. Nghe hợp lý nhưng sai
+ * nặng ở đúng một chỗ: nó thưởng cả cho VUA đứng giữa bàn — điều tệ nhất có thể làm ở
+ * khai cuộc và trung cuộc. Bot bị chính hàm đánh giá của mình dụ đi vua ra giữa.
+ *
+ * Bộ số dưới đây là bảng "simplified evaluation" quen thuộc, đủ tốt cho mức này.
  */
-const CENTER_BONUS = [
-  [0, 1, 2, 3, 3, 2, 1, 0],
-  [1, 2, 3, 4, 4, 3, 2, 1],
-  [2, 3, 5, 6, 6, 5, 3, 2],
-  [3, 4, 6, 8, 8, 6, 4, 3],
-  [3, 4, 6, 8, 8, 6, 4, 3],
-  [2, 3, 5, 6, 6, 5, 3, 2],
-  [1, 2, 3, 4, 4, 3, 2, 1],
-  [0, 1, 2, 3, 3, 2, 1, 0],
-]
+const PIECE_SQUARE: Record<string, number[][]> = {
+  // Tốt: tiến lên có thưởng, càng gần phong càng lớn. Phạt nhẹ tốt d/e còn ở nhà.
+  p: [
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [50, 50, 50, 50, 50, 50, 50, 50],
+    [10, 10, 20, 30, 30, 20, 10, 10],
+    [5, 5, 10, 25, 25, 10, 5, 5],
+    [0, 0, 0, 20, 20, 0, 0, 0],
+    [5, -5, -10, 0, 0, -10, -5, 5],
+    [5, 10, 10, -20, -20, 10, 10, 5],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+  ],
+  // Mã: mạnh ở giữa, gần như vô dụng ở góc.
+  n: [
+    [-50, -40, -30, -30, -30, -30, -40, -50],
+    [-40, -20, 0, 0, 0, 0, -20, -40],
+    [-30, 0, 10, 15, 15, 10, 0, -30],
+    [-30, 5, 15, 20, 20, 15, 5, -30],
+    [-30, 0, 15, 20, 20, 15, 0, -30],
+    [-30, 5, 10, 15, 15, 10, 5, -30],
+    [-40, -20, 0, 5, 5, 0, -20, -40],
+    [-50, -40, -30, -30, -30, -30, -40, -50],
+  ],
+  b: [
+    [-20, -10, -10, -10, -10, -10, -10, -20],
+    [-10, 0, 0, 0, 0, 0, 0, -10],
+    [-10, 0, 5, 10, 10, 5, 0, -10],
+    [-10, 5, 5, 10, 10, 5, 5, -10],
+    [-10, 0, 10, 10, 10, 10, 0, -10],
+    [-10, 10, 10, 10, 10, 10, 10, -10],
+    [-10, 5, 0, 0, 0, 0, 5, -10],
+    [-20, -10, -10, -10, -10, -10, -10, -20],
+  ],
+  // Xe: thưởng hàng 7 (ép vua đối phương) và các cột giữa.
+  r: [
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [5, 10, 10, 10, 10, 10, 10, 5],
+    [-5, 0, 0, 0, 0, 0, 0, -5],
+    [-5, 0, 0, 0, 0, 0, 0, -5],
+    [-5, 0, 0, 0, 0, 0, 0, -5],
+    [-5, 0, 0, 0, 0, 0, 0, -5],
+    [-5, 0, 0, 0, 0, 0, 0, -5],
+    [0, 0, 0, 5, 5, 0, 0, 0],
+  ],
+  q: [
+    [-20, -10, -10, -5, -5, -10, -10, -20],
+    [-10, 0, 0, 0, 0, 0, 0, -10],
+    [-10, 0, 5, 5, 5, 5, 0, -10],
+    [-5, 0, 5, 5, 5, 5, 0, -5],
+    [0, 0, 5, 5, 5, 5, 0, -5],
+    [-10, 5, 5, 5, 5, 5, 0, -10],
+    [-10, 0, 5, 0, 0, 0, 0, -10],
+    [-20, -10, -10, -5, -5, -10, -10, -20],
+  ],
+  /**
+   * Vua: NGƯỢC HẲN với các quân khác — thưởng khi nấp ở góc sau khi nhập thành, phạt
+   * nặng khi ra giữa. Đây chính là chỗ bảng chung cũ làm sai.
+   */
+  k: [
+    [-30, -40, -40, -50, -50, -40, -40, -30],
+    [-30, -40, -40, -50, -50, -40, -40, -30],
+    [-30, -40, -40, -50, -50, -40, -40, -30],
+    [-30, -40, -40, -50, -50, -40, -40, -30],
+    [-20, -30, -30, -40, -40, -30, -30, -20],
+    [-10, -20, -20, -20, -20, -20, -20, -10],
+    [20, 20, 0, 0, 0, 0, 20, 20],
+    [20, 30, 10, 0, 0, 10, 30, 20],
+  ],
+}
 
 /** Điểm chiếu hết. Đủ lớn để mọi số vật chất cộng lại cũng không vượt qua. */
 const MATE_SCORE = 1_000_000
@@ -123,10 +190,21 @@ function evaluate(game: Chess): number {
     }
 
     const lower = ch.toLowerCase()
-    const value = (PIECE_VALUE[lower] ?? 0) + (CENTER_BONUS[row]?.[col] ?? 0)
-
     // Chữ hoa là quân Trắng theo quy ước FEN.
-    score += ch === lower ? -value : value
+    const isWhite = ch !== lower
+
+    /**
+     * Bảng viết theo góc nhìn Trắng, nên quân Đen phải LẬT hàng.
+     *
+     * Bản đầu tra cùng một ô cho cả hai màu. Với bảng đối xứng thì không sao, nhưng bảng
+     * tốt và bảng vua thì KHÔNG đối xứng — tra sai là Đen được thưởng vì tiến về phía
+     * hàng 8 của chính nó, tức đi lùi.
+     */
+    const table = PIECE_SQUARE[lower]
+    const bonus = table ? (table[isWhite ? row : 7 - row]?.[col] ?? 0) : 0
+    const value = (PIECE_VALUE[lower] ?? 0) + bonus
+
+    score += isWhite ? value : -value
     col++
   }
 
@@ -165,13 +243,71 @@ function checkTime(): void {
  * muộn — không có nó thì bot thấy hai đường cùng dẫn tới thắng là chọn bừa, và có thể
  * cứ dây dưa mãi không kết thúc ván.
  */
+/**
+ * TÌM KIẾM TĨNH LẶNG — chỉ xét nước ĂN QUÂN cho tới khi thế cờ "yên".
+ *
+ * Đây là thứ thiếu quan trọng nhất của bản đầu. Dừng đếm ở đúng độ sâu đã định nghĩa là
+ * đánh giá thế cờ GIỮA một chuỗi ăn quân: bot thấy "ăn được Hậu, hơn 9 điểm" rồi dừng,
+ * không nhìn thấy nước ăn lại ngay sau đó. Đó là hiệu ứng chân trời, và là nguồn sai lầm
+ * lớn nhất của mọi engine đơn giản.
+ *
+ * Cách chữa: tới độ sâu 0 thì đừng dừng hẳn, mà đi tiếp CHỈ các nước ăn quân cho tới khi
+ * không còn gì để ăn. Rẻ vì mỗi thế chỉ có vài nước ăn, nhưng bỏ được gần hết loại sai
+ * lầm "đưa quân vào chỗ bị ăn lại".
+ *
+ * `standPat` là điểm khi KHÔNG ăn gì thêm. Phải có, vì bên đi không bị ép phải ăn — nếu
+ * mọi nước ăn đều tệ thì họ cứ đứng yên.
+ */
+function quiesce(game: Chess, alpha: number, beta: number, ply: number): number {
+  checkTime()
+
+  const moves = game.moves({ verbose: true })
+
+  /**
+   * PHẢI xét chiếu hết ở đây, không chỉ ở `search`.
+   *
+   * Bản đầu bỏ qua, và bot mất nước chiếu hết trong MỘT nước: `Ra8#` không phải nước ăn
+   * quân nên tìm kiếm tĩnh lặng chỉ trả về điểm vật chất, còn độ sâu 2 (nơi có xét chiếu
+   * hết) thì không phải lúc nào cũng kịp chạy xong trong ngân sách. Bài test bắt được vì
+   * nó hỏng CHẬP CHỜN — lúc kịp lúc không.
+   *
+   * Không tốn thêm gì: danh sách nước đi vốn đã phải sinh để lọc ra nước ăn quân.
+   */
+  if (moves.length === 0) {
+    return game.isCheck() ? -MATE_SCORE + ply : 0
+  }
+
+  const white = evaluate(game)
+  const standPat = game.turn() === 'w' ? white : -white
+
+  if (standPat >= beta) return beta
+  if (standPat > alpha) alpha = standPat
+
+  const captures = moves
+    .filter((move) => move.captured !== undefined)
+    .sort((a, b) => {
+      // Ăn quân to bằng quân nhỏ trước: khả năng cắt tỉa cao nhất.
+      const gainA = (PIECE_VALUE[a.captured!] ?? 0) - (PIECE_VALUE[a.piece] ?? 0)
+      const gainB = (PIECE_VALUE[b.captured!] ?? 0) - (PIECE_VALUE[b.piece] ?? 0)
+      return gainB - gainA
+    })
+
+  for (const move of captures) {
+    game.move(move)
+    const score = -quiesce(game, -beta, -alpha, ply + 1)
+    game.undo()
+
+    if (score >= beta) return beta
+    if (score > alpha) alpha = score
+  }
+
+  return alpha
+}
+
 function search(game: Chess, depth: number, alpha: number, beta: number, ply: number): number {
   checkTime()
 
-  if (depth === 0) {
-    const white = evaluate(game)
-    return game.turn() === 'w' ? white : -white
-  }
+  if (depth === 0) return quiesce(game, alpha, beta, ply)
 
   const moves = orderMoves(game)
 

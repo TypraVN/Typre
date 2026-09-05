@@ -132,6 +132,7 @@ export class ChessService {
       turn: this.game.turn(),
       status,
       history: this.game.history(),
+      captured: this.captured,
       isOver: this.game.isGameOver(),
     }
 
@@ -141,6 +142,30 @@ export class ChessService {
     }
 
     return state
+  }
+
+  /**
+   * Quân đã bị ăn, đọc từ BIÊN BẢN chứ không suy từ thế cờ.
+   *
+   * Cách kia — đếm quân còn trên bàn rồi lấy bộ đủ trừ đi — nghe gọn hơn nhưng sai ở
+   * phong cấp: Tốt lên hàng cuối hoá Hậu thì bàn cờ thiếu một Tốt, và phép trừ báo là
+   * Tốt đó đã bị ăn. Biên bản thì ghi thẳng nước nào ăn quân gì, không phải đoán.
+   *
+   * Đổi lại, nhánh `load()` xoá biên bản nên khu quân chết trống. Nhánh đó chỉ chạy khi
+   * hai máy lệch thế cờ, và ở đó đã chấp nhận mất biên bản rồi — mất thêm khu quân chết
+   * vẫn đỡ hơn là bày ra một danh sách bịa.
+   */
+  private get captured(): { w: string[]; b: string[] } {
+    const taken: { w: string[]; b: string[] } = { w: [], b: [] }
+
+    for (const move of this.game.history({ verbose: true })) {
+      if (!move.captured) continue
+
+      // `color` là bên ĐI, nên quân bị ăn thuộc bên còn lại.
+      taken[move.color === 'w' ? 'b' : 'w'].push(move.captured)
+    }
+
+    return taken
   }
 
   private get status(): GameStatus {
@@ -153,11 +178,30 @@ export class ChessService {
     return 'playing'
   }
 
-  /** Các ô mà quân ở `square` đi tới được — để giao diện tô sáng gợi ý. */
+  /**
+   * Các ô mà quân ở `square` đi tới được.
+   *
+   * KHÔNG phải mã chết: `scripts/chess-service.test.mts` gọi thẳng hàm này để kiểm tra
+   * gợi ý ô đi được, tách biệt khỏi đường đi qua `MoveError.legalTargets` mà giao diện
+   * dùng. Xoá đi lúc rà lại code — tưởng không nơi nào gọi vì chỉ grep trong `src/`, bỏ
+   * sót `scripts/` — làm `npm test` vỡ ngay. Giữ lại cả hai: một để UI tô sáng gợi ý sau
+   * khi gõ sai, một để test có cách kiểm độc lập không phải cố tình gõ sai trước.
+   */
   legalTargets(square: Square): Square[] {
     return this.game
       .moves({ square: toChessSquare(square), verbose: true })
       .map((move) => move.to as Square)
+  }
+
+  /**
+   * Ô đi/ô đến của nước gần nhất, để `undo()` biết trượt quân ngược chiều nào.
+   *
+   * `null` khi chưa có nước nào — ván vừa mới bắt đầu.
+   */
+  lastMoveSquares(): { from: Square; to: Square } | null {
+    const history = this.game.history({ verbose: true })
+    const last = history[history.length - 1]
+    return last ? { from: last.from as Square, to: last.to as Square } : null
   }
 
   /** Danh sách quân đang trên bàn, phẳng, để component vẽ. */

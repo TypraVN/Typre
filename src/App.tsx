@@ -1091,6 +1091,7 @@ function App() {
             languages={LANGUAGES}
             onSelectLanguage={setLanguage}
             myName={raceName}
+            currentUser={user}
             t={t}
           />
         </Suspense>

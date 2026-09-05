@@ -34,3 +34,9 @@ client_secret_*.json
 
 # File tạm của Supabase CLI
 supabase/.temp
+
+# Tam xem truoc bo quan co, sinh boi scripts/sprite-sheet.mts
+sprite-sheet.svg
+
+.vercel
+.env*
