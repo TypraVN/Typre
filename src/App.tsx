@@ -81,7 +81,6 @@ import { usePreferencesStore } from './store/usePreferencesStore'
 import { translations } from './i18n/translations'
 import { CODE_THEMES, THEME_LABELS, prefetchLanguage, type CodeLanguage } from './lib/highlighter'
 import { DEFAULT_TIME_LIMIT, LANGUAGES, TIME_LIMITS } from './data/languages'
-import { CHESS_ENABLED } from './lib/featureFlags'
 
 // LANGUAGES / TIME_LIMITS chuyển sang `data/languages.ts`: file vừa xuất component vừa
 // xuất hằng số thì React Fast Refresh tắt cho cả file, sửa một dòng JSX là mất trạng thái
@@ -146,14 +145,7 @@ function App() {
   const storedMode = usePreferencesStore((s) => s.mode)
   const setMode = usePreferencesStore((s) => s.setMode)
 
-  /**
-   * Ai đã từng mở tab Cờ khi nó còn hiện sẽ có `mode: 'chess'` nằm trong localStorage.
-   * Tắt cờ mà không chặn ở đây thì họ vào trang thấy MÀN HÌNH TRỐNG: không tab nào sáng,
-   * không nội dung nào vẽ, và không có cách nào tự thoát ra.
-   *
-   * Cùng kiểu chặn với mốc thời gian "mồ côi" ở dưới.
-   */
-  const mode = storedMode === 'chess' && !CHESS_ENABLED ? 'code' : storedMode
+  const mode = storedMode
   const shortcutSet = usePreferencesStore((s) => s.shortcutSet)
   const setShortcutSet = usePreferencesStore((s) => s.setShortcutSet)
   const language = usePreferencesStore((s) => s.language)
@@ -698,10 +690,7 @@ function App() {
             <LevelBadge xp={xp} onClick={() => setProgressOpen(true)} t={t} />
 
             <div className="flex gap-2">
-              {(['code', 'shortcuts', 'chess', 'leaderboard'] as const)
-                // Cờ chưa công bố: ẩn tab khỏi người lạ, code vẫn nằm trong bản deploy.
-                .filter((m) => m !== 'chess' || CHESS_ENABLED)
-                .map((m) => (
+              {(['code', 'shortcuts', 'chess', 'leaderboard'] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -1082,7 +1071,7 @@ function App() {
         </>
       )}
 
-      {mode === 'chess' && CHESS_ENABLED && (
+      {mode === 'chess' && (
         <Suspense
           fallback={<div className="font-mono text-sm text-zinc-500">{t.leaderboardLoading}</div>}
         >
