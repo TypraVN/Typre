@@ -532,6 +532,7 @@ function surrenderPulse(cell: HTMLElement, startMs: number): void {
 
   const rig = document.createElementNS(svgNS, 'svg')
   rig.setAttribute('viewBox', '0 0 100 100')
+  rig.setAttribute('data-surrender-rig', 'true')
   rig.setAttribute('shape-rendering', 'crispEdges')
   rig.style.position = 'absolute'
   rig.style.inset = '0'
@@ -719,13 +720,6 @@ function useSlideAnimation(
       promotionPulse(kingCell, GLIDE_MS, promotedColor ?? 'w')
     }
 
-    // Vua bị chiếu hết đứng NGUYÊN CHỖ (quân vừa đi TỚI mới là quân tạo ra thế chiếu hết,
-    // không phải Vua) — không dùng lại `kingCell`, phải tự tra đúng ô của nó.
-    if (checkmatedSquare) {
-      const matedCell = board.querySelector(`[data-square="${checkmatedSquare}"]`)
-      if (matedCell) surrenderPulse(matedCell as HTMLElement, GLIDE_MS)
-    }
-
     /*
       KHÔNG huỷ animation trong cleanup — đây là lỗi vừa sửa, không phải sơ suất nhỏ.
 
@@ -745,7 +739,38 @@ function useSlideAnimation(
     */
     // `flipped` có mặt vì lật bàn làm hai ô đổi chỗ trên màn hình: giữ nguyên hiệu ứng cũ
     // là quân trượt ngược hướng.
-  }, [from, to, rookFrom, rookTo, promotedSquare, promotedColor, checkmatedSquare, flipped])
+  }, [from, to, rookFrom, rookTo, promotedSquare, promotedColor, flipped])
+
+  /*
+    Cờ trắng đầu hàng nằm ở effect RIÊNG vì nó là hiệu ứng duy nhất phải TỰ DỌN.
+
+    Vua bị chiếu hết đứng nguyên chỗ (quân vừa đi TỚI mới tạo ra thế chiếu hết), nên phải
+    tự tra ô của nó chứ không dùng lại ô đích của nước đi.
+
+    Cả bộ tay + cán + cờ được gắn thẳng vào ô bằng DOM thuần, React không biết tới nó: bấm
+    "new game" thì React chỉ vẽ lại quân trong ô, còn lá cờ cũ Ở NGUYÊN ĐÓ, lơ lửng trên
+    đầu quân mới đứng vào ô đó (đã gặp thật: cờ trắng của ván trước treo trên con chốt b7
+    của ván mới). Lá cờ lại phất VĨNH VIỄN (`iterations: Infinity`) nên không tự tắt theo
+    thời gian như các hiệu ứng khác. Cleanup của effect này xoá nó đúng lúc ván kết thúc bị
+    dọn đi — kèm `cancel()` cho animation nghiêng người của Vua, vì `fill: 'forwards'` giữ
+    độ nghiêng đó lại trên chính thẻ <svg> mà React tái dùng cho quân mới.
+  */
+  useEffect(() => {
+    const board = boardRef.current
+    if (!board || !checkmatedSquare) return
+
+    const matedCell = board.querySelector(`[data-square="${checkmatedSquare}"]`) as HTMLElement | null
+    if (!matedCell) return
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    surrenderPulse(matedCell, GLIDE_MS)
+
+    return () => {
+      matedCell.querySelectorAll('[data-surrender-rig]').forEach((el) => el.remove())
+      matedCell.querySelector('svg')?.getAnimations().forEach((animation) => animation.cancel())
+    }
+  }, [checkmatedSquare])
 
   return boardRef
 }
