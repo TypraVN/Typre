@@ -19,3 +19,18 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Exception: chess piece artwork
+
+The MIT license above does NOT apply to the chess piece pixel-art data in
+`src/lib/chess/pieceSprites.ts`. That data is copied verbatim from the
+"pixel" piece set of lichess-org/lila (https://github.com/lichess-org/lila),
+created by therealqtpi, and remains licensed under the GNU Affero General
+Public License v3.0 or later (AGPLv3+):
+https://www.gnu.org/licenses/agpl-3.0.html
+
+In-app attribution for this artwork is shown at all times in the Chess mode
+UI (bottom-right corner), linking to the original source and license, as
+required by the AGPL.
