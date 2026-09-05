@@ -36,6 +36,14 @@ export const usePreferencesStore = create<PreferencesState>()(
       // (20/35/65) không cần map ở đây: App.tsx tự đưa về mặc định nếu không hợp lệ.
       version: 1,
       migrate: (persisted) => persisted as PreferencesState,
+      // KHÔNG lưu `mode`: sản phẩm chính là luyện gõ, Chess/Leaderboard chỉ là tab
+      // phụ. Lưu mode thì ai từng bấm qua tab Chess (kể cả chỉ xem thử) sẽ bị "kẹt"
+      // ở đó mọi lần quay lại — vào web luôn phải thấy phần gõ code trước.
+      partialize: (state) => ({
+        language: state.language,
+        timeLimit: state.timeLimit,
+        shortcutSet: state.shortcutSet,
+      }),
     },
   ),
 )
