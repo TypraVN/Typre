@@ -7,7 +7,12 @@ import { LANGUAGES } from './data/languages'
 import { translations } from './i18n/translations'
 import { Analytics } from '@vercel/analytics/react'
 import { clearLanguageParam, readLanguageParam } from './lib/langParam'
-import { clearShortcutsParam, readShortcutsParam } from './lib/toolParam'
+import {
+  clearChessParam,
+  clearShortcutsParam,
+  readChessParam,
+  readShortcutsParam,
+} from './lib/toolParam'
 import { capturePendingInviteFromUrl } from './lib/invite'
 import { usePreferencesStore } from './store/usePreferencesStore'
 import { startErrorCapture } from './lib/report'
@@ -102,6 +107,12 @@ if (shortcutsFromLandingPage) {
   usePreferencesStore.getState().setMode('shortcuts')
   usePreferencesStore.getState().setShortcutSet(shortcutsFromLandingPage)
   clearShortcutsParam()
+}
+
+/** Cùng cơ chế, cho trang giới thiệu chế độ cờ (`/practice/chess/`). */
+if (readChessParam()) {
+  usePreferencesStore.getState().setMode('chess')
+  clearChessParam()
 }
 
 createRoot(document.getElementById('root')!).render(

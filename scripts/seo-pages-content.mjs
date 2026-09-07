@@ -158,6 +158,35 @@ export const LANGUAGE_PAGES = [
  *
  * `param` là giá trị `?shortcuts=` mở đúng bộ đó trong app — đọc ở `src/lib/toolParam.ts`.
  */
+/**
+ * Trang giới thiệu chế độ cờ vua.
+ *
+ * Tách khỏi hai nhóm trên vì đây là nhóm MỘT trang và hình dạng nội dung khác hẳn: không
+ * có "snippet", không có danh sách phím tắt, mà là cú pháp câu lệnh của 14 ngôn ngữ —
+ * lấy trực tiếp từ `src/lib/chess/commandParsers.ts` lúc build (xem `loadChessExamples`
+ * trong generate-seo-pages.mjs), không chép tay.
+ *
+ * Vì sao đáng có một trang riêng: 14 trang ngôn ngữ đang đâm đầu vào từ khoá mà
+ * typing.io, speedtyper.dev, monkeytype đã giữ nhiều năm. "Chơi cờ bằng cách gõ lệnh"
+ * thì không có đối thủ nào — đây là thứ duy nhất trong app không ai khác có.
+ */
+export const CHESS_PAGE = {
+  slug: 'chess',
+  keyword: 'Chess typing practice',
+  titleTail: 'play chess by typing code',
+  intro:
+    'A chess board where you never touch the mouse. To move a piece you type a valid command in the programming language you are practising — so a game of chess doubles as a typing drill on the syntax you actually write.',
+  description:
+    'Play chess by typing moves as code in 14 languages. Bots, local two-player and online games with ELO ratings. Free, no account needed to play bots.',
+  /** Vì sao mỗi ngôn ngữ một cú pháp khác — đây là nội dung không trang nào khác có. */
+  syntax:
+    'Every language keeps its own rules, so the command is only accepted if it would compile. C# and Java reject `\'e2\'` because single quotes mean a char, not a string. SQL rejects `"e2"` because double quotes mean an identifier. JSON only allows `"`. Go also accepts backticks. Semicolons are required where the language requires them and optional where it does not.',
+  rules:
+    'Castling is written as the king moving two squares — `e1` to `g1` for kingside — because there is no separate castle command; the engine recognises it and records it as O-O. Promotion takes a third argument naming the piece: `q`, `r`, `b` or `n`.',
+  opponents:
+    'Play a bot at three strengths, a friend on the same keyboard, or someone online. Online games are rated with standard ELO and need an account; everything else works signed out. Each side gets 15 minutes, or you can turn the clock off.',
+}
+
 export const SHORTCUT_PAGES = [
   {
     id: 'vscode',

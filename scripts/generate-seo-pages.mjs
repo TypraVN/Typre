@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import { build } from 'vite'
-import { LANGUAGE_PAGES, SHORTCUT_PAGES } from './seo-pages-content.mjs'
+import { LANGUAGE_PAGES, SHORTCUT_PAGES, CHESS_PAGE } from './seo-pages-content.mjs'
 
 /**
  * Sinh 14 trang tĩnh giới thiệu từng ngôn ngữ, chạy SAU `vite build`.
@@ -18,6 +18,7 @@ const SITE = 'https://www.typre.dev'
 const DIST = 'dist'
 const TMP_DIR = 'node_modules/.typre-seo'
 const SHORTCUTS_TMP_DIR = 'node_modules/.typre-seo-shortcuts'
+const CHESS_TMP_DIR = 'node_modules/.typre-seo-chess'
 
 /**
  * Nạp dữ liệu bài để lấy SỐ THẬT.
@@ -73,6 +74,33 @@ async function loadShortcuts() {
 
   const mod = await import(`../${SHORTCUTS_TMP_DIR}/shortcuts.mjs?t=${Date.now()}`)
   return { vscode: mod.vscodeShortcuts, vim: mod.vimShortcuts }
+}
+
+/**
+ * Cùng kỹ thuật với `loadShortcuts`, cho câu lệnh đi cờ thật của từng ngôn ngữ.
+ *
+ * Bảng cú pháp là toàn bộ giá trị của trang cờ — chép tay thì chỉ cần một lần sửa quy tắc
+ * dấu nháy trong `commandParsers.ts` là trang quảng cáo một cú pháp app KHÔNG chấp nhận,
+ * và người từ Google vào sẽ gõ đúng thứ trang dạy rồi bị báo sai cú pháp.
+ */
+async function loadChessExamples() {
+  await build({
+    logLevel: 'error',
+    publicDir: false,
+    build: {
+      lib: {
+        entry: 'src/lib/chess/commandParsers.ts',
+        formats: ['es'],
+        fileName: () => 'parsers.mjs',
+      },
+      outDir: CHESS_TMP_DIR,
+      emptyOutDir: true,
+      minify: false,
+    },
+  })
+
+  const mod = await import(`../${CHESS_TMP_DIR}/parsers.mjs?t=${Date.now()}`)
+  return mod.examplesFor
 }
 
 function escapeHtml(text) {
@@ -411,6 +439,142 @@ function renderShortcutsPage(page, shortcuts, otherPage) {
 }
 
 /**
+ * Trang giới thiệu chế độ cờ vua.
+ *
+ * Khác hai khuôn trên ở chỗ nội dung chính là một BẢNG cú pháp 14 ngôn ngữ, lấy từ chính
+ * bộ phân tích câu lệnh của app (`examplesFor`) — xem `loadChessExamples`.
+ */
+function renderChessPage(page, languages, examplesFor) {
+  const url = `${SITE}/practice/${page.slug}/`
+  const title = `${page.keyword} — ${page.titleTail} | Typre`
+
+  const rows = languages
+    .map((lang) => {
+      const ex = examplesFor(lang.id)
+      return `<tr><th scope="row">${escapeHtml(lang.label)}</th><td><code>${escapeHtml(ex.move)}</code></td></tr>`
+    })
+    .join('\n          ')
+
+  // Ba câu lệnh của JavaScript làm ví dụ cho luật đi: ngôn ngữ nhiều người đọc được nhất.
+  const js = examplesFor('javascript')
+
+  const siblingLinks = languages
+    .slice(0, 6)
+    .map((s) => `<li><a href="/practice/${s.slug}/">${escapeHtml(s.label)}</a></li>`)
+    .join('\n        ')
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(page.description)}" />
+    <link rel="canonical" href="${url}" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#18181b" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Typre" />
+    <meta property="og:url" content="${url}" />
+    <meta property="og:title" content="${escapeHtml(title)}" />
+    <meta property="og:description" content="${escapeHtml(page.description)}" />
+    <meta property="og:image" content="${SITE}/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Typre", "item": "${SITE}/" },
+          { "@type": "ListItem", "position": 2, "name": ${JSON.stringify(page.keyword)}, "item": "${url}" }
+        ]
+      }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>${STYLES}
+      .syntax { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+      .syntax th, .syntax td { text-align: left; padding: 9px 0; border-bottom: 1px solid #27272a; }
+      .syntax th { color: #fafafa; font-weight: 400; white-space: nowrap; padding-right: 16px; }
+      .syntax tr:last-child th, .syntax tr:last-child td { border-bottom: none; }
+      /* Bảng dài hơn màn điện thoại thì cuộn trong khung của nó, không đẩy cả trang. */
+      .scroll { overflow-x: auto; }
+    </style>
+  </head>
+  <body>
+    <div class="bar"></div>
+    <div class="wrap">
+      <header>
+        ${LOGO_SVG}
+        <a href="/">Typre</a>
+      </header>
+
+      <main>
+        <h1>${escapeHtml(page.keyword)}</h1>
+        <p>${escapeHtml(page.intro)}</p>
+
+        <ul class="counts">
+          <li><strong>14</strong>languages to move in</li>
+          <li><strong>3</strong>bot strengths</li>
+          <li><strong>ELO</strong>on online games</li>
+        </ul>
+
+        <a class="cta" href="/?chess=1">Play chess by typing</a>
+
+        <h2>How a move is written</h2>
+        <p>
+          Pick a language, then type the move as a command in it. In JavaScript a pawn from
+          e2 to e4 is:
+        </p>
+        <pre><code>${escapeHtml(js.move)}</code></pre>
+        <p>${inlineCode(page.rules)}</p>
+        <pre><code>${escapeHtml(js.castle)}
+${escapeHtml(js.promote)}</code></pre>
+
+        <h2>The same move in all 14 languages</h2>
+        <p>Pawn e2 to e4, written the way each language would actually write it:</p>
+        <div class="scroll">
+          <table class="syntax">
+          ${rows}
+          </table>
+        </div>
+
+        <h2>Why the syntax is checked strictly</h2>
+        <p>${inlineCode(page.syntax)}</p>
+
+        <h2>Who you play</h2>
+        <p>${escapeHtml(page.opponents)}</p>
+
+        <h2>Practice the same languages without the board</h2>
+        <ul class="others">
+        ${siblingLinks}
+          <li><a href="/practice/">All 14 languages</a></li>
+        </ul>
+      </main>
+
+      <footer>
+        <a href="/">Typre</a> — typing practice for programmers. 14 languages, free, works
+        offline. Chess pieces by therealqtpi, from
+        <a href="https://github.com/lichess-org/lila/tree/master/public/piece/pixel">lichess</a>
+        (AGPLv3+).
+      </footer>
+    </div>
+  </body>
+</html>
+`
+}
+
+/**
  * Trang hub /practice/ — một chỗ liệt kê cả 14 trang.
  *
  * Không phải để xếp hạng cho từ khoá nào cụ thể, mà để con bot có một trang duy nhất dẫn
@@ -488,6 +652,13 @@ function renderHub(pages, countsFor) {
         <ul class="grid">
         ${cards}
         </ul>
+
+        <h2>Not a language</h2>
+        <ul class="others">
+          <li><a href="/practice/${CHESS_PAGE.slug}/">Play chess by typing code</a></li>
+          <li><a href="/practice/vscode-shortcuts/">VS Code shortcuts</a></li>
+          <li><a href="/practice/vim-shortcuts/">Vim shortcuts</a></li>
+        </ul>
       </main>
 
       <footer>
@@ -505,6 +676,7 @@ function renderSitemap(pages, toolPages) {
     `${SITE}/practice/`,
     ...pages.map((p) => `${SITE}/practice/${p.slug}/`),
     ...toolPages.map((p) => `${SITE}/practice/${p.slug}/`),
+    `${SITE}/practice/${CHESS_PAGE.slug}/`,
   ]
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -606,6 +778,7 @@ function patchIndexHtml(snippetCounts) {
         <ul>
 ${pages.map(linkFor).join('\n')}
           <li><a href="/practice/">All ${pages.length} languages in one place</a></li>
+          <li><a href="/practice/${CHESS_PAGE.slug}/">Play chess by typing code</a></li>
         </ul>
         `
 
@@ -668,6 +841,22 @@ async function main() {
     console.log(`  /practice/${page.slug}/  (${shortcuts.length} phim tat)`)
   }
 
+  /**
+   * Trang cờ dùng CHÍNH danh sách ngôn ngữ của các trang trên, và chỉ lấy những trang có
+   * bài thật — để bảng cú pháp không bao giờ liệt kê một ngôn ngữ mà app không cho chọn.
+   */
+  const chessLanguages = LANGUAGE_PAGES.filter((page) => snippetCounts(page.id).total > 0)
+  const examplesFor = await loadChessExamples()
+  const chessDir = `${DIST}/practice/${CHESS_PAGE.slug}`
+
+  mkdirSync(chessDir, { recursive: true })
+  writeFileSync(
+    `${chessDir}/index.html`,
+    renderChessPage(CHESS_PAGE, chessLanguages, examplesFor),
+    'utf8',
+  )
+  console.log(`  /practice/${CHESS_PAGE.slug}/  (${chessLanguages.length} ngon ngu)`)
+
   patchIndexHtml(snippetCounts)
 
   const sitemap = renderSitemap(LANGUAGE_PAGES, SHORTCUT_PAGES)
@@ -676,6 +865,7 @@ async function main() {
 
   rmSync(TMP_DIR, { recursive: true, force: true })
   rmSync(SHORTCUTS_TMP_DIR, { recursive: true, force: true })
+  rmSync(CHESS_TMP_DIR, { recursive: true, force: true })
 }
 
 main()
