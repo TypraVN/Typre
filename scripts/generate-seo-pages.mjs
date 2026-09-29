@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import { build } from 'vite'
-import { LANGUAGE_PAGES, SHORTCUT_PAGES, CHESS_PAGE } from './seo-pages-content.mjs'
+import { LANGUAGE_PAGES, SHORTCUT_PAGES, CHESS_PAGE, FEATURE_PAGES } from './seo-pages-content.mjs'
 
 /**
  * Sinh 14 trang tĩnh giới thiệu từng ngôn ngữ, chạy SAU `vite build`.
@@ -439,10 +439,119 @@ function renderShortcutsPage(page, shortcuts, otherPage) {
 }
 
 /**
+ * Trang giới thiệu một TÍNH NĂNG (xem `FEATURE_PAGES`): mở đầu, các bước làm, rồi vài
+ * đoạn giải thích.
+ *
+ * Một khuôn dùng chung cho cả hai trang vì chúng cùng hình dạng — nội dung khác nhau nằm
+ * trong `FEATURE_PAGES`, không nằm ở đây. Thêm trang tính năng thứ ba chỉ cần thêm một
+ * mục vào mảng đó.
+ *
+ * `steps` cho phép <strong> nên KHÔNG escape — đây là nội dung mình tự viết trong repo,
+ * không phải dữ liệu từ ngoài vào.
+ */
+function renderFeaturePage(page, related) {
+  const url = `${SITE}/practice/${page.slug}/`
+  const title = `${page.keyword} — ${page.titleTail} | Typre`
+
+  const steps = page.steps.map((step) => `<li>${step}</li>`).join('\n          ')
+
+  const sections = page.sections
+    .map((s) => `<h2>${escapeHtml(s.heading)}</h2>\n        <p>${inlineCode(s.body)}</p>`)
+    .join('\n\n        ')
+
+  const relatedLinks = related
+    .map((r) => `<li><a href="/practice/${r.slug}/">${escapeHtml(r.label)}</a></li>`)
+    .join('\n        ')
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(page.description)}" />
+    <link rel="canonical" href="${url}" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#18181b" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Typre" />
+    <meta property="og:url" content="${url}" />
+    <meta property="og:title" content="${escapeHtml(title)}" />
+    <meta property="og:description" content="${escapeHtml(page.description)}" />
+    <meta property="og:image" content="${SITE}/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Typre", "item": "${SITE}/" },
+          { "@type": "ListItem", "position": 2, "name": ${JSON.stringify(page.keyword)}, "item": "${url}" }
+        ]
+      }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>${STYLES}
+      .steps { margin: 20px 0 0; padding-left: 22px; }
+      .steps li { margin-bottom: 10px; }
+      .steps strong { color: #fdba74; font-weight: 400; }
+    </style>
+  </head>
+  <body>
+    <div class="bar"></div>
+    <div class="wrap">
+      <header>
+        ${LOGO_SVG}
+        <a href="/">Typre</a>
+      </header>
+
+      <main>
+        <h1>${escapeHtml(page.keyword)}</h1>
+        <p>${escapeHtml(page.intro)}</p>
+
+        <a class="cta" href="${page.ctaHref}">${escapeHtml(page.ctaLabel)}</a>
+
+        <h2>How it works</h2>
+        <ol class="steps">
+          ${steps}
+        </ol>
+
+        ${sections}
+
+        <h2>More practice</h2>
+        <ul class="others">
+        ${relatedLinks}
+          <li><a href="/practice/">All 14 languages</a></li>
+        </ul>
+      </main>
+
+      <footer>
+        <a href="/">Typre</a> — typing practice for programmers. 14 languages, free, works
+        offline.
+      </footer>
+    </div>
+  </body>
+</html>
+`
+}
+
+/**
  * Trang giới thiệu chế độ cờ vua.
  *
- * Khác hai khuôn trên ở chỗ nội dung chính là một BẢNG cú pháp 14 ngôn ngữ, lấy từ chính
- * bộ phân tích câu lệnh của app (`examplesFor`) — xem `loadChessExamples`.
+ * Khuôn riêng chứ không dùng `renderFeaturePage`: nội dung chính là một BẢNG cú pháp 14
+ * ngôn ngữ, lấy từ chính bộ phân tích câu lệnh của app (`examplesFor`) — xem
+ * `loadChessExamples`.
  */
 function renderChessPage(page, languages, examplesFor) {
   const url = `${SITE}/practice/${page.slug}/`
@@ -656,6 +765,7 @@ function renderHub(pages, countsFor) {
         <h2>Not a language</h2>
         <ul class="others">
           <li><a href="/practice/${CHESS_PAGE.slug}/">Play chess by typing code</a></li>
+${FEATURE_PAGES.map((p) => `          <li><a href="/practice/${p.slug}/">${p.keyword}</a></li>`).join('\n')}
           <li><a href="/practice/vscode-shortcuts/">VS Code shortcuts</a></li>
           <li><a href="/practice/vim-shortcuts/">Vim shortcuts</a></li>
         </ul>
@@ -677,6 +787,7 @@ function renderSitemap(pages, toolPages) {
     ...pages.map((p) => `${SITE}/practice/${p.slug}/`),
     ...toolPages.map((p) => `${SITE}/practice/${p.slug}/`),
     `${SITE}/practice/${CHESS_PAGE.slug}/`,
+    ...FEATURE_PAGES.map((p) => `${SITE}/practice/${p.slug}/`),
   ]
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -779,6 +890,7 @@ function patchIndexHtml(snippetCounts) {
 ${pages.map(linkFor).join('\n')}
           <li><a href="/practice/">All ${pages.length} languages in one place</a></li>
           <li><a href="/practice/${CHESS_PAGE.slug}/">Play chess by typing code</a></li>
+${FEATURE_PAGES.map((p) => `          <li><a href="/practice/${p.slug}/">${p.keyword}</a></li>`).join('\n')}
         </ul>
         `
 
@@ -856,6 +968,25 @@ async function main() {
     'utf8',
   )
   console.log(`  /practice/${CHESS_PAGE.slug}/  (${chessLanguages.length} ngon ngu)`)
+
+  /**
+   * Trang tính năng. `related` là các trang tính năng CÒN LẠI cộng trang cờ — cùng nhóm
+   * "không phải ngôn ngữ", nên chúng trỏ lẫn nhau thay vì mỗi trang là một ngõ cụt.
+   */
+  for (const page of FEATURE_PAGES) {
+    const related = [
+      ...FEATURE_PAGES.filter((p) => p.slug !== page.slug).map((p) => ({
+        slug: p.slug,
+        label: p.keyword,
+      })),
+      { slug: CHESS_PAGE.slug, label: CHESS_PAGE.keyword },
+    ]
+    const dir = `${DIST}/practice/${page.slug}`
+
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(`${dir}/index.html`, renderFeaturePage(page, related), 'utf8')
+    console.log(`  /practice/${page.slug}/  (${page.steps.length} buoc)`)
+  }
 
   patchIndexHtml(snippetCounts)
 

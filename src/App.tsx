@@ -65,6 +65,7 @@ import { usePendingScoreSubmit } from './hooks/usePendingScoreSubmit'
 import { usePendingInvite } from './hooks/usePendingInvite'
 import { getRandomSnippet, getSnippetById } from './data/snippets'
 import { buildCustomSnippet } from './lib/customSnippet'
+import { clearCustomParam, readCustomParam } from './lib/toolParam'
 import { pushXp } from './lib/xpSync'
 import { buildRaceUrl, clearRaceHash, guestName, newRoomId, readRaceFromHash } from './lib/race'
 import { useRace } from './hooks/useRace'
@@ -206,7 +207,17 @@ function App() {
   const [capsLockOn, setCapsLockOn] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
-  const [customDialogOpen, setCustomDialogOpen] = useState(false)
+  /**
+   * Mở sẵn hộp thoại dán code khi vào bằng `/?custom=1` (trang /practice/custom/).
+   *
+   * Đọc NGAY trong `useState` chứ không đợi effect: effect chạy sau lần vẽ đầu, người
+   * dùng sẽ thấy màn hình thường nháy một cái rồi hộp thoại mới bật lên.
+   */
+  const [customDialogOpen, setCustomDialogOpen] = useState(() => {
+    const wanted = readCustomParam()
+    if (wanted) clearCustomParam()
+    return wanted
+  })
   const [progressOpen, setProgressOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
 

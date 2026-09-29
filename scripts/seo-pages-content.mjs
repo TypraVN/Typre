@@ -159,6 +159,76 @@ export const LANGUAGE_PAGES = [
  * `param` là giá trị `?shortcuts=` mở đúng bộ đó trong app — đọc ở `src/lib/toolParam.ts`.
  */
 /**
+ * Trang giới thiệu từng TÍNH NĂNG (đua trực tiếp, gõ code của chính mình).
+ *
+ * Khác LANGUAGE_PAGES ở chỗ không nhắm từ khoá theo ngôn ngữ — 14 trang kia đang tranh
+ * "<ngôn ngữ> typing practice" với typing.io và monkeytype, những trang đã giữ vị trí
+ * nhiều năm. Trang ở đây nhắm việc NGƯỜI TA MUỐN LÀM ("đua gõ code với bạn", "luyện gõ
+ * code của chính mình"), nơi gần như không có đối thủ vì các trang luyện gõ khác chỉ có
+ * văn xuôi.
+ *
+ * `steps` là phần bắt buộc phải đúng với app thật: đây là trang hướng dẫn, người đọc sẽ
+ * làm theo từng bước ngay sau khi bấm nút. Sai một bước là mất người đó luôn.
+ */
+export const FEATURE_PAGES = [
+  {
+    slug: 'race',
+    keyword: 'Typing race for programmers',
+    titleTail: 'race a friend on real code',
+    description:
+      'Race a friend in real time on the same code snippet. Share one link, watch both lanes move as you type. Free, no account needed.',
+    intro:
+      'A typing race where everyone types the same real code — brackets, operators and indentation included — and each racer has a lane that moves as they type.',
+    /** Không có `?race=1`: tạo phòng là hành động cần cú bấm của người dùng, xem ghi chú ở generate-seo-pages.mjs. */
+    ctaHref: '/',
+    ctaLabel: 'Open Typre and start a race',
+    steps: [
+      'Pick a language and a run length — 15, 30 or 60 seconds.',
+      'Press <strong>race a friend</strong>. A room is made from the snippet already on your screen, and the link is copied to your clipboard.',
+      'Send that link to whoever you want to race. Opening it drops them into the same snippet with the same timer.',
+      'Start typing. Each racer gets a lane that fills in as they go, so you can see who is ahead while you type.',
+    ],
+    sections: [
+      {
+        heading: 'No account, no setup',
+        body: 'Nobody has to sign up. Anyone who opens the link races under a temporary name, and the room disappears when everyone closes the tab. Signing in only matters if you want scores kept on the leaderboard.',
+      },
+      {
+        heading: 'Why race on code instead of prose',
+        body: 'Prose races reward familiar words. Code races reward the thing that actually slows programmers down: reaching for `{`, `=>` and `::` without looking, and keeping accuracy while you do it.',
+      },
+    ],
+  },
+  {
+    slug: 'custom',
+    keyword: 'Practice typing your own code',
+    titleTail: 'paste a snippet from your codebase',
+    description:
+      'Paste code from your own project and practise typing that instead. Measures WPM and accuracy on the code you actually write. Free, no account.',
+    intro:
+      'Practice on the code you actually work with. Paste a snippet from your own project and type that, with the same speed and accuracy tracking as the built-in snippets.',
+    ctaHref: '/?custom=1',
+    ctaLabel: 'Paste your own code',
+    steps: [
+      'Press <strong>your code</strong> in the toolbar, or use the button above.',
+      'Paste anything from your codebase — up to 3,000 characters.',
+      'Smart quotes, tabs and invisible characters are converted as you paste, so every character on screen is one you can actually type.',
+      'Type it with WPM, accuracy, raw speed and consistency measured exactly as usual.',
+    ],
+    sections: [
+      {
+        heading: 'Your code stays on your machine',
+        body: 'Pasted code is never uploaded. Runs on your own code stay local: no leaderboard entry, no personal best, no challenge link — which is also why it is safe to paste from a private repository.',
+      },
+      {
+        heading: 'What it is good for',
+        body: 'Drilling the patterns your team writes every day: your framework calls, your naming conventions, the config format you keep mistyping. The built-in snippets cover a language in general; this covers your project specifically.',
+      },
+    ],
+  },
+]
+
+/**
  * Trang giới thiệu chế độ cờ vua.
  *
  * Tách khỏi hai nhóm trên vì đây là nhóm MỘT trang và hình dạng nội dung khác hẳn: không

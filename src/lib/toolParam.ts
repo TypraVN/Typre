@@ -57,3 +57,30 @@ export function clearChessParam(): void {
     // Không sửa được URL thì thôi, không đáng để làm vỡ luồng khởi động.
   }
 }
+
+/**
+ * `?custom=1` — trang giới thiệu ở /practice/custom/ dùng nó để mở sẵn hộp thoại dán code.
+ *
+ * Chỉ MỞ HỘP THOẠI, không tự bật chế độ code riêng: chưa có gì để gõ cho tới khi người
+ * dùng dán vào, mà bật sẵn chế độ rỗng thì màn hình trống trơn không rõ phải làm gì.
+ */
+export function readCustomParam(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).get('custom') === '1'
+  } catch {
+    return false
+  }
+}
+
+/** Xoá `?custom=` khỏi URL sau khi đã áp dụng, cùng lý do với `clearShortcutsParam`. */
+export function clearCustomParam(): void {
+  try {
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has('custom')) return
+
+    url.searchParams.delete('custom')
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+  } catch {
+    // Không sửa được URL thì thôi, không đáng để làm vỡ luồng khởi động.
+  }
+}

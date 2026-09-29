@@ -30,6 +30,7 @@ Có 3 phần: **(A) Database** → **(B) Đăng nhập GitHub/Google** → **(C)
 | `leaderboard-view.sql` | view dedupe — mỗi người 1 dòng điểm cao nhất | có |
 | `add-raw-consistency.sql` | thêm 2 cột `raw_wpm` + `consistency` | không (đã chạy 2026-08-08) |
 | `migration-account-features.sql` | **Account settings / Friends / Public profile** | có |
+| `add-welcome-email.sql` | cột `welcome_sent_at` cho thư chào tự động (xem `functions/README.md`) | có |
 
 Chưa chạy `migration-account-features.sql` thì app vẫn gõ + xếp hạng bình thường, nhưng
 menu tài khoản sẽ hiện cảnh báo: Friends báo thiếu bảng `friendships`, Account settings
