@@ -13,7 +13,6 @@ import {
   Share2,
 } from 'lucide-react'
 import { Toast, ToastStack } from './components/Toast'
-import { SiteFooter } from './components/SiteFooter'
 import { useTypingEngine } from './hooks/useTypingEngine'
 import { CodeEditorDisplay } from './components/CodeEditorDisplay'
 import { ShortcutTrainer } from './components/ShortcutTrainer'
@@ -1116,12 +1115,12 @@ function App() {
       </main>
 
       {/*
-        Ẩn ở tab Chess: trang đó đã dày đặc thông tin riêng (cột cài đặt, đồng hồ, biên
-        bản, ví dụ cú pháp, dòng ghi công bộ quân) — thêm một khối chân trang nữa vào ngay
-        dưới thì rối. Các tab khác vẫn giữ, vì đây là chỗ sửa lỗi SEO thương hiệu
-        ("Typre" không được Google nhận ra) — bỏ hẳn thì mất tác dụng đó trên toàn app.
+        Chân trang (`SiteFooter`) đã ẩn theo yêu cầu, 2026-10-07 — giao diện gọn hơn.
+
+        Cái giá, để ai muốn bật lại thì biết vì sao: nó là chỗ DUY NHẤT trong bản trang đã
+        render (thứ Google lập chỉ mục) có liên kết tới 14 trang /practice/ và tới GitHub
+        (đối chiếu `sameAs` trong schema). Bật lại chỉ cần đặt `<SiteFooter />` vào đây.
       */}
-      {mode !== 'chess' && <SiteFooter />}
 
       <ToastStack>
         {/* Đăng nhập lỗi thì Supabase chỉ trả lý do trong URL rồi thôi — không hiện ra
