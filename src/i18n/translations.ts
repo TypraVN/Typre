@@ -8,7 +8,7 @@ export const translations = {
   accCol: 'acc',
   correct: 'correct',
   wrong: 'wrong',
-  shortcutSkip: 'skip',
+  shortcutSkip: 'skip (esc)',
   shortcutSkipHint: "Can't press this one? Your browser or OS may be catching it.",
   statusIdle: 'idle',
   statusTyping: 'typing',

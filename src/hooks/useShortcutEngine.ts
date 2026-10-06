@@ -87,6 +87,21 @@ export function useShortcutEngine(shortcuts: ShortcutItem[]) {
   const handleKeyDown = useCallback(
     (e: KeyLike) => {
       e.preventDefault()
+
+      /*
+        Esc = bỏ qua phím tắt này, bằng bàn phím.
+
+        Nút "skip" thôi là chưa đủ: bộ luyện chặn mọi phím kể cả Tab, nên người chỉ dùng
+        bàn phím không bao giờ di chuyển tới được nút đó. Không bộ phím tắt nào dùng Esc,
+        và Esc toàn trang (làm lại bài) chỉ bật ở chế độ gõ code — không đụng nhau.
+
+        Đặt TRƯỚC chốt `feedback`: đang hiện xanh/đỏ mà bấm Esc vẫn phải sang bài kế.
+      */
+      if (e.key === 'Escape') {
+        next()
+        return
+      }
+
       if (feedback !== 'idle') return
 
       if (chord) {
@@ -140,7 +155,7 @@ export function useShortcutEngine(shortcuts: ShortcutItem[]) {
         setFeedback('wrong')
       }
     },
-    [current, progress, feedback, chord],
+    [current, progress, feedback, chord, next],
   )
 
   return { current, progress, feedback, score, chord, handleKeyDown, skip: next }
