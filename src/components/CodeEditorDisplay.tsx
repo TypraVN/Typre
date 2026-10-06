@@ -1,5 +1,5 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import { forwardRef, memo, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent, Ref } from 'react'
 import {
   getHighlighterFor,
   getLoadedHighlighter,
@@ -44,6 +44,49 @@ const LINE_HEIGHT = 28
 function Caret() {
   return <span className="absolute inset-y-0 -left-px w-[2px] bg-orange-400 animate-caret-blink" />
 }
+
+/**
+ * Một ký tự trong bài.
+ *
+ * Tách ra và `memo` vì mỗi lần gõ chỉ có 1–2 ký tự đổi trạng thái (ô vừa gõ, và con
+ * trỏ dời đi), nhưng bản trước vẽ lại TOÀN BỘ bài. Đo trên bài 2.860 ký tự (mức trần
+ * của "your code"): 15 ms mỗi phím, có lúc 28–65 ms — quá một khung hình 16,7 ms, và
+ * trên điện thoại yếu chậm hơn 4–5 lần là thấy chữ trễ sau tay.
+ *
+ * Props CHỈ là giá trị nguyên thuỷ để `memo` so được: dựng `style` ngay trong này, không
+ * truyền object từ ngoài vào (object mới mỗi lần render là `memo` luôn coi như đã đổi).
+ */
+const Char = memo(function Char({
+  char,
+  status,
+  color,
+  uiMode,
+  isCursor,
+  cursorRef,
+}: {
+  char: string
+  status: CharStatus
+  color: string
+  uiMode: UiMode
+  isCursor: boolean
+  cursorRef?: Ref<HTMLSpanElement>
+}) {
+  let style: React.CSSProperties = { color }
+  let className = 'relative'
+
+  if (status === 'incorrect') {
+    style = INCORRECT[uiMode]
+  } else if (status === 'pending') {
+    className += ' opacity-40'
+  }
+
+  return (
+    <span ref={cursorRef} className={className} style={style}>
+      {isCursor && <Caret />}
+      {char}
+    </span>
+  )
+})
 
 /** Màu của TỪNG ký tự trong bài, phẳng theo đúng thứ tự — khớp 1-1 với `charStatuses`. */
 interface Painted {
@@ -123,6 +166,9 @@ export const CodeEditorDisplay = forwardRef<HTMLDivElement, CodeEditorDisplayPro
     const colors = sync?.colors ?? painted?.colors ?? null
     const fg = sync?.fg ?? painted?.fg ?? FALLBACK_FG[uiMode]
 
+    // Tách ký tự một lần cho mỗi bài, không phải mỗi lần gõ.
+    const chars = useMemo(() => code.split(''), [code])
+
     /*
      * Thanh cuộn bị ẩn nên phải tự kéo khung theo con trỏ, không thì gõ tới đoạn
      * dưới của snippet dài là mất dấu. Tính bằng getBoundingClientRect (không dùng
@@ -162,31 +208,17 @@ export const CodeEditorDisplay = forwardRef<HTMLDivElement, CodeEditorDisplayPro
         // khoảng trống, không cuộn, và không có dòng nào bị giấu dưới mép.
         className="font-mono text-lg whitespace-pre-wrap outline-none rounded-lg p-4 animate-fade-in"
       >
-        {code.split('').map((char, i) => {
-          const status = charStatuses[i]
-          const color = colors?.[i] ?? fg
-
-          let style: React.CSSProperties = { color }
-          let className = 'relative'
-
-          if (status === 'incorrect') {
-            style = INCORRECT[uiMode]
-          } else if (status === 'pending') {
-            className += ' opacity-40'
-          }
-
-          return (
-            <span
-              key={i}
-              ref={i === cursor ? cursorRef : undefined}
-              className={className}
-              style={style}
-            >
-              {i === cursor && <Caret />}
-              {char}
-            </span>
-          )
-        })}
+        {chars.map((char, i) => (
+          <Char
+            key={i}
+            char={char}
+            status={charStatuses[i]}
+            color={colors?.[i] ?? fg}
+            uiMode={uiMode}
+            isCursor={i === cursor}
+            cursorRef={i === cursor ? cursorRef : undefined}
+          />
+        ))}
         {cursor === code.length && (
           <span ref={cursorRef} className="relative">
             <Caret />
