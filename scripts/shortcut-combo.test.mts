@@ -6,7 +6,12 @@
  * nền tảng báo vào đây — sai một ca là có cả một nhóm người dùng không gõ được ký tự đó.
  */
 
-import { isShortcutCombo, type ComboKeyLike } from '../src/lib/shortcutCombo'
+import {
+  chordMatches,
+  isShortcutCombo,
+  type ChordKeyLike,
+  type ComboKeyLike,
+} from '../src/lib/shortcutCombo'
 
 let passed = 0
 const failures: string[] = []
@@ -65,6 +70,73 @@ check('Mac, Duc: Option+L = @', key('@', { alt: true }), false)
 
 // ── Cmd vẫn thắng mọi thứ ────────────────────────────────────────────────────
 check('Cmd+Option+I (DevTools Mac)', key('i', { meta: true, alt: true }), true)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// chordMatches: phím tắt tổ hợp trên bàn phím Mỹ và châu Âu
+// ═════════════════════════════════════════════════════════════════════════════
+
+function chord(
+  k: string,
+  code: string,
+  mods: { ctrl?: boolean; alt?: boolean; shift?: boolean; meta?: boolean; altGraph?: boolean } = {},
+): ChordKeyLike {
+  return {
+    key: k,
+    code,
+    ctrlKey: mods.ctrl ?? false,
+    altKey: mods.alt ?? false,
+    shiftKey: mods.shift ?? false,
+    metaKey: mods.meta ?? false,
+    getModifierState: (m) => m === 'AltGraph' && (mods.altGraph ?? false),
+  }
+}
+
+function checkChord(label: string, e: ChordKeyLike, keys: string[], want: boolean) {
+  const got = chordMatches(e, keys)
+  if (got === want) {
+    passed++
+    return
+  }
+  failures.push(`  ${label}\n      mong doi: ${want ? 'DUNG' : 'SAI'}\n      nhan duoc: ${got ? 'DUNG' : 'SAI'}`)
+}
+
+// ── Bàn phím Mỹ: giữ nguyên như trước ────────────────────────────────────────
+checkChord('My: Ctrl+/', chord('/', 'Slash', { ctrl: true }), ['Ctrl', '/'], true)
+checkChord('My: Ctrl+`', chord('`', 'Backquote', { ctrl: true }), ['Ctrl', '`'], true)
+checkChord('My: Ctrl+\\', chord('\\', 'Backslash', { ctrl: true }), ['Ctrl', '\\'], true)
+checkChord('My: Ctrl+]', chord(']', 'BracketRight', { ctrl: true }), ['Ctrl', ']'], true)
+checkChord('My: Ctrl+.', chord('.', 'Period', { ctrl: true }), ['Ctrl', '.'], true)
+checkChord('My: Ctrl+Shift+P', chord('P', 'KeyP', { ctrl: true, shift: true }), ['Ctrl', 'Shift', 'P'], true)
+checkChord('My: Ctrl+P', chord('p', 'KeyP', { ctrl: true }), ['Ctrl', 'P'], true)
+checkChord('My: Alt+Up', chord('ArrowUp', 'ArrowUp', { alt: true }), ['Alt', 'Up'], true)
+checkChord('My: Ctrl+Space', chord(' ', 'Space', { ctrl: true }), ['Ctrl', 'Space'], true)
+checkChord('My: F12', chord('F12', 'F12'), ['F12'], true)
+
+// ── Bàn phím Mỹ: những thứ PHẢI vẫn sai ──────────────────────────────────────
+checkChord('My: thieu Ctrl (chi bam /)', chord('/', 'Slash'), ['Ctrl', '/'], false)
+checkChord('My: thua Shift — Ctrl+Shift+/ ra ?', chord('?', 'Slash', { ctrl: true, shift: true }), ['Ctrl', '/'], false)
+checkChord('My: Ctrl+P thay vi Ctrl+Shift+P', chord('p', 'KeyP', { ctrl: true }), ['Ctrl', 'Shift', 'P'], false)
+checkChord('My: Ctrl+Shift+P thay vi Ctrl+P', chord('P', 'KeyP', { ctrl: true, shift: true }), ['Ctrl', 'P'], false)
+checkChord('My: phim khac hoan toan', chord('k', 'KeyK', { ctrl: true }), ['Ctrl', '/'], false)
+checkChord('My: thua Alt — Alt+Shift+Down thay vi Shift+Down', chord('ArrowDown', 'ArrowDown', { alt: true, shift: true }), ['Shift', 'Down'], false)
+
+// ── Đức, Windows ─────────────────────────────────────────────────────────────
+checkChord('Duc Win: Ctrl+/ = Ctrl+Shift+7', chord('/', 'Digit7', { ctrl: true, shift: true }), ['Ctrl', '/'], true)
+checkChord('Duc Win: Ctrl+] = Ctrl+AltGr+9', chord(']', 'Digit9', { ctrl: true, alt: true, altGraph: true }), ['Ctrl', ']'], true)
+checkChord('Duc Win: Ctrl+] khi AltGr chi bao Ctrl+Alt', chord(']', 'Digit9', { ctrl: true, alt: true }), ['Ctrl', ']'], true)
+checkChord('Duc Win: Ctrl+\\ = Ctrl+AltGr+ß', chord('\\', 'Minus', { ctrl: true, alt: true, altGraph: true }), ['Ctrl', '\\'], true)
+checkChord('Duc Win: Ctrl+` la phim chet → theo vi tri', chord('Dead', 'Backquote', { ctrl: true }), ['Ctrl', '`'], true)
+checkChord('Duc Win: Ctrl+. van la phim thuong', chord('.', 'Period', { ctrl: true }), ['Ctrl', '.'], true)
+
+// ── Đức, Linux (AltGr báo đúng tên, không kèm Ctrl) ──────────────────────────
+checkChord('Duc Linux: Ctrl+] = Ctrl+AltGr+9', chord(']', 'Digit9', { ctrl: true, altGraph: true }), ['Ctrl', ']'], true)
+
+// ── Pháp AZERTY ──────────────────────────────────────────────────────────────
+checkChord('Phap: Ctrl+/ = Ctrl+Shift+:', chord('/', 'Period', { ctrl: true, shift: true }), ['Ctrl', '/'], true)
+
+// ── Châu Âu: những thứ PHẢI vẫn sai ──────────────────────────────────────────
+checkChord('Duc: thieu Ctrl (Shift+7 tron)', chord('/', 'Digit7', { shift: true }), ['Ctrl', '/'], false)
+checkChord('Duc: Ctrl+Shift+7 cho phim tat Ctrl+P', chord('/', 'Digit7', { ctrl: true, shift: true }), ['Ctrl', 'P'], false)
 
 console.log(`\n${passed}/${passed + failures.length} ca dat`)
 

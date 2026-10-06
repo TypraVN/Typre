@@ -41,6 +41,9 @@ const CODE_FALLBACK: Record<string, [string, string]> = {
   Digit0: ['0', ')'],
 };
 
+/** `e.key` của phím bổ trợ nhấn riêng — không phải một lần gõ ký tự. */
+const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock']);
+
 function buildInitialStatuses(target: string): CharStatus[] {
   return Array(target.length).fill('pending');
 }
@@ -85,6 +88,11 @@ export function useTypingEngine(target: string) {
   const perSecondRef = useRef<number[]>([]);
   const lastTickRef = useRef({ at: 0, typed: 0 });
   const [samples, setSamples] = useState<number[]>([]);
+  /**
+   * Ký tự vừa gõ từ một phím chết (`Dead`) theo vị trí phím, chờ xem lần nhấn kế tiếp có
+   * phải ký tự GHÉP của chính nó không — xem nhánh `Dead` trong `handleKeyDown`.
+   */
+  const deadTypedRef = useRef<string | null>(null);
 
   const playFeedback = useCallback(
     (correct: boolean) => {
@@ -106,6 +114,7 @@ export function useTypingEngine(target: string) {
     perSecondRef.current = [];
     lastTickRef.current = { at: 0, typed: 0 };
     setSamples([]);
+    deadTypedRef.current = null;
   }, [target]);
 
   useEffect(() => {
@@ -274,6 +283,13 @@ export function useTypingEngine(target: string) {
       // Ctrl+Alt, chặn vậy là mất hết dấu ngoặc — xem `isShortcutCombo`.
       if (isShortcutCombo(e)) return;
 
+      // Phím bổ trợ nhấn riêng không phải một lần gõ: không được xoá dấu phím chết bên
+      // dưới — `` ` `` trên bàn phím Đức là Shift + phím chết, Shift có thể tới giữa chừng.
+      if (MODIFIER_KEYS.has(e.key)) return;
+
+      const deadTyped = deadTypedRef.current;
+      deadTypedRef.current = null;
+
       if (e.key === 'Tab') {
         e.preventDefault();
         typeTab();
@@ -291,6 +307,10 @@ export function useTypingEngine(target: string) {
       }
       if (e.key.length === 1) {
         e.preventDefault();
+        // Ký tự ghép của phím chết vừa gõ ở dưới (US-International: `'` rồi phím cách
+        // ra `'`): đã tính rồi, gõ nữa là thành hai. CHỈ khi tới bằng phím cách — bàn
+        // phím tiếng Việt gõ `//` báo `Dead` rồi `/`, nuốt cái thứ hai là mất một lần gõ.
+        if (deadTyped !== null && e.code === 'Space' && e.key === deadTyped) return;
         typeChar(e.key);
         return;
       }
@@ -298,10 +318,35 @@ export function useTypingEngine(target: string) {
       if (e.code && CODE_FALLBACK[e.code]) {
         e.preventDefault();
         const [plain, shifted] = CODE_FALLBACK[e.code];
-        typeChar(e.shiftKey ? shifted : plain);
+        const byPosition = e.shiftKey ? shifted : plain;
+
+        /*
+          Phím chết. Hai loại bàn phím báo `Dead` với nghĩa NGƯỢC nhau:
+
+            - Tiếng Việt: `Dead` là sự kiện DUY NHẤT của dấu câu đó — phải gõ ngay theo
+              vị trí phím (lý do CODE_FALLBACK tồn tại).
+            - Đức, Pháp, US-International: `Dead` chỉ là nửa đầu, ký tự thật tới ở lần
+              nhấn SAU (`^` + phím cách → `^`). Gõ ngay theo vị trí là ra ký tự sai:
+              Đức bấm `` ` `` ra `+`, bấm `^` ra `` ` ``.
+
+          Phân biệt bằng ký tự đang chờ gõ: theo vị trí phím mà ĐÚNG ký tự đó thì gõ ngay
+          (tiếng Việt gõ đúng — y như trước giờ). Không đúng thì CHƯA gõ gì, để ký tự ghép
+          ở lần nhấn sau tự đi qua nhánh `e.key.length === 1` phía trên.
+
+          Cái giá: người dùng tiếng Việt gõ SAI một dấu câu thì lần gõ sai đó không hiện
+          ra. Không mất gì thật — con trỏ vẫn đứng đó, lần gõ kế tiếp vẫn bị chấm.
+        */
+        if (e.key === 'Dead') {
+          if (byPosition !== target[cursor]) return;
+          typeChar(byPosition);
+          deadTypedRef.current = byPosition;
+          return;
+        }
+
+        typeChar(byPosition);
       }
     },
-    [typeTab, typeEnter, backspace, typeChar],
+    [typeTab, typeEnter, backspace, typeChar, target, cursor],
   );
 
   const stats: TypingStats = useMemo(() => {

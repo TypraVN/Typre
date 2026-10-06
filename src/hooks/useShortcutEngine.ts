@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ShortcutItem } from '../data/shortcuts'
 import { shuffle } from '../lib/shuffle'
-import { isShortcutCombo } from '../lib/shortcutCombo'
+import { chordMatches, isShortcutCombo, MODIFIER_TOKENS } from '../lib/shortcutCombo'
 
 interface KeyLike {
   key: string
+  code?: string
   ctrlKey: boolean
   shiftKey: boolean
   altKey: boolean
@@ -15,7 +16,6 @@ interface KeyLike {
 
 type Feedback = 'idle' | 'correct' | 'wrong'
 
-const MODIFIER_TOKENS = ['Ctrl', 'Alt', 'Shift', 'Meta']
 /**
  * Tên `e.key` của phím bổ trợ khi nhấn RIÊNG — luôn bỏ qua, không tính đúng/sai.
  *
@@ -23,26 +23,6 @@ const MODIFIER_TOKENS = ['Ctrl', 'Alt', 'Shift', 'Meta']
  * (Đức) sẽ bắn ra một keydown `AltGraph` trước ký tự — y hệt chuyện `Shift` trước `!`.
  */
 const MODIFIER_KEY_NAMES = ['Control', 'Alt', 'Shift', 'Meta', 'AltGraph']
-/**
- * Tên hiển thị trên phím → giá trị `KeyboardEvent.key` thật.
- *
- * `Space` bắt buộc phải có: trình duyệt trả về đúng một dấu cách `' '`, nên so thẳng với
- * chuỗi `'Space'` là không bao giờ khớp — phím tắt hiện ra nhưng gõ kiểu gì cũng sai.
- */
-const KEY_ALIASES: Record<string, string> = {
-  Up: 'ArrowUp',
-  Down: 'ArrowDown',
-  Left: 'ArrowLeft',
-  Right: 'ArrowRight',
-  Space: ' ',
-}
-
-function matchesKey(pressed: string, token: string | undefined): boolean {
-  if (!token) return false
-  const expected = KEY_ALIASES[token] ?? token
-  if (expected.length === 1) return pressed.toLowerCase() === expected.toLowerCase()
-  return pressed === expected
-}
 
 function isChordShortcut(keys: string[]): boolean {
   return keys.some((k) => MODIFIER_TOKENS.includes(k))
@@ -112,15 +92,8 @@ export function useShortcutEngine(shortcuts: ShortcutItem[]) {
       if (chord) {
         if (MODIFIER_KEY_NAMES.includes(e.key)) return
 
-        const mainToken = current.keys.find((k) => !MODIFIER_TOKENS.includes(k))
-        const mainMatches = matchesKey(e.key, mainToken)
-        const modsMatch =
-          e.ctrlKey === current.keys.includes('Ctrl') &&
-          e.altKey === current.keys.includes('Alt') &&
-          e.shiftKey === current.keys.includes('Shift') &&
-          e.metaKey === current.keys.includes('Meta')
-
-        if (mainMatches && modsMatch) {
+        // Ký hiệu trên bàn phím châu Âu cần nới luật so khớp — xem `chordMatches`.
+        if (chordMatches(e, current.keys)) {
           setScore((s) => ({ ...s, correct: s.correct + 1 }))
           setFeedback('correct')
         } else {

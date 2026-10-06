@@ -10,7 +10,23 @@ interface ShortcutTrainerProps {
 
 export function ShortcutTrainer({ shortcuts, t }: ShortcutTrainerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { current, progress, feedback, score, chord, handleKeyDown } = useShortcutEngine(shortcuts)
+  const { current, progress, feedback, score, chord, handleKeyDown, skip } = useShortcutEngine(shortcuts)
+
+  /**
+   * Bỏ qua phím tắt hiện tại.
+   *
+   * Không có lối thoát này thì một phím tắt KHÔNG BẤM TỚI ĐƯỢC là người dùng kẹt vĩnh
+   * viễn — và có những phím app không bao giờ nhận được dù làm gì: trình duyệt giữ
+   * F12, Windows giữ Ctrl+Space để đổi bộ gõ, Unikey biến `w` thành `ư`. Đúng kiểu kẹt
+   * mà người dùng báo về ngày 2026-10-05.
+   *
+   * Trả focus về khung luyện sau khi bấm: nút vừa lấy mất focus, không trả lại thì mọi
+   * phím bấm tiếp theo rơi vào nút chứ không tới bộ luyện.
+   */
+  const skipAndRefocus = () => {
+    skip()
+    containerRef.current?.focus()
+  }
 
   useEffect(() => {
     containerRef.current?.focus()
@@ -67,6 +83,15 @@ export function ShortcutTrainer({ shortcuts, t }: ShortcutTrainerProps) {
       <div className="font-mono text-xs text-zinc-500">
         {t.correct}: {score.correct} · {t.wrong}: {score.wrong}
       </div>
+
+      <button
+        type="button"
+        onClick={skipAndRefocus}
+        title={t.shortcutSkipHint}
+        className="font-mono text-xs text-zinc-500 underline underline-offset-2 hover:text-orange-500 dark:hover:text-orange-400 cursor-pointer"
+      >
+        {t.shortcutSkip}
+      </button>
     </div>
   )
 }

@@ -48,3 +48,103 @@ export function isShortcutCombo(e: ComboKeyLike): boolean {
 
   return false
 }
+
+// ── Phím tắt tổ hợp (Ctrl+/, Ctrl+Shift+P...) ───────────────────────────────
+
+export const MODIFIER_TOKENS = ['Ctrl', 'Alt', 'Shift', 'Meta']
+
+/**
+ * Tên hiển thị trên phím → giá trị `KeyboardEvent.key` thật.
+ *
+ * `Space` bắt buộc phải có: trình duyệt trả về đúng một dấu cách `' '`, nên so thẳng với
+ * chuỗi `'Space'` là không bao giờ khớp — phím tắt hiện ra nhưng gõ kiểu gì cũng sai.
+ */
+const KEY_ALIASES: Record<string, string> = {
+  Up: 'ArrowUp',
+  Down: 'ArrowDown',
+  Left: 'ArrowLeft',
+  Right: 'ArrowRight',
+  Space: ' ',
+}
+
+/**
+ * Ký hiệu → vị trí phím VẬT LÝ trên bàn phím Mỹ (`KeyboardEvent.code`).
+ *
+ * Phím tắt VS Code được in theo bàn phím Mỹ. Trên bàn phím khác, chính cái phím đó
+ * vẫn nằm đúng chỗ, chỉ là in ký tự khác — so theo vị trí là cách duy nhất để người
+ * dùng bàn phím Đức bấm được `Ctrl+`` (`` ` `` là phím chết ở đó, không ra ký tự).
+ */
+const SYMBOL_CODES: Record<string, string> = {
+  '/': 'Slash',
+  '`': 'Backquote',
+  '\\': 'Backslash',
+  '[': 'BracketLeft',
+  ']': 'BracketRight',
+  '.': 'Period',
+  ',': 'Comma',
+  ';': 'Semicolon',
+  "'": 'Quote',
+  '-': 'Minus',
+  '=': 'Equal',
+}
+
+export interface ChordKeyLike extends ComboKeyLike {
+  shiftKey: boolean
+  code?: string
+}
+
+function matchesKey(pressed: string, token: string): boolean {
+  const expected = KEY_ALIASES[token] ?? token
+  if (expected.length === 1) return pressed.toLowerCase() === expected.toLowerCase()
+  return pressed === expected
+}
+
+/**
+ * Lần nhấn `e` có đúng là phím tắt `keys` (vd `['Ctrl', '/']`) không.
+ *
+ * Với chữ cái và phím có tên (F12, Up, Space): so ký tự + cờ bổ trợ khớp CHÍNH XÁC,
+ * như trước giờ.
+ *
+ * Với KÝ HIỆU, nới thêm hai đường — vì so chính xác là bàn phím châu Âu không bao giờ
+ * đúng được:
+ *
+ *   - Theo ký tự, bỏ qua Shift/AltGr dùng để TẠO RA ký hiệu: bàn phím Đức gõ `/` bằng
+ *     Shift+7 và `]` bằng AltGr+9 (Windows báo AltGr thành Ctrl+Alt). So cờ chính xác
+ *     thì `Ctrl+/` trở thành `Ctrl+Shift+/` và luôn sai.
+ *   - Theo vị trí phím (`e.code`), cờ phải khớp chính xác: cho người bấm đúng phím mà
+ *     người Mỹ bấm, kể cả khi phím đó là phím chết trên bố cục của họ.
+ *
+ * Bàn phím Mỹ không đổi gì: `Ctrl+Shift+/` ra `?`, không khớp ký tự; khớp vị trí nhưng
+ * thừa Shift — vẫn sai, đúng như trước. Không có phím tắt nào trong bộ cần Shift + ký
+ * hiệu, nên nới Shift cho ký hiệu không nhập nhằng với phím tắt nào khác.
+ */
+export function chordMatches(e: ChordKeyLike, keys: string[]): boolean {
+  const main = keys.find((k) => !MODIFIER_TOKENS.includes(k))
+  if (!main) return false
+
+  const wantCtrl = keys.includes('Ctrl')
+  const wantAlt = keys.includes('Alt')
+  const wantShift = keys.includes('Shift')
+  const wantMeta = keys.includes('Meta')
+
+  const exact =
+    e.ctrlKey === wantCtrl && e.altKey === wantAlt && e.shiftKey === wantShift && e.metaKey === wantMeta
+
+  if (matchesKey(e.key, main) && exact) return true
+
+  const code = SYMBOL_CODES[main]
+  if (!code) return false
+
+  // Theo vị trí phím: cờ phải khớp chính xác.
+  if (e.code === code && exact) return true
+
+  // Theo ký tự, cho phép Shift/AltGr chỉ dùng để tạo ra ký hiệu.
+  if (e.key === main && e.ctrlKey === wantCtrl && e.metaKey === wantMeta) {
+    const altGr = e.getModifierState?.('AltGraph') ?? false
+    const altOk = e.altKey === wantAlt || (!wantAlt && (altGr || e.ctrlKey))
+    const shiftOk = e.shiftKey === wantShift || !wantShift
+    return altOk && shiftOk
+  }
+
+  return false
+}
