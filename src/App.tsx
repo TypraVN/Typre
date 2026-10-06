@@ -721,6 +721,8 @@ function App() {
             <button
               type="button"
               onClick={toggleUiMode}
+              title={uiMode === 'dark' ? t.switchToLight : t.switchToDark}
+              aria-label={uiMode === 'dark' ? t.switchToLight : t.switchToDark}
               className="p-1.5 rounded border cursor-pointer transition-colors duration-150 border-zinc-300 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-zinc-400 dark:hover:border-zinc-500"
             >
               {uiMode === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
@@ -729,6 +731,8 @@ function App() {
             <button
               type="button"
               onClick={toggleSound}
+              title={soundEnabled ? t.muteSounds : t.unmuteSounds}
+              aria-label={soundEnabled ? t.muteSounds : t.unmuteSounds}
               className={`p-1.5 rounded border cursor-pointer transition-colors duration-150 ${
                 soundEnabled
                   ? 'border-orange-500 dark:border-orange-400 text-orange-500 dark:text-orange-400'

@@ -119,6 +119,13 @@ export const translations = {
 
   // Báo lỗi
   reportTitle: 'Report a problem',
+  // Nhãn của hai nút chỉ có biểu tượng. Nói HÀNH ĐỘNG khi bấm, không nói trạng thái
+  // hiện tại — "Dark mode" trên một nút đang ở chế độ tối thì đọc không biết bấm vào
+  // sẽ bật hay tắt.
+  switchToLight: 'Switch to light mode',
+  switchToDark: 'Switch to dark mode',
+  muteSounds: 'Mute typing sounds',
+  unmuteSounds: 'Turn on typing sounds',
   reportSubtitle:
     'Tell us what went wrong. Technical details are attached automatically so we can find it.',
   reportPlaceholder: 'What happened? What were you doing just before?',
