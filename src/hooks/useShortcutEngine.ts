@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ShortcutItem } from '../data/shortcuts'
 import { shuffle } from '../lib/shuffle'
+import { isShortcutCombo } from '../lib/shortcutCombo'
 
 interface KeyLike {
   key: string
@@ -8,13 +9,20 @@ interface KeyLike {
   shiftKey: boolean
   altKey: boolean
   metaKey: boolean
+  getModifierState?: (key: 'AltGraph') => boolean
   preventDefault: () => void
 }
 
 type Feedback = 'idle' | 'correct' | 'wrong'
 
 const MODIFIER_TOKENS = ['Ctrl', 'Alt', 'Shift', 'Meta']
-const MODIFIER_KEY_NAMES = ['Control', 'Alt', 'Shift', 'Meta']
+/**
+ * Tên `e.key` của phím bổ trợ khi nhấn RIÊNG — luôn bỏ qua, không tính đúng/sai.
+ *
+ * `AltGraph` là phím AltGr của bàn phím châu Âu: nhấn nó để gõ `$` (Bắc Âu) hay `{`
+ * (Đức) sẽ bắn ra một keydown `AltGraph` trước ký tự — y hệt chuyện `Shift` trước `!`.
+ */
+const MODIFIER_KEY_NAMES = ['Control', 'Alt', 'Shift', 'Meta', 'AltGraph']
 /**
  * Tên hiển thị trên phím → giá trị `KeyboardEvent.key` thật.
  *
@@ -122,7 +130,15 @@ export function useShortcutEngine(shortcuts: ShortcutItem[]) {
         return
       }
 
-      if (e.ctrlKey || e.altKey || e.metaKey) return
+      // AltGr (châu Âu) báo thành Ctrl+Alt — vẫn là đang gõ ký tự, xem `isShortcutCombo`.
+      if (isShortcutCombo(e)) return
+
+      /*
+        Phím chết (`Dead`): trên bàn phím Đức, Pháp, Bắc Âu... `^` không ra ngay mà chờ
+        phím kế tiếp để ghép (`^` + dấu cách → `^`). Lần nhấn đầu chỉ báo `Dead`; ký tự
+        thật tới ở keydown SAU. Đem `Dead` đi so là tính sai trước khi ký tự kịp tới.
+      */
+      if (e.key === 'Dead') return
 
       /*
         Bỏ qua lần nhấn RIÊNG của phím bổ trợ.

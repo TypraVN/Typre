@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CharStatus, EngineStatus, TypingStats } from '../types/typing';
 import { useSoundStore } from '../store/useSoundStore';
 import { playCorrect, playWrong, playFinish } from '../lib/sound';
+import { isShortcutCombo } from '../lib/shortcutCombo';
 
 interface KeyLike {
   key: string;
@@ -10,6 +11,7 @@ interface KeyLike {
   shiftKey?: boolean;
   metaKey: boolean;
   altKey: boolean;
+  getModifierState?: (key: 'AltGraph') => boolean;
   preventDefault: () => void;
 }
 
@@ -268,7 +270,9 @@ export function useTypingEngine(target: string) {
 
   const handleKeyDown = useCallback(
     (e: KeyLike) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      // KHÔNG chặn thẳng theo ctrlKey/altKey: AltGr trên bàn phím châu Âu báo thành
+      // Ctrl+Alt, chặn vậy là mất hết dấu ngoặc — xem `isShortcutCombo`.
+      if (isShortcutCombo(e)) return;
 
       if (e.key === 'Tab') {
         e.preventDefault();
