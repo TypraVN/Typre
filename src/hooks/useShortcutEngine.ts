@@ -124,6 +124,19 @@ export function useShortcutEngine(shortcuts: ShortcutItem[]) {
 
       if (e.ctrlKey || e.altKey || e.metaKey) return
 
+      /*
+        Bỏ qua lần nhấn RIÊNG của phím bổ trợ.
+
+        Gõ `!` là hai sự kiện keydown: `Shift` trước, rồi `!`. Không chặn cái đầu thì nó
+        bị đem so với ký tự đang chờ, không khớp, và tính là gõ SAI — tiến độ reset ngay
+        trước khi ký tự thật kịp tới. Mọi phím tắt Vim có ký tự cần Shift (`:wq`, `:q!`,
+        `di"`, `^`, `$`, `%`, `*`, `>>`) đều KHÔNG THỂ gõ xong, người dùng kẹt vĩnh viễn
+        ở đó. Đúng lỗi một người dùng báo về ngày 2026-10-05.
+
+        Nhánh tổ hợp phía trên đã chặn từ đầu; nhánh chuỗi này thiếu.
+      */
+      if (MODIFIER_KEY_NAMES.includes(e.key)) return
+
       const expected = current.keys[progress]
       if (e.key === expected) {
         const nextProgress = progress + 1
