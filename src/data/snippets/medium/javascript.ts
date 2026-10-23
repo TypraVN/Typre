@@ -260,4 +260,58 @@ do {
         navigator.sendBeacon("/api/close", JSON.stringify(state));
     }
 });`,
+  // ── Thêm 2026-10-07. CHỈ thêm vào cuối: id theo vị trí, chèn giữa là đổi id các bài sau.
+  `function debounce(fn, wait = 250) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), wait);
+    };
+}`,
+  `const controller = new AbortController();
+setTimeout(() => controller.abort(), 5000);
+
+const res = await fetch(url, { signal: controller.signal });`,
+  `const params = new URLSearchParams(location.search);
+const page = Number(params.get("page") ?? 1);
+const sort = params.get("sort") || "newest";`,
+  `function chunk(items, size) {
+    const out = [];
+    for (let i = 0; i < items.length; i += size) {
+        out.push(items.slice(i, i + size));
+    }
+    return out;
+}`,
+  `const results = await Promise.allSettled(urls.map((u) => fetch(u)));
+const failed = results.filter((r) => r.status === "rejected");
+console.warn(\`\${failed.length} of \${urls.length} failed\`);`,
+  `export function once(fn) {
+    let done = false;
+    let value;
+    return (...args) => (done ? value : ((done = true), (value = fn(...args))));
+}`,
+  `const { data, error } = await supabase
+    .from("scores")
+    .select("wpm, accuracy")
+    .eq("language", "javascript")
+    .order("wpm", { ascending: false });`,
+  `const tpl = document.querySelector("#row-template");
+const row = tpl.content.cloneNode(true);
+row.querySelector(".name").textContent = user.name;
+list.append(row);`,
+  `const slug = title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");`,
+  `form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const body = Object.fromEntries(new FormData(form));
+    await save(body);
+});`,
+  `const [first, second, ...rest] = await getTopScores();
+console.log(first.name, second?.name ?? "none", rest.length);`,
+  `const stored = localStorage.getItem("settings");
+const settings = stored ? JSON.parse(stored) : { theme: "dark" };
+localStorage.setItem("settings", JSON.stringify(settings));`,
 ])
