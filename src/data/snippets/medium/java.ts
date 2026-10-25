@@ -243,4 +243,48 @@ var parsed = LocalDate.parse(iso, DateTimeFormatter.ISO_LOCAL_DATE);`,
 });
 
 thread.join();`,
+  // ── Framework, thêm 2026-10-25: Spring Boot + Spring Data JPA. CHỈ thêm vào cuối.
+  `@RestController
+@RequestMapping("/api/scores")
+@RequiredArgsConstructor
+public class ScoreController {
+    private final ScoreService service;
+}`,
+  `@GetMapping("/{id}")
+public ResponseEntity<Score> get(@PathVariable Long id) {
+    return repository.findById(id)
+        .map(ResponseEntity::ok)
+        .orElse(ResponseEntity.notFound().build());
+}`,
+  `@PostMapping
+@ResponseStatus(HttpStatus.CREATED)
+public Score create(@Valid @RequestBody ScoreRequest request) {
+    return service.save(request);
+}`,
+  `public interface ScoreRepository extends JpaRepository<Score, Long> {
+    List<Score> findTop10ByLanguageOrderByWpmDesc(String language);
+}`,
+  `@Entity
+public class Score {
+    @Id
+    @GeneratedValue
+    private Long id;
+    private String language;
+    private int wpm;
+}`,
+  `@Service
+public class ScoreService {
+    @Transactional
+    public Score save(ScoreRequest request) {
+        return repository.save(new Score(request.wpm()));
+    }
+}`,
+  `public record ScoreRequest(
+    @NotBlank String language,
+    @Min(1) @Max(300) int wpm
+) {}`,
+  `@ExceptionHandler(EntityNotFoundException.class)
+public ResponseEntity<String> notFound(EntityNotFoundException e) {
+    return ResponseEntity.status(404).body(e.getMessage());
+}`,
 ])

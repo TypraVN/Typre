@@ -299,4 +299,40 @@ function apply(theme: Theme): void {
         return [null, error as Error];
     }
 }`,
+  // ── Framework, thêm 2026-10-25: React có kiểu dữ liệu, Next.js. CHỈ thêm vào cuối:
+  // id theo vị trí, chèn giữa là đổi id các bài sau và làm hỏng link thách đấu cũ.
+  `type ButtonProps = {
+    label: string;
+    variant?: "primary" | "ghost";
+    onClick: () => void;
+};`,
+  `export function Button({ label, variant = "primary", onClick }: ButtonProps) {
+    return <button className={variant} onClick={onClick}>{label}</button>;
+}`,
+  `const [scores, setScores] = useState<Score[]>([]);
+const [error, setError] = useState<string | null>(null);`,
+  `const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+};`,
+  `const ScoreContext = createContext<ScoreState | null>(null);
+
+export function useScores() {
+    const ctx = useContext(ScoreContext);
+    if (!ctx) throw new Error("no provider");
+    return ctx;
+}`,
+  `export async function POST(request: Request) {
+    const body: { wpm: number } = await request.json();
+    return Response.json({ saved: body.wpm }, { status: 201 });
+}`,
+  `type Props = { params: Promise<{ slug: string }> };
+
+export default async function Page({ params }: Props) {
+    const { slug } = await params;
+    return <h1>{slug}</h1>;
+}`,
+  `export const metadata: Metadata = {
+    title: "Typre",
+    description: "Typing practice on real code",
+};`,
 ])

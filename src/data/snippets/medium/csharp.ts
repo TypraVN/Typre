@@ -287,4 +287,40 @@ await Parallel.ForEachAsync(urls, options, async (url, token) =>
 await File.WriteAllTextAsync(path, json, token);`,
   `public int Compare(Score? left, Score? right) =>
     (right?.Wpm ?? 0).CompareTo(left?.Wpm ?? 0);`,
+  // ── Framework, thêm 2026-10-25: ASP.NET Core + EF Core. CHỈ thêm vào cuối.
+  `var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDbContext<AppDb>();
+var app = builder.Build();
+app.Run();`,
+  `app.MapGet("/api/scores/{id:int}", async (int id, AppDb db) =>
+    await db.Scores.FindAsync(id) is Score s ? Results.Ok(s) : Results.NotFound());`,
+  `[ApiController]
+[Route("api/[controller]")]
+public class ScoresController(AppDb db) : ControllerBase
+{
+}`,
+  `[HttpPost]
+public async Task<IActionResult> Create(ScoreDto dto)
+{
+    db.Scores.Add(new Score(dto.Wpm));
+    await db.SaveChangesAsync();
+    return StatusCode(201);
+}`,
+  `public class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
+{
+    public DbSet<Score> Scores => Set<Score>();
+}`,
+  `var top = await db.Scores
+    .Where(s => s.Language == "csharp")
+    .OrderByDescending(s => s.Wpm)
+    .Take(10)
+    .ToListAsync();`,
+  `builder.Services.AddScoped<IScoreService, ScoreService>();
+builder.Services.AddAuthentication().AddJwtBearer();`,
+  `app.MapPost("/api/scores", async (ScoreDto dto, AppDb db) =>
+{
+    db.Scores.Add(new Score(dto.Wpm));
+    await db.SaveChangesAsync();
+    return Results.Created("/api/scores", dto);
+});`,
 ])

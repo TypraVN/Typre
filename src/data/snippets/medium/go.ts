@@ -336,4 +336,50 @@ if err != nil {
 }
 
 defer stmt.Close()`,
+  // ── Framework, thêm 2026-10-25: Gin. CHỈ thêm vào cuối. Thụt lề 4 dấu cách chứ không
+  // phải tab như gofmt: engine tự thụt lề khi xuống dòng, tab trong dữ liệu là lệch.
+  `r := gin.Default()
+r.GET("/ping", func(c *gin.Context) {
+    c.JSON(http.StatusOK, gin.H{"message": "pong"})
+})
+r.Run(":8080")`,
+  `func getScore(c *gin.Context) {
+    score, err := store.Find(c.Param("id"))
+    if err != nil {
+        c.AbortWithStatus(http.StatusNotFound)
+        return
+    }
+    c.JSON(http.StatusOK, score)
+}`,
+  `type ScoreRequest struct {
+    Language string \`json:"language" binding:"required"\`
+    Wpm      int    \`json:"wpm" binding:"min=1,max=300"\`
+}`,
+  `var req ScoreRequest
+if err := c.ShouldBindJSON(&req); err != nil {
+    c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+    return
+}`,
+  `api := r.Group("/api")
+api.Use(AuthRequired())
+{
+    api.GET("/scores", listScores)
+    api.POST("/scores", createScore)
+}`,
+  `func AuthRequired() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        if c.GetHeader("Authorization") == "" {
+            c.AbortWithStatus(http.StatusUnauthorized)
+        }
+    }
+}`,
+  `page := c.DefaultQuery("page", "1")
+limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+c.JSON(http.StatusOK, gin.H{"page": page, "limit": limit})`,
+  `srv := &http.Server{Addr: ":8080", Handler: r}
+go func() {
+    if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+        log.Fatal(err)
+    }
+}()`,
 ])
