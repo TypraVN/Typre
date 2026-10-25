@@ -306,4 +306,51 @@ speeds = [to_wpm(chars / 5 / minutes) for chars in totals]`,
 elapsed = (datetime.now(ZoneInfo("UTC")) - started).total_seconds()`,
   `def top_n(rows, n=5):
     return heapq.nlargest(n, rows, key=operator.itemgetter("wpm"))`,
+  // ── Framework, thêm 2026-10-23: FastAPI, Django, pandas. CHỈ thêm vào cuối: id theo
+  // vị trí, chèn giữa là đổi id các bài sau và làm hỏng link thách đấu cũ.
+  `@app.get("/users/{user_id}")
+async def read_user(user_id: int):
+    user = await db.get_user(user_id)
+    if user is None:
+        raise HTTPException(status_code=404)
+    return user`,
+  `class Score(BaseModel):
+    language: str
+    wpm: int = Field(gt=0, le=300)
+    accuracy: float`,
+  `@app.post("/scores", status_code=201)
+def create_score(score: Score, db: Session = Depends(get_db)):
+    db.add(ScoreRow(**score.model_dump()))
+    db.commit()`,
+  `app = FastAPI()
+app.include_router(scores.router, prefix="/api")
+app.add_middleware(CORSMiddleware, allow_origins=["*"])`,
+  `class Score(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    wpm = models.PositiveIntegerField()
+    created = models.DateTimeField(auto_now_add=True)`,
+  `top_scores = (
+    Score.objects.filter(language="python", wpm__gt=0)
+    .select_related("user")
+    .order_by("-wpm")[:10]
+)`,
+  `def score_detail(request, pk):
+    score = get_object_or_404(Score, pk=pk)
+    return render(request, "scores/detail.html", {"score": score})`,
+  `urlpatterns = [
+    path("", views.index, name="index"),
+    path("scores/<int:pk>/", views.score_detail, name="detail"),
+]`,
+  `df = pd.read_csv("scores.csv", parse_dates=["created_at"])
+df = df[df["accuracy"] >= 95]
+print(df.groupby("language")["wpm"].mean().round(1))`,
+  `summary = (
+    df.groupby(["language", "time_limit"])
+    .agg(best=("wpm", "max"), runs=("wpm", "size"))
+    .reset_index()
+)`,
+  `df["day"] = df["created_at"].dt.date
+daily = df.pivot_table(index="day", columns="language", values="wpm", aggfunc="mean")`,
+  `merged = scores.merge(users, left_on="user_id", right_on="id", how="left")
+merged = merged.dropna(subset=["name"]).sort_values("wpm", ascending=False)`,
 ])

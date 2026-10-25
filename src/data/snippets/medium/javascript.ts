@@ -314,4 +314,65 @@ console.log(first.name, second?.name ?? "none", rest.length);`,
   `const stored = localStorage.getItem("settings");
 const settings = stored ? JSON.parse(stored) : { theme: "dark" };
 localStorage.setItem("settings", JSON.stringify(settings));`,
+  // ── Framework, thêm 2026-10-23: React, Express, Next.js. Trước đợt này kho gần như
+  // không có code framework — đúng thứ người ta gõ hằng ngày ở chỗ làm.
+  `const [count, setCount] = useState(0);
+
+useEffect(() => {
+    document.title = \`Clicked \${count} times\`;
+}, [count]);`,
+  `function SearchBox() {
+    const [query, setQuery] = useState("");
+    return <input value={query} onChange={(e) => setQuery(e.target.value)} />;
+}`,
+  `const sorted = useMemo(
+    () => [...scores].sort((a, b) => b.wpm - a.wpm),
+    [scores],
+);`,
+  `const inputRef = useRef(null);
+
+useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+}, []);`,
+  `<ul className="players">
+    {users.map((user) => (
+        <li key={user.id}>{user.name}</li>
+    ))}
+</ul>`,
+  `app.get("/api/users/:id", async (req, res) => {
+    const user = await db.findUser(req.params.id);
+    if (!user) return res.status(404).json({ error: "not found" });
+    res.json(user);
+});`,
+  `const app = express();
+app.use(express.json());
+app.use("/api", router);
+app.listen(3000, () => console.log("listening on 3000"));`,
+  `function requireAuth(req, res, next) {
+    if (!req.headers.authorization) {
+        return res.status(401).send("unauthorized");
+    }
+    next();
+}`,
+  `router.post("/scores", async (req, res) => {
+    const { wpm, language } = req.body;
+    const score = await Score.create({ wpm, language });
+    res.status(201).json(score);
+});`,
+  `export async function GET(request) {
+    const { searchParams } = new URL(request.url);
+    const page = searchParams.get("page") ?? "1";
+    return Response.json({ page });
+}`,
+  `export default async function Page({ params }) {
+    const { slug } = await params;
+    const post = await getPost(slug);
+    return <h1>{post.title}</h1>;
+}`,
+  `import Link from "next/link";
+
+export function Nav() {
+    return <Link href="/dashboard">Dashboard</Link>;
+}`,
 ])
