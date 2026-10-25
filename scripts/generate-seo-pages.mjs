@@ -836,7 +836,7 @@ function renderLlmsTxt(pages, countsFor, toolPages) {
 
 > Free typing practice for programmers. Instead of English prose, you type real code — ${total.toLocaleString('en-US')} snippets across ${pages.length} languages — so you train the brackets, operators, symbols and indentation that actually slow you down while coding.
 
-Typre runs in the browser at ${SITE}/, works offline, and needs no account to practise.
+Typre runs in the browser at [typre.dev](${SITE}/), works offline, and needs no account to practise.
 
 ## What it does
 
