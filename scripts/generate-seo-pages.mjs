@@ -802,6 +802,70 @@ ${FEATURE_PAGES.map((p) => `          <li><a href="/practice/${p.slug}/">${p.key
 `
 }
 
+/**
+ * `/llms.txt` — bản mô tả site viết cho các mô hình ngôn ngữ (chuẩn llmstxt.org).
+ *
+ * Vì sao cần: chatgpt.com đã xuất hiện trong danh sách nguồn truy cập, tức là AI đang
+ * giới thiệu Typre cho người hỏi. Khi đó AI chỉ có HTML để đoán — mà trang chủ là SPA,
+ * nội dung thật nằm trong JavaScript. File này cho nó một bản tóm tắt chính xác, ngắn,
+ * đọc được ngay: Typre là gì, có gì, trang nào dẫn tới đâu.
+ *
+ * SINH LÚC BUILD chứ không viết tay trong `public/`, cùng lý do với sitemap: con số bài
+ * và danh sách trang phải lấy từ dữ liệu thật. Viết tay là có ngày quảng cáo "2,590
+ * snippets" trong khi kho đã 2.690 — đúng lỗi đã từng xảy ra ở trang chủ.
+ *
+ * CHỈ ghi tính năng app THẬT SỰ có: AI sẽ nhắc lại nguyên văn với người dùng, mà người
+ * ta vào thấy khác lời giới thiệu thì còn tệ hơn không được giới thiệu.
+ */
+function renderLlmsTxt(pages, countsFor, toolPages) {
+  const total = pages.reduce((sum, p) => sum + countsFor(p.id).total, 0)
+  const isDrill = (p) => p.slug === 'special-characters'
+  const languages = pages.filter((p) => !isDrill(p)).map((p) => p.label)
+
+  const languageLinks = pages
+    .map((p) => `- [${p.keyword}](${SITE}/practice/${p.slug}/): ${countsFor(p.id).total} snippets`)
+    .join('\n')
+
+  const toolLinks = [
+    ...FEATURE_PAGES.map((p) => `- [${p.keyword}](${SITE}/practice/${p.slug}/): ${p.description}`),
+    `- [${CHESS_PAGE.keyword}](${SITE}/practice/${CHESS_PAGE.slug}/): ${CHESS_PAGE.description}`,
+    ...toolPages.map((p) => `- [${p.keyword}](${SITE}/practice/${p.slug}/)`),
+  ].join('\n')
+
+  return `# Typre
+
+> Free typing practice for programmers. Instead of English prose, you type real code — ${total.toLocaleString('en-US')} snippets across ${pages.length} languages — so you train the brackets, operators, symbols and indentation that actually slow you down while coding.
+
+Typre runs in the browser at ${SITE}/, works offline, and needs no account to practise.
+
+## What it does
+
+- Real code in ${languages.join(', ')}, plus a special-characters drill.
+- Snippets include everyday framework code: React, Next.js, Express, FastAPI, Django, pandas, Spring Boot, ASP.NET Core, Gin, Axum, Tailwind and HTMX, among others.
+- Timed runs of 15, 30 or 60 seconds. Each run measures WPM, accuracy, raw WPM and consistency.
+- Snippets are shuffled so none repeats before a full round, even across reloads.
+- Leaderboards per language and run length, for all time, this week and today. Signing in is only needed to post scores and to play rated online chess.
+- Real-time races against a friend on the same snippet, and challenge links to beat a specific score.
+- Practice on your own code: paste up to 3,000 characters from your project.
+- Keyboard shortcut drills for VS Code and Vim.
+- Chess where every move is typed as a valid command in the language being practised.
+- Works with any OS keyboard layout (QWERTY, Dvorak, Colemak, European layouts with AltGr and dead keys). It needs a physical keyboard; phones without one cannot type in it.
+
+## Practice by language
+
+${languageLinks}
+
+## Modes and tools
+
+${toolLinks}
+
+## About
+
+- Source code: https://github.com/TypraVN/Typre
+- Pricing: free.
+`
+}
+
 function renderSitemap(pages, toolPages) {
   const urls = [
     `${SITE}/`,
@@ -1014,6 +1078,12 @@ async function main() {
 
   const sitemap = renderSitemap(LANGUAGE_PAGES, SHORTCUT_PAGES)
   writeFileSync(`${DIST}/sitemap.xml`, sitemap, 'utf8')
+
+  // Cùng danh sách trang có bài thật như trang chủ (`patchIndexHtml`) — không liệt kê
+  // ngôn ngữ nào chưa có bài.
+  const llmsPages = LANGUAGE_PAGES.filter((page) => snippetCounts(page.id).total > 0)
+  writeFileSync(`${DIST}/llms.txt`, renderLlmsTxt(llmsPages, snippetCounts, SHORTCUT_PAGES), 'utf8')
+  console.log(`  llms.txt (${llmsPages.length} ngon ngu)`)
   console.log(`  sitemap.xml (${(sitemap.match(/<loc>/g) ?? []).length} URL)`)
 
   rmSync(TMP_DIR, { recursive: true, force: true })
