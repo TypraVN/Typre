@@ -264,4 +264,34 @@ if (ec) {
   `std::ranges::for_each(panels, [total = 0.0](const Panel& p) mutable {
     total += p.weight;
 });`,
+  // ── Thêm 2026-10-25: C++20/23 (ranges, format, jthread, span) và GoogleTest.
+  // CHỈ thêm vào cuối: id theo vị trí.
+  `std::vector<int> wpm{42, 87, 63};
+std::ranges::sort(wpm, std::greater{});
+auto top = wpm | std::views::take(2);`,
+  `auto line = std::format("{} wpm in {} ({:.1f}%)", wpm, language, accuracy);
+std::println("{}", line);`,
+  `TEST(ScoreTest, RejectsNegativeWpm) {
+    Score score{-1};
+    EXPECT_FALSE(score.isValid());
+}`,
+  `std::jthread worker([](std::stop_token token) {
+    while (!token.stop_requested()) {
+        poll();
+    }
+});`,
+  `auto [it, inserted] = best.try_emplace(language, wpm);
+if (!inserted && wpm > it->second) {
+    it->second = wpm;
+}`,
+  `std::optional<Score> find(std::span<const Score> scores, int id) {
+    auto it = std::ranges::find(scores, id, &Score::id);
+    return it != scores.end() ? std::optional{*it} : std::nullopt;
+}`,
+  `auto session = std::make_unique<Session>(user, std::chrono::minutes{30});
+sessions.push_back(std::move(session));`,
+  `std::unordered_map<std::string, int> counts;
+for (const auto& word : words) {
+    ++counts[word];
+}`,
 ])

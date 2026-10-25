@@ -258,4 +258,31 @@ npm run build</code></pre>`,
   `<div class="wrap" inert>
     <button type="button">Cannot be focused</button>
 </div>`,
+  // ── Framework, thêm 2026-10-25: Tailwind, HTMX, Alpine.js. Trước đợt này rổ HTML
+  // không có đoạn nào dùng thư viện. CHỈ thêm vào cuối: id theo vị trí.
+  `<button class="rounded-lg bg-orange-500 px-4 py-2 text-white hover:bg-orange-600">
+    Start typing
+</button>`,
+  `<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div class="rounded border p-4">15s</div>
+    <div class="rounded border p-4">30s</div>
+</div>`,
+  `<input class="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2" placeholder="Search">`,
+  `<button hx-post="/api/scores" hx-target="#result" hx-swap="innerHTML">
+    Save score
+</button>
+<div id="result"></div>`,
+  `<input name="q" hx-get="/search" hx-trigger="keyup changed delay:300ms" hx-target="#results">
+<ul id="results"></ul>`,
+  `<tr hx-get="/rows/42/edit" hx-trigger="dblclick" hx-swap="outerHTML">
+    <td>javascript</td>
+    <td>87</td>
+</tr>`,
+  `<div x-data="{ open: false }">
+    <button @click="open = !open">Menu</button>
+    <nav x-show="open">Settings</nav>
+</div>`,
+  `<template x-for="score in scores" :key="score.id">
+    <li x-text="score.wpm"></li>
+</template>`,
 ])

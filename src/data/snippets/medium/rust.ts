@@ -259,4 +259,37 @@ tokio::fs::write("score.json", json).await?;`,
     .iter()
     .filter_map(|s| s.wpm.checked_mul(s.runs))
     .sum();`,
+  // ── Framework, thêm 2026-10-25: Axum, sqlx, clap, thiserror (Serde/Tokio đã có vài
+  // đoạn từ trước). CHỈ thêm vào cuối: id theo vị trí.
+  `let app = Router::new()
+    .route("/scores", get(list_scores).post(create_score))
+    .with_state(pool);`,
+  `async fn get_score(Path(id): Path<i64>, State(db): State<PgPool>) -> Json<Score> {
+    Json(fetch_score(&db, id).await)
+}`,
+  `let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
+axum::serve(listener, app).await?;`,
+  `let scores = sqlx::query_as!(Score, "select * from scores where wpm > $1", min_wpm)
+    .fetch_all(&pool)
+    .await?;`,
+  `#[derive(Parser)]
+struct Args {
+    #[arg(short, long, default_value_t = 30)]
+    seconds: u32,
+}`,
+  `#[derive(Debug, thiserror::Error)]
+enum AppError {
+    #[error("score {0} not found")]
+    NotFound(i64),
+}`,
+  `let handles: Vec<_> = urls
+    .into_iter()
+    .map(|url| tokio::spawn(fetch(url)))
+    .collect();`,
+  `#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Score {
+    user_id: Uuid,
+    wpm: u32,
+}`,
 ])

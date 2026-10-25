@@ -255,4 +255,36 @@ left join lateral (
     select 1 from friendships f where f.user_id = u.id
 ) f on true
 group by u.display_name;`,
+  // ── PostgreSQL, thêm 2026-10-25: jsonb, upsert, cột sinh, mảng, full-text search,
+  // percentile, filter. CHỈ thêm vào cuối: id theo vị trí.
+  `insert into scores (user_id, language, wpm)
+values ($1, $2, $3)
+on conflict (user_id, language)
+do update set wpm = greatest(scores.wpm, excluded.wpm);`,
+  `select data->>'language' as language, (data->'stats'->>'wpm')::int as wpm
+from runs
+where data @> '{"finished": true}';`,
+  `alter table scores
+add column cpm int generated always as (wpm * 5) stored;
+
+create index on scores (cpm desc);`,
+  `select language, percentile_cont(0.5) within group (order by wpm) as median
+from scores
+group by language;`,
+  `select *
+from snippets
+where to_tsvector('english', code) @@ to_tsquery('english', 'async & await');`,
+  `update scores
+set flagged = true, updated_at = now()
+where id = any($1::uuid[])
+returning id, wpm, flagged;`,
+  `select date_trunc('week', created_at) as week, count(*) filter (where wpm >= 60) as fast
+from scores
+group by week
+order by week;`,
+  `create table events (
+    id bigint generated always as identity primary key,
+    payload jsonb not null default '{}',
+    created_at timestamptz not null default now()
+);`,
 ])
