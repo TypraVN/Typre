@@ -207,7 +207,24 @@ const STYLES = `
   footer a { color: #f97316; }
 `
 
-const LOGO_SVG = `<svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#000"/><rect x="8" y="8" width="16" height="3" rx="1.5" fill="#f97316"/><rect x="8" y="14" width="11" height="3" rx="1.5" fill="#fdba74"/><rect x="8" y="20" width="7" height="3" rx="1.5" fill="#f97316"/></svg>`
+/**
+ * Vercel Web Analytics cho trang tĩnh.
+ *
+ * App đếm lượt xem bằng `<Analytics />` của `@vercel/analytics/react` — nhưng các trang
+ * này là HTML thuần, không chạy React, nên trước đây KHÔNG được đếm. Mà đây lại chính là
+ * cửa vào từ Google: người tìm "python typing practice" đáp xuống /practice/python/, và
+ * bảng Analytics không hề thấy họ cho tới khi họ bấm sang trang chủ.
+ *
+ * Đúng đoạn Vercel hướng dẫn cho site không dùng framework: hàng đợi `va` để lệnh gọi
+ * trước khi script tải xong không bị mất, rồi script `defer` từ chính domain này (cùng
+ * endpoint `/_vercel/insights/` mà app đang dùng — không thêm cookie, không thêm bên thứ ba).
+ */
+const ANALYTICS = `    <script>
+      window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>`
+
+const LOGO_SVG =`<svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#000"/><rect x="8" y="8" width="16" height="3" rx="1.5" fill="#f97316"/><rect x="8" y="14" width="11" height="3" rx="1.5" fill="#fdba74"/><rect x="8" y="20" width="7" height="3" rx="1.5" fill="#f97316"/></svg>`
 
 function renderPage(page, counts, samples, siblings) {
   const url = `${SITE}/practice/${page.slug}/`
@@ -265,6 +282,7 @@ function renderPage(page, counts, samples, siblings) {
       rel="stylesheet"
     />
     <style>${STYLES}</style>
+${ANALYTICS}
   </head>
   <body>
     <div class="bar"></div>
@@ -390,6 +408,7 @@ function renderShortcutsPage(page, shortcuts, otherPage) {
       }
       .shortcuts li:last-child { border-bottom: none; }
     </style>
+${ANALYTICS}
   </head>
   <body>
     <div class="bar"></div>
@@ -507,6 +526,7 @@ function renderFeaturePage(page, related) {
       .steps li { margin-bottom: 10px; }
       .steps strong { color: #fdba74; font-weight: 400; }
     </style>
+${ANALYTICS}
   </head>
   <body>
     <div class="bar"></div>
@@ -619,6 +639,7 @@ function renderChessPage(page, languages, examplesFor) {
       /* Bảng dài hơn màn điện thoại thì cuộn trong khung của nó, không đẩy cả trang. */
       .scroll { overflow-x: auto; }
     </style>
+${ANALYTICS}
   </head>
   <body>
     <div class="bar"></div>
@@ -740,6 +761,7 @@ function renderHub(pages, countsFor) {
       .grid strong { display: block; color: #fafafa; font-size: 17px; margin-bottom: 2px; }
       .grid a:hover strong { color: #f97316; }
     </style>
+${ANALYTICS}
   </head>
   <body>
     <div class="bar"></div>
