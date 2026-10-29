@@ -1,5 +1,6 @@
 import { forwardRef, memo, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, Ref } from 'react'
+import type { FormEvent, KeyboardEvent, Ref } from 'react'
+import { flushSync } from 'react-dom'
 import {
   getHighlighterFor,
   getLoadedHighlighter,
@@ -21,6 +22,133 @@ interface CodeEditorDisplayProps {
   charStatuses: CharStatus[]
   cursor: number
   onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void
+  /** Ba thao tác cho ô nhập ẩn trên thiết bị cảm ứng — xem `TouchTypingInput`. */
+  onTypeChar: (char: string) => void
+  onEnter: () => void
+  onBackspace: () => void
+}
+
+/**
+ * Thiết bị mà ngón tay là con trỏ chính (điện thoại, tablet).
+ *
+ * Đọc MỘT LẦN lúc mở trang: xoay máy hay cắm bàn phím rời giữa chừng không đổi được
+ * `pointer`. Máy tính có màn cảm ứng vẫn báo `fine` vì còn chuột, nên không bị bắt nhầm —
+ * đúng điều kiện `NoKeyboardNotice` đã dùng.
+ */
+function isTouchPrimary(): boolean {
+  try {
+    return window.matchMedia('(pointer: coarse)').matches
+  } catch {
+    return false
+  }
+}
+
+const TOUCH_PRIMARY = typeof window !== 'undefined' && isTouchPrimary()
+
+/**
+ * Ô nhập ẩn để bàn phím ẢO bật lên được.
+ *
+ * Vì sao cần: khung gõ là `div` có `tabindex`, mà bàn phím ảo của iOS/Android CHỈ mở
+ * cho `input`/`textarea`/`contenteditable`. Ô này phủ trùng lên khung code, trong suốt:
+ * chạm vào khung là chạm vào ô, bàn phím bật lên.
+ *
+ * Hai loại bàn phím, hai đường:
+ *   - iPhone, và bàn phím rời cắm vào tablet: gửi keydown có `key` thật ('a', '{'...).
+ *     Để nó nổi lên `onKeyDown` của khung như trên máy tính — engine xử lý và
+ *     `preventDefault`, nên ô nhập không nhận ký tự, không có sự kiện `input` thừa.
+ *   - Android (Gboard...): keydown báo `Unidentified` cho MỌI phím, ký tự chỉ lộ ra khi đã
+ *     chèn vào ô. Chặn keydown đó lại (không cho engine chấm phím "Unidentified" là sai),
+ *     rồi đọc ở sự kiện `input`.
+ *
+ * Đọc `input` bằng cách SO NỘI DUNG trước và sau, không tin từng sự kiện: bàn phím có gợi
+ * ý từ sẽ thay CẢ MỘT TỪ một lúc ("teh" → "the"), không phải một ký tự. Phần chung ở đầu
+ * giữ nguyên; phần cũ khác đi thì lùi bấy nhiêu, phần mới thì gõ bấy nhiêu.
+ */
+function TouchTypingInput({
+  onTypeChar,
+  onEnter,
+  onBackspace,
+}: Pick<CodeEditorDisplayProps, 'onTypeChar' | 'onEnter' | 'onBackspace'>) {
+  /*
+    Gọi qua ref chứ không gọi thẳng prop: một lần `input` có thể chèn nhiều ký tự, mà mỗi
+    hàm của engine đọc `cursor` trong closure của lần render đã tạo ra nó. Gọi ba lần liền
+    cùng một closure là ba lần chấm cùng một ô. `flushSync` vẽ lại ngay sau mỗi thao tác,
+    và ref được gán lại trong lần vẽ đó — thao tác kế tiếp luôn dùng closure mới.
+  */
+  const actions = useRef({ onTypeChar, onEnter, onBackspace })
+  actions.current = { onTypeChar, onEnter, onBackspace }
+
+  /** Nội dung ô nhập sau thao tác trước — mốc để so. */
+  const lastValue = useRef('')
+  const composing = useRef(false)
+
+  const apply = (prev: string, next: string) => {
+    let common = 0
+    while (common < prev.length && common < next.length && prev[common] === next[common]) {
+      common += 1
+    }
+
+    for (let i = common; i < prev.length; i += 1) {
+      flushSync(() => actions.current.onBackspace())
+    }
+    for (const ch of next.slice(common)) {
+      flushSync(() => (ch === '\n' ? actions.current.onEnter() : actions.current.onTypeChar(ch)))
+    }
+  }
+
+  const reset = (el: HTMLTextAreaElement) => {
+    el.value = ''
+    lastValue.current = ''
+  }
+
+  const onInput = (e: FormEvent<HTMLTextAreaElement>) => {
+    const el = e.currentTarget
+    const native = e.nativeEvent as InputEvent
+
+    // Ô đang rỗng mà người dùng xoá: không có gì để so — lùi đúng một ký tự trên bài.
+    if (native.inputType?.startsWith('delete') && lastValue.current === '' && el.value === '') {
+      flushSync(() => actions.current.onBackspace())
+      return
+    }
+
+    apply(lastValue.current, el.value)
+    lastValue.current = el.value
+
+    /*
+      Dọn ô về rỗng sau mỗi thao tác, để ô không phình mãi và để xoá luôn có thứ để xoá.
+      TRỪ khi đang ghép chữ (gợi ý từ, gõ tiếng Việt): đổi nội dung giữa chừng là bộ gõ
+      mất dấu từ đang ghép. Đợi `compositionend` rồi mới dọn.
+    */
+    if (!composing.current) reset(el)
+  }
+
+  return (
+    <textarea
+      aria-label="Type the code here"
+      autoCapitalize="off"
+      autoComplete="off"
+      autoCorrect="off"
+      spellCheck={false}
+      // Không có `enterKeyHint` "send"/"go": Enter phải là xuống dòng, như trong code.
+      enterKeyHint="enter"
+      onCompositionStart={() => {
+        composing.current = true
+      }}
+      onCompositionEnd={(e) => {
+        composing.current = false
+        reset(e.currentTarget)
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Unidentified' || e.key === 'Process' || e.nativeEvent.isComposing) {
+          // Bàn phím ảo Android: để sự kiện `input` xử lý, đừng cho engine chấm phím này.
+          e.stopPropagation()
+        }
+      }}
+      onInput={onInput}
+      // 16px: nhỏ hơn là iOS tự phóng to cả trang khi chạm vào ô nhập.
+      className="absolute inset-0 w-full h-full resize-none opacity-0 text-[16px] cursor-text"
+    />
+  )
 }
 
 // Nền khung code luôn trùng nền trang (xem index.css) để hai khối hoà làm một.
@@ -125,7 +253,10 @@ function paint(
 }
 
 export const CodeEditorDisplay = forwardRef<HTMLDivElement, CodeEditorDisplayProps>(
-  ({ code, language, theme, uiMode, charStatuses, cursor, onKeyDown }, ref) => {
+  (
+    { code, language, theme, uiMode, charStatuses, cursor, onKeyDown, onTypeChar, onEnter, onBackspace },
+    ref,
+  ) => {
     const [painted, setPainted] = useState<Painted | null>(null)
 
     // Cần ref nội bộ để tự cuộn khung; ref của App chỉ dùng để focus nên chuyển tiếp là đủ.
@@ -206,7 +337,7 @@ export const CodeEditorDisplay = forwardRef<HTMLDivElement, CodeEditorDisplayPro
         }}
         // Không đặt chiều cao: khung ôm sát bài đang gõ (tối đa 4 dòng) nên không thừa
         // khoảng trống, không cuộn, và không có dòng nào bị giấu dưới mép.
-        className="font-mono text-lg whitespace-pre-wrap outline-none rounded-lg p-4 animate-fade-in"
+        className="relative font-mono text-lg whitespace-pre-wrap outline-none rounded-lg p-4 animate-fade-in"
       >
         {chars.map((char, i) => (
           <Char
@@ -223,6 +354,11 @@ export const CodeEditorDisplay = forwardRef<HTMLDivElement, CodeEditorDisplayPro
           <span ref={cursorRef} className="relative">
             <Caret />
           </span>
+        )}
+        {/* Chỉ trên thiết bị cảm ứng: trên máy tính, ô này mà chặn ngang thì cú click vào
+            khung sẽ đưa focus sang ô nhập thay vì khung — đổi cả đường nhận phím đang chạy. */}
+        {TOUCH_PRIMARY && (
+          <TouchTypingInput onTypeChar={onTypeChar} onEnter={onEnter} onBackspace={onBackspace} />
         )}
       </div>
     )

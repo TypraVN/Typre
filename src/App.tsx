@@ -228,8 +228,18 @@ function App() {
   /** Đang thật sự luyện code của mình (bật cờ VÀ có code). */
   const customOn = customActive && customCode.length > 0
 
-  const { charStatuses, cursor, status, stats, mistakeCounts, handleKeyDown, reset } =
-    useTypingEngine(snippet.code)
+  const {
+    charStatuses,
+    cursor,
+    status,
+    stats,
+    mistakeCounts,
+    handleKeyDown,
+    reset,
+    typeChar,
+    typeEnter,
+    backspace,
+  } = useTypingEngine(snippet.code)
 
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
@@ -917,6 +927,9 @@ function App() {
                 charStatuses={charStatuses}
                 cursor={cursor}
                 onKeyDown={handleKeyDown}
+                onTypeChar={typeChar}
+                onEnter={typeEnter}
+                onBackspace={backspace}
               />
               </div>
 

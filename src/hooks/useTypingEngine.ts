@@ -385,5 +385,10 @@ export function useTypingEngine(target: string) {
     mistakeCounts,
     handleKeyDown,
     reset,
+    // Cho ô nhập ẩn trên điện thoại: bàn phím ảo không gửi keydown dùng được, phải đổi
+    // nội dung ô nhập thành từng thao tác — xem `TouchTypingInput` trong CodeEditorDisplay.
+    typeChar,
+    typeEnter,
+    backspace,
   };
 }
