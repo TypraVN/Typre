@@ -849,7 +849,7 @@ Typre runs in the browser at [typre.dev](${SITE}/), works offline, and needs no 
 - Practice on your own code: paste up to 3,000 characters from your project.
 - Keyboard shortcut drills for VS Code and Vim.
 - Chess where every move is typed as a valid command in the language being practised.
-- Works with any OS keyboard layout (QWERTY, Dvorak, Colemak, European layouts with AltGr and dead keys). It needs a physical keyboard; phones without one cannot type in it.
+- Works with any OS keyboard layout (QWERTY, Dvorak, Colemak, European layouts with AltGr and dead keys), and on phones and tablets with the on-screen keyboard. A physical keyboard is still the best way to build speed.
 
 ## Practice by language
 

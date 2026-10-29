@@ -8,6 +8,22 @@ interface ShortcutTrainerProps {
   t: Translation
 }
 
+/**
+ * Thiết bị mà ngón tay là con trỏ chính — cùng điều kiện với khung gõ code.
+ *
+ * Luyện phím tắt KHÔNG chạy được bằng bàn phím ảo: không có Ctrl/Alt, và khung luyện là
+ * `div` nên bàn phím ảo cũng không bật. Không ẩn hẳn tab: tablet cắm bàn phím rời cũng báo
+ * `coarse` và vẫn luyện được — chỉ nói rõ điều kiện, để người dùng điện thoại không ngồi
+ * chạm mãi vào một khung không phản hồi.
+ */
+const TOUCH_PRIMARY = (() => {
+  try {
+    return window.matchMedia('(pointer: coarse)').matches
+  } catch {
+    return false
+  }
+})()
+
 export function ShortcutTrainer({ shortcuts, t }: ShortcutTrainerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const { current, progress, feedback, score, chord, handleKeyDown, skip } = useShortcutEngine(shortcuts)
@@ -45,6 +61,12 @@ export function ShortcutTrainer({ shortcuts, t }: ShortcutTrainerProps) {
             : 'border-zinc-300 dark:border-zinc-700 focus:border-orange-500 dark:focus:border-orange-400'
       }`}
     >
+      {TOUCH_PRIMARY && (
+        <p className="font-mono text-xs text-center text-orange-600 dark:text-orange-400">
+          {t.shortcutNeedsKeyboard}
+        </p>
+      )}
+
       <div key={current.id} className="text-zinc-700 dark:text-zinc-300 animate-fade-in">
         {current.description}
       </div>

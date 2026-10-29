@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react'
 import { Keyboard, X as XIcon } from 'lucide-react'
 import type { Translation } from '../i18n/translations'
 
-const DISMISSED_KEY = 'typre-no-keyboard-dismissed'
+/**
+ * Khoá MỚI, không dùng lại 'typre-no-keyboard-dismissed' của thông báo cũ.
+ *
+ * Thông báo cũ nói "điện thoại không gõ được, hãy mở trên laptop". Người đã bấm tắt nó
+ * chính là người đã đọc câu đó rồi bỏ đi — khi họ quay lại, đúng họ cần thấy rằng giờ gõ
+ * được rồi. Dùng lại khoá cũ là giấu tin đó khỏi đúng những người cần nó nhất.
+ */
+const DISMISSED_KEY = 'typre-touch-typing-tip-dismissed'
 
 /**
  * Thiết bị này gần như chắc chắn không có bàn phím cứng.
@@ -27,17 +34,17 @@ interface NoKeyboardNoticeProps {
 }
 
 /**
- * Báo cho người vào bằng điện thoại rằng cần bàn phím cứng.
+ * Mách người vào bằng điện thoại cách bắt đầu gõ.
  *
- * Vì sao cần: vùng gõ là `div` có `tabindex`, không phải `input`/`textarea`/
- * `contenteditable` — mà bàn phím ảo của iOS/Android CHỈ bật với ba loại đó. Trên điện
- * thoại, chạm vào vùng gõ không có gì hiện lên và không gõ được ký tự nào.
+ * Trước đây thông báo này nói "điện thoại không gõ được" — đúng vào lúc đó, vì vùng gõ là
+ * `div` có `tabindex` mà bàn phím ảo chỉ mở cho ô nhập. Giờ đã có ô nhập ẩn phủ lên khung
+ * code (`TouchTypingInput` trong CodeEditorDisplay), nên câu đó thành SAI, và còn đuổi
+ * đúng những người lẽ ra đã gõ được.
  *
- * Phần lớn người bấm link từ Hacker News, Reddit hay dev.to là đang cầm điện thoại. Không
- * có dòng này thì họ mở ra, thấy một trang có vẻ hỏng, đóng lại và không bao giờ mở lại
- * trên máy tính. Một dòng chữ biến "trang hỏng" thành "trang hẹn gặp lại".
+ * Vẫn giữ một dòng nhắc vì hai điều không tự nhìn ra: khung code trông không giống ô nhập
+ * (không ai đoán là phải chạm vào nó), và bàn phím có tự sửa từ sẽ âm thầm làm sai điểm.
  *
- * CỐ Ý không chặn app: bảng xếp hạng, hồ sơ, tra người chơi vẫn dùng được bằng ngón tay.
+ * Tắt được, và không chặn gì: bảng xếp hạng, hồ sơ, tra người chơi vẫn dùng bằng ngón tay.
  */
 export function NoKeyboardNotice({ t }: NoKeyboardNoticeProps) {
   // Tính trong effect chứ không phải lúc render: `matchMedia` và `innerWidth` không có ở
