@@ -131,6 +131,27 @@ function TouchTypingInput({
       spellCheck={false}
       // Không có `enterKeyHint` "send"/"go": Enter phải là xuống dòng, như trong code.
       enterKeyHint="enter"
+      onFocus={(e) => {
+        /*
+          Đưa khung code lên sát đầu màn hình khi bàn phím bật lên.
+
+          Trên điện thoại, phần chọn chế độ/ngôn ngữ/thời gian dài hơn một màn hình, khung gõ
+          nằm ở ~780px; bàn phím ảo lại che thêm nửa dưới. Không cuộn thì người gõ chỉ thấy
+          một hai dòng code kẹt ngay trên bàn phím.
+
+          Chờ một nhịp: bàn phím mất ~300ms mới mở xong, cuộn sớm hơn thì iOS tự cuộn lại
+          theo ý nó. Chừa 72px phía trên để đồng hồ đếm giờ (nằm ngay trên khung) vẫn hiện.
+
+          Cuộn NGAY, không `smooth`: cuộn mượt chạy chồng lên hiệu ứng bàn phím đang mở dễ bị
+          ngắt giữa chừng, và người dùng đang chờ gõ chứ không cần xem trang trượt.
+        */
+        const box = e.currentTarget.parentElement
+        window.setTimeout(() => {
+          if (!box) return
+          const top = box.getBoundingClientRect().top + window.scrollY - 72
+          window.scrollTo({ top: Math.max(0, top) })
+        }, 300)
+      }}
       onCompositionStart={() => {
         composing.current = true
       }}
@@ -315,7 +336,21 @@ export const CodeEditorDisplay = forwardRef<HTMLDivElement, CodeEditorDisplayPro
       // làm dòng dài tự xuống dòng và khung cao hơn cửa sổ thì mới kéo con trỏ vào tầm
       // nhìn — `nearest` để không giật trang ở trường hợp thường.
       const caretRect = caret.getBoundingClientRect()
-      if (caretRect.top < 0 || caretRect.bottom > window.innerHeight) {
+
+      /*
+        Phần màn hình THẬT SỰ nhìn thấy, không phải `innerHeight`: trên iPhone, bàn phím ảo
+        che nửa dưới màn hình mà `innerHeight` không đổi, nên con trỏ nằm sau bàn phím vẫn
+        bị coi là "đang hiện". `visualViewport` co lại theo bàn phím. Máy tính không có bàn
+        phím ảo nên hai con số như nhau — không có gì thay đổi ở đó.
+      */
+      const vv = window.visualViewport
+      const visibleTop = vv ? vv.offsetTop : 0
+      const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight
+
+      if (caretRect.bottom > visibleBottom) {
+        // Cuộn vừa đủ để con trỏ lên trên mép bàn phím, chừa thêm một dòng nhìn trước.
+        window.scrollBy({ top: caretRect.bottom - visibleBottom + LINE_HEIGHT })
+      } else if (caretRect.top < visibleTop) {
         caret.scrollIntoView({ block: 'nearest' })
       }
     }, [cursor])
@@ -337,7 +372,18 @@ export const CodeEditorDisplay = forwardRef<HTMLDivElement, CodeEditorDisplayPro
         }}
         // Không đặt chiều cao: khung ôm sát bài đang gõ (tối đa 4 dòng) nên không thừa
         // khoảng trống, không cuộn, và không có dòng nào bị giấu dưới mép.
-        className="relative font-mono text-lg whitespace-pre-wrap outline-none rounded-lg p-4 animate-fade-in"
+        /*
+          `[overflow-wrap:anywhere]` + `min-w-0 max-w-full`: mỗi ký tự là một span riêng,
+          không có khoảng trắng xen giữa, nên trình duyệt coi `IntersectionObserver((entries)`
+          là MỘT chữ không ngắt được. Trên màn 375px, chữ đó rộng hơn khung — và vì khung căn
+          giữa, phần thừa tràn ra CẢ HAI mép: mất chữ đầu dòng ("nst observer"). `anywhere`
+          cho ngắt ngay giữa chữ khi không còn cách nào khác; với dòng code bình thường trên
+          máy tính, không có chữ nào dài tới mức đó nên không có gì thay đổi.
+
+          `text-base sm:text-lg`: 18px trên điện thoại chỉ vừa ~25 ký tự một dòng, dòng code
+          nào cũng gãy vụn. 16px vẫn là cỡ đọc thoải mái.
+        */
+        className="relative min-w-0 max-w-full font-mono text-base sm:text-lg whitespace-pre-wrap [overflow-wrap:anywhere] outline-none rounded-lg p-4 animate-fade-in"
       >
         {chars.map((char, i) => (
           <Char
