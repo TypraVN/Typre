@@ -20,10 +20,17 @@ interface SubmitScoreProps {
   rawWpm: number
   consistency: number
   accuracy: number
+  /**
+   * Trạng thái gửi TỰ ĐỘNG do App làm khi người dùng đã đăng nhập lúc lượt gõ kết thúc.
+   * 'idle' = App không gửi (chưa đăng nhập lúc đó, code tự dán…) → hiện nút như cũ.
+   */
+  autoState?: AutoSubmitState
   t: Translation
 }
 
 type SubmitState = 'idle' | 'sending' | 'done' | 'failed'
+
+export type AutoSubmitState = SubmitState
 
 export function SubmitScore({
   user,
@@ -34,9 +41,15 @@ export function SubmitScore({
   rawWpm,
   consistency,
   accuracy,
+  autoState = 'idle',
   t,
 }: SubmitScoreProps) {
-  const [state, setState] = useState<SubmitState>('idle')
+  const [manualState, setState] = useState<SubmitState>('idle')
+  /*
+    Lần bấm tay (nếu có) thắng: tự gửi lỗi thì nút hiện ra, người dùng bấm lại, và kết quả
+    của lần bấm đó mới là thứ cần hiện. Chưa bấm thì hiện đúng trạng thái tự gửi.
+  */
+  const state: SubmitState = manualState !== 'idle' ? manualState : autoState
   const [signInOpen, setSignInOpen] = useState(false)
 
   if (!isLeaderboardEnabled) return null

@@ -33,7 +33,9 @@ const Leaderboard = lazyChunk('Leaderboard', () =>
 const ChessMode = lazyChunk('ChessMode', () =>
   import('./components/ChessMode').then((m) => ({ default: m.ChessMode })),
 )
-import { SubmitScore } from './components/SubmitScore'
+import { SubmitScore, type AutoSubmitState } from './components/SubmitScore'
+import { isScoreEligible, submitScore } from './lib/leaderboard'
+import { isLeaderboardEnabled } from './lib/supabase'
 // Cấp độ + thành tích: chỉ tải khi người dùng bấm huy hiệu ở header.
 const ProgressDialog = lazyChunk('ProgressDialog', () =>
   import('./components/ProgressDialog').then((m) => ({ default: m.ProgressDialog })),
@@ -141,6 +143,13 @@ function countdownColor(remaining: number): string {
 function App() {
   const containerRef = useRef<HTMLDivElement>(null)
   const recordedRef = useRef(false)
+  /** Trạng thái tự gửi điểm của lượt vừa xong — xem effect ghi kết quả. */
+  const [autoSubmit, setAutoSubmit] = useState<AutoSubmitState>('idle')
+  /**
+   * Số thứ tự lượt gửi. Kết quả của một lượt gửi về muộn — sau khi người dùng đã sang bài
+   * khác — thì bỏ qua, không thì "đã lưu" của bài cũ hiện lên bài mới.
+   */
+  const submitTokenRef = useRef(0)
 
   const storedMode = usePreferencesStore((s) => s.mode)
   const setMode = usePreferencesStore((s) => s.setMode)
@@ -685,6 +694,43 @@ function App() {
         const earned = useHistoryStore.getState().lastAward?.breakdown.total ?? 0
         if (earned > 0) void pushXp(earned)
       }
+
+      /*
+        Tự gửi điểm lên bảng xếp hạng khi đã đăng nhập.
+
+        Trước đây phải bấm "submit score" sau MỖI lượt. Số liệu cho thấy người ta không
+        bấm: tuần 22–29/10 có 188 khách và vài lượt đăng nhập Google, nhưng 9 ngày không
+        có ai mới lên bảng. Đăng nhập rồi mà điểm không đi đâu cả thì đăng nhập để làm gì.
+
+        Gửi ở ĐÂY, không phải trong SubmitScore: chỗ này đã chạy đúng một lần mỗi lượt
+        (`recordedRef`), nên không bao giờ gửi trùng — kể cả khi màn kết quả vẽ lại. Bảng
+        xếp hạng gộp sẵn mỗi người một dòng điểm cao nhất, nên gửi mọi lượt không làm bảng
+        rối, chỉ làm "this week"/"today" phản ánh đúng người đang chơi.
+
+        Code tự dán KHÔNG gửi — cùng lý do với nhánh `customOn` ở màn kết quả.
+      */
+      if (user && !customOn && isLeaderboardEnabled && isScoreEligible(stats.wpm, stats.accuracy)) {
+        const token = ++submitTokenRef.current
+        setAutoSubmit('sending')
+        void submitScore({
+          user,
+          language: snippet.language,
+          timeLimit,
+          wpm: stats.wpm,
+          cpm: stats.cpm,
+          rawWpm: stats.rawWpm,
+          consistency: stats.consistency,
+          accuracy: stats.accuracy,
+        }).then(({ error }) => {
+          if (token === submitTokenRef.current) setAutoSubmit(error ? 'failed' : 'done')
+        })
+      }
+    }
+
+    // Lượt mới bắt đầu: xoá trạng thái gửi của lượt trước, và vô hiệu kết quả còn đang về.
+    if (!sessionOver) {
+      submitTokenRef.current += 1
+      setAutoSubmit('idle')
     }
     /*
       CỐ Ý chỉ phụ thuộc `sessionOver`.
@@ -1048,6 +1094,7 @@ function App() {
                 rawWpm={displayStats.rawWpm}
                 consistency={displayStats.consistency}
                 accuracy={displayStats.accuracy}
+                autoState={autoSubmit}
                 t={t}
               />
               )}
