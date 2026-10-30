@@ -875,4 +875,150 @@ public void append(String line) {
         };
     }
 }`,
+  `public static int shortestPath(char[][] grid, int[] start, int[] goal) {
+    int rows = grid.length, cols = grid[0].length;
+    var dist = new int[rows][cols];
+    for (int[] row : dist) {
+        Arrays.fill(row, -1);
+    }
+    var queue = new ArrayDeque<int[]>();
+    queue.add(start);
+    dist[start[0]][start[1]] = 0;
+    int[][] steps = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
+    while (!queue.isEmpty()) {
+        int[] cell = queue.poll();
+        if (cell[0] == goal[0] && cell[1] == goal[1]) {
+            return dist[cell[0]][cell[1]];
+        }
+        for (int[] step : steps) {
+            int r = cell[0] + step[0], c = cell[1] + step[1];
+            if (r < 0 || c < 0 || r >= rows || c >= cols) continue;
+            if (grid[r][c] == '#' || dist[r][c] != -1) continue;
+            dist[r][c] = dist[cell[0]][cell[1]] + 1;
+            queue.add(new int[] {r, c});
+        }
+    }
+    return -1;
+}`,
+  `public static List<String> topoSort(Map<String, List<String>> graph) {
+    var indegree = new HashMap<String, Integer>();
+    graph.forEach((node, edges) -> {
+        indegree.putIfAbsent(node, 0);
+        edges.forEach(next -> indegree.merge(next, 1, Integer::sum));
+    });
+
+    var ready = new ArrayDeque<String>();
+    indegree.forEach((node, d) -> { if (d == 0) ready.add(node); });
+    var order = new ArrayList<String>();
+
+    while (!ready.isEmpty()) {
+        String node = ready.poll();
+        order.add(node);
+        for (String next : graph.getOrDefault(node, List.of())) {
+            if (indegree.merge(next, -1, Integer::sum) == 0) {
+                ready.add(next);
+            }
+        }
+    }
+    return order.size() == indegree.size() ? order : null;
+}`,
+  `public final class UnionFind {
+    private final int[] parent;
+    private int groups;
+
+    public UnionFind(int count) {
+        parent = new int[count];
+        Arrays.setAll(parent, i -> i);
+        groups = count;
+    }
+
+    public int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]);
+        }
+        return parent[x];
+    }
+
+    public boolean union(int a, int b) {
+        int rootA = find(a), rootB = find(b);
+        if (rootA == rootB) return false;
+        parent[rootB] = rootA;
+        groups--;
+        return true;
+    }
+
+    public int groups() {
+        return groups;
+    }
+}`,
+  `public static int[] twoSum(int[] nums, int target) {
+    var seen = new HashMap<Integer, Integer>();
+
+    for (int i = 0; i < nums.length; i++) {
+        Integer match = seen.get(target - nums[i]);
+        if (match != null) {
+            return new int[] {match, i};
+        }
+        seen.put(nums[i], i);
+    }
+
+    throw new IllegalArgumentException("no pair adds up to " + target);
+}`,
+  `public static long maxSubarraySum(int[] values) {
+    long best = values[0];
+    long current = values[0];
+
+    for (int i = 1; i < values.length; i++) {
+        current = Math.max(values[i], current + values[i]);
+        best = Math.max(best, current);
+    }
+
+    return best;
+}`,
+  `public static int minCoins(int[] coins, int amount) {
+    int[] best = new int[amount + 1];
+    Arrays.fill(best, amount + 1);
+    best[0] = 0;
+
+    for (int sum = 1; sum <= amount; sum++) {
+        for (int coin : coins) {
+            if (coin <= sum) {
+                best[sum] = Math.min(best[sum], best[sum - coin] + 1);
+            }
+        }
+    }
+
+    return best[amount] > amount ? -1 : best[amount];
+}`,
+  `public static int[] daysUntilWarmer(int[] temps) {
+    int[] wait = new int[temps.length];
+    var stack = new ArrayDeque<Integer>();
+
+    for (int day = 0; day < temps.length; day++) {
+        while (!stack.isEmpty() && temps[stack.peek()] < temps[day]) {
+            int earlier = stack.pop();
+            wait[earlier] = day - earlier;
+        }
+        stack.push(day);
+    }
+
+    return wait;
+}`,
+  `public static List<int[]> mergeIntervals(List<int[]> intervals) {
+    var sorted = new ArrayList<>(intervals);
+    sorted.sort(Comparator.comparingInt(range -> range[0]));
+    var merged = new ArrayList<int[]>();
+
+    for (int[] range : sorted) {
+        int[] last = merged.isEmpty() ? null : merged.getLast();
+        if (last != null && range[0] <= last[1]) {
+            last[1] = Math.max(last[1], range[1]);
+        } else {
+            merged.add(new int[] {range[0], range[1]});
+        }
+    }
+
+    return merged;
+}`,
 ])

@@ -759,4 +759,129 @@ class Score:
     ]
 
     return {"added": added, "removed": removed, "changed": changed}`,
+  `def dijkstra(graph, source):
+    dist = {source: 0}
+    heap = [(0, source)]
+
+    while heap:
+        d, node = heapq.heappop(heap)
+        if d > dist[node]:
+            continue
+        for neighbour, weight in graph.get(node, ()):
+            candidate = d + weight
+            if candidate < dist.get(neighbour, math.inf):
+                dist[neighbour] = candidate
+                heapq.heappush(heap, (candidate, neighbour))
+
+    return dist`,
+  `def topological_sort(graph):
+    indegree = {node: 0 for node in graph}
+    for edges in graph.values():
+        for target in edges:
+            indegree[target] = indegree.get(target, 0) + 1
+
+    ready = collections.deque(n for n, d in indegree.items() if d == 0)
+    order = []
+    while ready:
+        node = ready.popleft()
+        order.append(node)
+        for target in graph.get(node, ()):
+            indegree[target] -= 1
+            if indegree[target] == 0:
+                ready.append(target)
+
+    if len(order) != len(indegree):
+        raise ValueError("graph has a cycle")
+    return order`,
+  `class UnionFind:
+    def __init__(self, count):
+        self.parent = list(range(count))
+        self.size = [1] * count
+
+    def find(self, x):
+        while self.parent[x] != x:
+            self.parent[x] = self.parent[self.parent[x]]
+            x = self.parent[x]
+        return x
+
+    def union(self, a, b):
+        a, b = self.find(a), self.find(b)
+        if a == b:
+            return False
+        if self.size[a] < self.size[b]:
+            a, b = b, a
+        self.parent[b] = a
+        self.size[a] += self.size[b]
+        return True`,
+  `def count_islands(grid):
+    rows, cols = len(grid), len(grid[0]) if grid else 0
+    seen = set()
+    islands = 0
+
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] != 1 or (r, c) in seen:
+                continue
+            islands += 1
+            stack = [(r, c)]
+            while stack:
+                y, x = stack.pop()
+                if not (0 <= y < rows and 0 <= x < cols):
+                    continue
+                if grid[y][x] != 1 or (y, x) in seen:
+                    continue
+                seen.add((y, x))
+                stack += [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
+
+    return islands`,
+  `def longest_unique_run(text):
+    last_seen = {}
+    start = best = 0
+
+    for end, ch in enumerate(text):
+        if last_seen.get(ch, -1) >= start:
+            start = last_seen[ch] + 1
+        last_seen[ch] = end
+        best = max(best, end - start + 1)
+
+    return best`,
+  `def knapsack(items, capacity):
+    """items is a list of (weight, value) pairs."""
+    best = [0] * (capacity + 1)
+
+    for weight, value in items:
+        for room in range(capacity, weight - 1, -1):
+            best[room] = max(best[room], best[room - weight] + value)
+
+    return best[capacity]`,
+  `def longest_increasing(values):
+    tails = []
+
+    for value in values:
+        i = bisect.bisect_left(tails, value)
+        if i == len(tails):
+            tails.append(value)
+        else:
+            tails[i] = value
+
+    return len(tails)`,
+  `def combination_sum(numbers, target):
+    numbers = sorted(numbers)
+    found = []
+
+    def walk(start, chosen, remaining):
+        if remaining == 0:
+            found.append(list(chosen))
+            return
+        for i in range(start, len(numbers)):
+            if i > start and numbers[i] == numbers[i - 1]:
+                continue
+            if numbers[i] > remaining:
+                break
+            chosen.append(numbers[i])
+            walk(i + 1, chosen, remaining - numbers[i])
+            chosen.pop()
+
+    walk(0, [], target)
+    return found`,
 ])

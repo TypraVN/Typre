@@ -1061,4 +1061,141 @@ std::expected<T, std::string> parseNumber(std::string_view text) {
         }
     }
 }`,
+  `std::vector<long long> dijkstra(
+    const std::vector<std::vector<std::pair<int, int>>>& graph, int source) {
+    std::vector<long long> dist(graph.size(), LLONG_MAX);
+    using Item = std::pair<long long, int>;
+    std::priority_queue<Item, std::vector<Item>, std::greater<>> heap;
+    dist[source] = 0;
+    heap.emplace(0, source);
+
+    while (!heap.empty()) {
+        auto [d, node] = heap.top();
+        heap.pop();
+        if (d > dist[node]) continue;
+        for (auto [next, weight] : graph[node]) {
+            if (d + weight < dist[next]) {
+                dist[next] = d + weight;
+                heap.emplace(dist[next], next);
+            }
+        }
+    }
+    return dist;
+}`,
+  `int stepsToExit(const std::vector<std::string>& grid, int row, int col) {
+    const int rows = grid.size(), cols = grid[0].size();
+    std::vector<std::vector<int>> dist(rows, std::vector<int>(cols, -1));
+    std::queue<std::pair<int, int>> queue;
+    queue.emplace(row, col);
+    dist[row][col] = 0;
+    const int dr[] = {1, -1, 0, 0}, dc[] = {0, 0, 1, -1};
+
+    while (!queue.empty()) {
+        auto [r, c] = queue.front();
+        queue.pop();
+        if (grid[r][c] == 'E') return dist[r][c];
+        for (int k = 0; k < 4; ++k) {
+            int nr = r + dr[k], nc = c + dc[k];
+            if (nr < 0 || nc < 0 || nr >= rows || nc >= cols) continue;
+            if (grid[nr][nc] == '#' || dist[nr][nc] != -1) continue;
+            dist[nr][nc] = dist[r][c] + 1;
+            queue.emplace(nr, nc);
+        }
+    }
+    return -1;
+}`,
+  `struct DisjointSet {
+    std::vector<int> parent, size;
+
+    explicit DisjointSet(int n) : parent(n), size(n, 1) {
+        std::iota(parent.begin(), parent.end(), 0);
+    }
+
+    int find(int x) {
+        return parent[x] == x ? x : parent[x] = find(parent[x]);
+    }
+
+    bool unite(int a, int b) {
+        a = find(a);
+        b = find(b);
+        if (a == b) return false;
+        if (size[a] < size[b]) std::swap(a, b);
+        parent[b] = a;
+        size[a] += size[b];
+        return true;
+    }
+};`,
+  `std::vector<int> topoOrder(const std::vector<std::vector<int>>& graph) {
+    std::vector<int> indegree(graph.size(), 0);
+    for (const auto& edges : graph) {
+        for (int next : edges) ++indegree[next];
+    }
+
+    std::queue<int> ready;
+    for (int node = 0; node < static_cast<int>(graph.size()); ++node) {
+        if (indegree[node] == 0) ready.push(node);
+    }
+
+    std::vector<int> order;
+    while (!ready.empty()) {
+        int node = ready.front();
+        ready.pop();
+        order.push_back(node);
+        for (int next : graph[node]) {
+            if (--indegree[next] == 0) ready.push(next);
+        }
+    }
+    return order;
+}`,
+  `std::optional<std::pair<int, int>> pairWithSum(
+    const std::vector<int>& sorted, int target) {
+    int left = 0;
+    int right = static_cast<int>(sorted.size()) - 1;
+
+    while (left < right) {
+        int sum = sorted[left] + sorted[right];
+        if (sum == target) return std::make_pair(left, right);
+        if (sum < target) {
+            ++left;
+        } else {
+            --right;
+        }
+    }
+    return std::nullopt;
+}`,
+  `int longestIncreasing(const std::vector<int>& values) {
+    std::vector<int> tails;
+
+    for (int value : values) {
+        auto it = std::lower_bound(tails.begin(), tails.end(), value);
+        if (it == tails.end()) {
+            tails.push_back(value);
+        } else {
+            *it = value;
+        }
+    }
+    return static_cast<int>(tails.size());
+}`,
+  `int knapsack(const std::vector<std::pair<int, int>>& items, int capacity) {
+    std::vector<int> best(capacity + 1, 0);
+
+    for (const auto& [weight, value] : items) {
+        for (int room = capacity; room >= weight; --room) {
+            best[room] = std::max(best[room], best[room - weight] + value);
+        }
+    }
+    return best[capacity];
+}`,
+  `void permute(std::vector<int>& items, std::size_t start,
+             std::vector<std::vector<int>>& out) {
+    if (start == items.size()) {
+        out.push_back(items);
+        return;
+    }
+    for (std::size_t i = start; i < items.size(); ++i) {
+        std::swap(items[start], items[i]);
+        permute(items, start + 1, out);
+        std::swap(items[start], items[i]);
+    }
+}`,
 ])

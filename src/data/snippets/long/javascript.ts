@@ -876,4 +876,156 @@ async function search(term) {
 
     return 0;
 }`,
+  `function topologicalSort(graph) {
+    const indegree = new Map(Object.keys(graph).map((n) => [n, 0]));
+    for (const edges of Object.values(graph)) {
+        for (const next of edges) {
+            indegree.set(next, (indegree.get(next) ?? 0) + 1);
+        }
+    }
+
+    const ready = Object.keys(graph).filter((n) => !indegree.get(n));
+    const order = [];
+    while (ready.length > 0) {
+        const node = ready.shift();
+        order.push(node);
+        for (const next of graph[node] ?? []) {
+            indegree.set(next, indegree.get(next) - 1);
+            if (indegree.get(next) === 0) ready.push(next);
+        }
+    }
+    return order.length === indegree.size ? order : null;
+}`,
+  `function countIslands(grid) {
+    let islands = 0;
+
+    function sink(r, c) {
+        if (grid[r]?.[c] !== 1) return;
+        grid[r][c] = 0;
+        sink(r + 1, c);
+        sink(r - 1, c);
+        sink(r, c + 1);
+        sink(r, c - 1);
+    }
+
+    for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < grid[r].length; c++) {
+            if (grid[r][c] === 1) {
+                islands++;
+                sink(r, c);
+            }
+        }
+    }
+    return islands;
+}`,
+  `function shortestPaths(graph, source) {
+    const dist = { [source]: 0 };
+    const done = new Set();
+
+    while (true) {
+        let node = null;
+        for (const [key, d] of Object.entries(dist)) {
+            if (!done.has(key) && (node === null || d < dist[node])) {
+                node = key;
+            }
+        }
+        if (node === null) return dist;
+        done.add(node);
+
+        for (const [next, weight] of graph[node] ?? []) {
+            const candidate = dist[node] + weight;
+            if (candidate < (dist[next] ?? Infinity)) {
+                dist[next] = candidate;
+            }
+        }
+    }
+}`,
+  `class UnionFind {
+    constructor(count) {
+        this.parent = Array.from({ length: count }, (_, i) => i);
+        this.groups = count;
+    }
+
+    find(x) {
+        if (this.parent[x] !== x) {
+            this.parent[x] = this.find(this.parent[x]);
+        }
+        return this.parent[x];
+    }
+
+    union(a, b) {
+        const rootA = this.find(a);
+        const rootB = this.find(b);
+        if (rootA === rootB) return false;
+        this.parent[rootB] = rootA;
+        this.groups--;
+        return true;
+    }
+}`,
+  `function twoSum(nums, target) {
+    const seen = new Map();
+
+    for (let i = 0; i < nums.length; i++) {
+        const need = target - nums[i];
+        if (seen.has(need)) {
+            return [seen.get(need), i];
+        }
+        seen.set(nums[i], i);
+    }
+
+    return null;
+}`,
+  `function longestUniqueRun(text) {
+    const lastSeen = new Map();
+    let start = 0;
+    let best = 0;
+
+    for (let end = 0; end < text.length; end++) {
+        const ch = text[end];
+        if (lastSeen.has(ch) && lastSeen.get(ch) >= start) {
+            start = lastSeen.get(ch) + 1;
+        }
+        lastSeen.set(ch, end);
+        best = Math.max(best, end - start + 1);
+    }
+
+    return best;
+}`,
+  `function minCoins(coins, amount) {
+    const best = new Array(amount + 1).fill(Infinity);
+    best[0] = 0;
+
+    for (let total = 1; total <= amount; total++) {
+        for (const coin of coins) {
+            if (coin <= total && best[total - coin] + 1 < best[total]) {
+                best[total] = best[total - coin] + 1;
+            }
+        }
+    }
+
+    return best[amount] === Infinity ? -1 : best[amount];
+}`,
+  `function permutations(items) {
+    const result = [];
+    const current = [];
+    const used = new Array(items.length).fill(false);
+
+    function build() {
+        if (current.length === items.length) {
+            result.push([...current]);
+            return;
+        }
+        for (let i = 0; i < items.length; i++) {
+            if (used[i]) continue;
+            used[i] = true;
+            current.push(items[i]);
+            build();
+            current.pop();
+            used[i] = false;
+        }
+    }
+
+    build();
+    return result;
+}`,
 ])
