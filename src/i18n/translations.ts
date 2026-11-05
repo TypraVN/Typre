@@ -321,6 +321,15 @@ export const translations = {
   strictModeOff: 'Strict mode off. Run restarted.',
   shareStrictSuffix: '(strict mode)',
 
+  // Bài luyện ký hiệu / phím yếu
+  symbolDrill: 'symbols',
+  symbolDrillTitle: 'Drill the symbols that slow you down: real code lines dense with => :: && {} [] and friends',
+  symbolDrillActive: 'symbol drill',
+  weakDrillActive: 'drilling:',
+  drillExit: 'back to snippets',
+  drillPracticeKeys: 'practice these keys',
+  drillNoLeaderboard: 'Drills are for practice. Scores from drills are not sent to the leaderboard.',
+
   // Gõ code của chính mình
   customCode: 'your code',
   customCodeTitle: 'Practice your own code',

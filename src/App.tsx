@@ -12,6 +12,8 @@ import {
   Bug,
   Share2,
   ShieldCheck,
+  Braces,
+  Target,
 } from 'lucide-react'
 import { Toast, ToastStack } from './components/Toast'
 import { useTypingEngine } from './hooks/useTypingEngine'
@@ -67,6 +69,7 @@ import { usePendingScoreSubmit } from './hooks/usePendingScoreSubmit'
 import { usePendingInvite } from './hooks/usePendingInvite'
 import { getRandomSnippet, getSnippetById } from './data/snippets'
 import { buildCustomSnippet } from './lib/customSnippet'
+import { buildDrill, drillableChars, type DrillSpec } from './lib/drill'
 import { clearCustomParam, readCustomParam } from './lib/toolParam'
 import { pushXp } from './lib/xpSync'
 import { buildRaceUrl, clearRaceHash, guestName, newRoomId, readRaceFromHash } from './lib/race'
@@ -243,6 +246,14 @@ function App() {
   /** Đang thật sự luyện code của mình (bật cờ VÀ có code). */
   const customOn = customActive && customCode.length > 0
 
+  /**
+   * Bài luyện ký hiệu / phím yếu đang bật (`lib/drill.ts`). KHÔNG lưu qua lần tải lại:
+   * bài sinh ngẫu nhiên, mở lại trang thì về kho bài là hợp lý nhất.
+   */
+  const [drill, setDrill] = useState<DrillSpec | null>(null)
+  /** Bài đang gõ không nằm trong kho: không gửi bảng xếp hạng, không có link thách đấu. */
+  const offLibrary = customOn || drill !== null
+
   const {
     charStatuses,
     cursor,
@@ -306,6 +317,8 @@ function App() {
   const sessionTopMistakes = Object.entries(mistakeCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
+  /** Phím của lượt vừa xong đủ điều kiện làm bài "practice these keys". */
+  const weakKeys = drillableChars(mistakeCounts)
 
   /**
    * Một cửa duy nhất để rút bài, dùng cho cả 4 chỗ (đổi ngôn ngữ, đổi mốc, bài kế,
@@ -322,9 +335,31 @@ function App() {
     // khác nhau và cuộc đua vô nghĩa.
     if (race) return
 
+    // Đang luyện ký hiệu thì đổi ngôn ngữ là luyện cụm ký hiệu của ngôn ngữ mới.
+    if (drill) {
+      setSnippet(buildDrill(drill, lang, timeLimit))
+      return
+    }
+
     // Đang gõ code của mình thì đổi ngôn ngữ chỉ là đổi cách tô màu — giữ nguyên code,
     // không rút bài mới khiến người dùng mất đoạn đang luyện.
     setSnippet(customOn ? buildCustomSnippet(customCode, lang) : drawSnippet(lang, timeLimit))
+  }
+
+  /** Vào bài luyện. Thoát code tự dán: mỗi lúc chỉ luyện một loại bài. */
+  const startDrill = (spec: DrillSpec) => {
+    exitCustom()
+    setChallenge(null)
+    setDrill(spec)
+    setSnippet(buildDrill(spec, language, timeLimit))
+    containerRef.current?.focus()
+  }
+
+  /** Về kho bài. */
+  const leaveDrill = () => {
+    setDrill(null)
+    setSnippet(drawSnippet(language, timeLimit))
+    containerRef.current?.focus()
   }
 
   /**
@@ -334,12 +369,17 @@ function App() {
    * mình mời người khác gõ cái gì.
    */
   const startRace = async () => {
-    const room = { roomId: newRoomId(), language: snippet.language, timeLimit, snippetId: snippet.id }
+    // Người được mời chỉ nhận id bài, nên bài phải có trong kho. Đang gõ bài luyện hay
+    // code tự dán thì đua bằng một bài kho mới — không thì cả phòng mở link ra là trượt.
+    const raceSnippet = getSnippetById(snippet.id) ?? drawSnippet(language, timeLimit)
+    const room = { roomId: newRoomId(), language: raceSnippet.language, timeLimit, snippetId: raceSnippet.id }
     const url = buildRaceUrl(room)
 
     setRace(room)
     setChallenge(null)
     exitCustom()
+    setDrill(null)
+    if (raceSnippet !== snippet) setSnippet(raceSnippet)
     setFrozenStats(null)
     recordedRef.current = false
     reset()
@@ -366,6 +406,7 @@ function App() {
 
   /** Bật chế độ gõ code của mình với đoạn code vừa dán. */
   const startCustom = (code: string) => {
+    setDrill(null)
     setCustomCode(code)
     setSnippet(buildCustomSnippet(code, language))
     setCustomDialogOpen(false)
@@ -389,6 +430,11 @@ function App() {
    */
   const chooseTimeLimit = (tl: number) => {
     setTimeLimit(tl)
+    // Bài luyện sinh lại theo độ dài của mốc mới.
+    if (drill) {
+      setSnippet(buildDrill(drill, language, tl))
+      return
+    }
     // Code của mình không có rổ theo độ dài, nên đổi mốc chỉ là đổi đồng hồ.
     if (!customOn) setSnippet(drawSnippet(language, tl))
   }
@@ -423,7 +469,7 @@ function App() {
    * nên share về trang chủ thay vì một link mở ra là trượt.
    */
   const shareResult = async () => {
-    const url = customOn
+    const url = offLibrary
       ? window.location.origin
       : buildChallengeUrl({
           language: snippet.language,
@@ -503,6 +549,11 @@ function App() {
     reset()
     setFrozenStats(null)
     recordedRef.current = false
+    // Logo = về kho bài: thoát bài luyện. Code tự dán thì giữ, như trước giờ.
+    if (drill) {
+      leaveDrill()
+      return
+    }
     // Đang luyện code của mình thì giữ nguyên — bấm logo chỉ là làm mới lượt gõ, không
     // phải bỏ đoạn code người dùng vừa dán vào.
     if (!customOn) setSnippet(drawSnippet(language, timeLimit))
@@ -609,6 +660,11 @@ function App() {
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [setTimeLimit, setLanguage])
 
+  // Vào phòng đua hay nhận lời thách đấu là gõ bài trong kho: thoát bài luyện.
+  useEffect(() => {
+    if (race || challenge) setDrill(null)
+  }, [race, challenge])
+
   useEffect(() => {
     recordedRef.current = false
     setFrozenStats(null)
@@ -703,6 +759,7 @@ function App() {
         completed: status === 'finished',
         custom: customOn,
         strict: strictMode,
+        drill: drill?.kind,
       })
 
       /**
@@ -732,7 +789,7 @@ function App() {
 
         Code tự dán KHÔNG gửi — cùng lý do với nhánh `customOn` ở màn kết quả.
       */
-      if (user && !customOn && isLeaderboardEnabled && isScoreEligible(stats.wpm, stats.accuracy)) {
+      if (user && !offLibrary && isLeaderboardEnabled && isScoreEligible(stats.wpm, stats.accuracy)) {
         const token = ++submitTokenRef.current
         setAutoSubmit('sending')
         void submitScore({
@@ -904,6 +961,20 @@ function App() {
               {t.customCode}
             </button>
 
+            {/* Ẩn khi đang đua: cả phòng phải gõ đúng một bài trong kho. */}
+            {!race && (
+              <button
+                type="button"
+                onClick={() => (drill?.kind === 'symbols' ? leaveDrill() : startDrill({ kind: 'symbols' }))}
+                title={t.symbolDrillTitle}
+                aria-pressed={drill?.kind === 'symbols'}
+                className={`${drill?.kind === 'symbols' ? TAB_BTN_ACTIVE : TAB_BTN} flex items-center gap-1.5`}
+              >
+                <Braces className="w-3.5 h-3.5" />
+                {t.symbolDrill}
+              </button>
+            )}
+
             <button
               type="button"
               onClick={toggleStrict}
@@ -939,6 +1010,32 @@ function App() {
               className="cursor-pointer text-zinc-500 dark:text-zinc-400 hover:text-orange-500 transition-colors duration-150"
             >
               {t.customCodeExit}
+            </button>
+          </div>
+        )}
+
+        {mode === 'code' && drill && (
+          <div className="flex items-center justify-center gap-3 font-mono text-xs">
+            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-orange-500/15 text-orange-600 dark:text-orange-400">
+              {drill.kind === 'symbols' ? (
+                t.symbolDrillActive
+              ) : (
+                <>
+                  {t.weakDrillActive}
+                  {drill.chars.map((ch) => (
+                    <kbd key={ch} className="px-1 rounded border border-orange-500/40">
+                      {ch}
+                    </kbd>
+                  ))}
+                </>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={leaveDrill}
+              className="cursor-pointer text-zinc-500 dark:text-zinc-400 hover:text-orange-500 transition-colors duration-150"
+            >
+              {t.drillExit}
             </button>
           </div>
         )}
@@ -1102,7 +1199,7 @@ function App() {
                 </button>
                 {/* Link thách đấu chỉ mang theo ID bài: người nhận không có code của
                     bạn nên mở link ra là trượt. Ẩn hẳn thay vì để họ copy một link hỏng. */}
-                {!customOn && (
+                {!offLibrary && (
                   <button
                     type="button"
                     onClick={copyChallengeLink}
@@ -1133,9 +1230,9 @@ function App() {
 
               {/* Code tự dán KHÔNG được gửi lên bảng xếp hạng: ai cũng dán được đoạn
                   dễ nhất rồi cày điểm, bảng mất hết ý nghĩa so sánh. */}
-              {customOn ? (
+              {offLibrary ? (
                 <p className="font-mono text-xs text-zinc-400 dark:text-zinc-500 text-center">
-                  {t.customCodeNoLeaderboard}
+                  {customOn ? t.customCodeNoLeaderboard : t.drillNoLeaderboard}
                 </p>
               ) : (
               <SubmitScore
@@ -1165,6 +1262,20 @@ function App() {
                       </span>
                     ))}
                   </div>
+                  {/* Chỉ hiện khi có phím luyện được (sai toàn dấu cách/xuống dòng thì
+                      không có dòng nào để luyện), và không hiện khi đang đua. */}
+                  {!race && weakKeys.length > 0 && (
+                    <div className="flex justify-center mt-2">
+                      <button
+                        type="button"
+                        onClick={() => startDrill({ kind: 'weak', chars: weakKeys })}
+                        className={`${ACTION_BTN_ON_CARD} flex items-center gap-1.5`}
+                      >
+                        <Target className="w-4 h-4" />
+                        {t.drillPracticeKeys}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -37,6 +37,11 @@ export interface TypingResult {
   custom?: boolean
   /** Gõ ở Strict mode — gõ sai phải sửa ngay mới đi tiếp được. */
   strict?: boolean
+  /**
+   * Bài luyện ghép từ dòng code (`lib/drill.ts`). Không tính kỷ lục, cùng lý do với
+   * `custom`: bài khác hẳn kho bài nên so tốc độ với nhau là vô nghĩa.
+   */
+  drill?: 'symbols' | 'weak'
 }
 
 /**
@@ -133,7 +138,7 @@ interface HistoryState {
  * trung bình cả ngày.
  */
 function countsTowardDaily(result: TypingResult): boolean {
-  return !result.custom && result.wpm > 0
+  return !result.custom && !result.drill && result.wpm > 0
 }
 
 function addToDay(stat: DailyStat | undefined, result: TypingResult): DailyStat {
@@ -210,9 +215,10 @@ export const useHistoryStore = create<HistoryState>()(
            * lên ~cấp 11 chỉ bằng cách thử qua mỗi loại một lượt.
            */
           const beatsRecord = previousBest > 0 && result.wpm > previousBest
-          const newRecord = !result.custom && beatsRecord
+          const ownContent = result.custom || result.drill !== undefined
+          const newRecord = !ownContent && beatsRecord
           // Vẫn phải LƯU mốc chuẩn của lượt đầu, không thì lần sau vẫn là "lần đầu".
-          const raisesBest = !result.custom && result.wpm > previousBest
+          const raisesBest = !ownContent && result.wpm > previousBest
 
           const duration = result.durationSeconds ?? 0
           const breakdown = xpForRun({
