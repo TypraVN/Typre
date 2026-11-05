@@ -103,6 +103,11 @@ export function useTypingEngine(target: string, { strict = false }: EngineOption
    * phải ký tự GHÉP của chính nó không — xem nhánh `Dead` trong `handleKeyDown`.
    */
   const deadTypedRef = useRef<string | null>(null);
+  /**
+   * Strict mode: số lần gõ sai ĐANG NẰM ở chỗ con trỏ, chưa xoá. Backspace xoá hết số này
+   * trước rồi mới lùi con trỏ — xem `backspace`.
+   */
+  const strictPendingRef = useRef(0);
 
   const playFeedback = useCallback(
     (correct: boolean) => {
@@ -126,6 +131,7 @@ export function useTypingEngine(target: string, { strict = false }: EngineOption
     lastTickRef.current = { at: 0, typed: 0 };
     setSamples([]);
     deadTypedRef.current = null;
+    strictPendingRef.current = 0;
   }, [target]);
 
   useEffect(() => {
@@ -195,6 +201,7 @@ export function useTypingEngine(target: string, { strict = false }: EngineOption
       });
       registerMistake(expected);
       setStrictMisses((n) => n + 1);
+      strictPendingRef.current += 1;
       playFeedback(false);
       typedTotalRef.current += 1;
     },
@@ -212,6 +219,8 @@ export function useTypingEngine(target: string, { strict = false }: EngineOption
         rejectAtCursor(expected);
         return;
       }
+      // Con trỏ sắp đi tiếp: các lần gõ sai ở chỗ cũ không còn gì để xoá.
+      strictPendingRef.current = 0;
       const nextCursor = cursor + 1;
 
       setCharStatuses((prev) => {
@@ -239,6 +248,7 @@ export function useTypingEngine(target: string, { strict = false }: EngineOption
       rejectAtCursor(expected);
       return;
     }
+    strictPendingRef.current = 0;
 
     const updates: Array<{ index: number; value: CharStatus }> = [
       { index: cursor, value: correct ? 'correct' : 'incorrect' },
@@ -273,6 +283,7 @@ export function useTypingEngine(target: string, { strict = false }: EngineOption
     while (runEnd < target.length && target[runEnd] === ' ') runEnd += 1;
 
     if (runEnd > cursor) {
+      strictPendingRef.current = 0;
       setCharStatuses((prev) => {
         const next = [...prev];
         for (let i = cursor; i < runEnd; i += 1) next[i] = 'correct';
@@ -309,17 +320,23 @@ export function useTypingEngine(target: string, { strict = false }: EngineOption
     if (status === 'finished') return;
 
     /*
-      Strict mode: lỗi nằm NGAY DƯỚI con trỏ. Lần backspace theo thói quen sau khi gõ sai
-      chỉ xoá dấu đỏ, không lùi — lùi là xoá mất ký tự ĐÚNG phía trước, bắt gõ lại oan.
-      Khung gõ trên điện thoại cũng cần vậy: ô nhập vẫn giữ ký tự sai, xoá nó đi phải
-      đưa bài về đúng chỗ con trỏ, không thì ô nhập và bài lệch nhau một ký tự.
+      Strict mode: các lần gõ sai nằm NGAY DƯỚI con trỏ. Backspace xoá chúng trước, mỗi
+      lần một cái, xoá hết mới bỏ dấu đỏ; chỉ khi không còn lần gõ sai nào mới lùi con trỏ.
+      Lùi sớm là xoá mất ký tự ĐÚNG phía trước, bắt gõ lại oan.
+
+      Phải ĐẾM chứ không chỉ nhìn dấu đỏ: bàn phím điện thoại đang ghép chữ (Gboard) giữ
+      mọi ký tự sai trong ô nhập. Gõ sai hai lần rồi xoá cả hai, nếu lần xoá thứ hai lùi con
+      trỏ thì ô nhập còn ký tự đúng mà bài đã bỏ nó — lệch nhau một ký tự, gõ gì cũng sai.
     */
-    if (charStatuses[cursor] === 'incorrect') {
-      setCharStatuses((prev) => {
-        const next = [...prev];
-        next[cursor] = 'pending';
-        return next;
-      });
+    if (strictPendingRef.current > 0) {
+      strictPendingRef.current -= 1;
+      if (strictPendingRef.current === 0) {
+        setCharStatuses((prev) => {
+          const next = [...prev];
+          next[cursor] = 'pending';
+          return next;
+        });
+      }
       return;
     }
 
@@ -331,7 +348,7 @@ export function useTypingEngine(target: string, { strict = false }: EngineOption
       return next;
     });
     setCursor(prevCursor);
-  }, [status, cursor, charStatuses]);
+  }, [status, cursor]);
 
   const handleKeyDown = useCallback(
     (e: KeyLike) => {
