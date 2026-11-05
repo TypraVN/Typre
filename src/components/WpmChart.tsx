@@ -124,6 +124,7 @@ export function WpmChart({ results, title, attemptLabel }: WpmChartProps) {
             <div className="text-orange-500 dark:text-orange-400 font-bold">{hovered.wpm} wpm</div>
             <div className="text-zinc-500">
               {attemptLabel} {hoverIndex! + 1}
+              {hovered.strict && ' · strict'}
             </div>
           </div>
         )}

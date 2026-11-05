@@ -35,6 +35,8 @@ export interface TypingResult {
    * chọn nên so với bài trong kho là vô nghĩa. XP vẫn tính — XP chỉ ở máy họ.
    */
   custom?: boolean
+  /** Gõ ở Strict mode — gõ sai phải sửa ngay mới đi tiếp được. */
+  strict?: boolean
 }
 
 /**

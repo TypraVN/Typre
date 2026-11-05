@@ -312,6 +312,15 @@ export const translations = {
   achievements: 'achievements',
   achievementUnlocked: 'unlocked:',
 
+  // Strict mode
+  strictMode: 'strict',
+  strictModeHint:
+    'Strict mode: a wrong key holds the caret until you type the right one. Every miss still counts against accuracy.',
+  strictModeActive: 'strict mode: fix each mistake before moving on',
+  strictModeOn: 'Strict mode on. Run restarted.',
+  strictModeOff: 'Strict mode off. Run restarted.',
+  shareStrictSuffix: '(strict mode)',
+
   // Gõ code của chính mình
   customCode: 'your code',
   customCodeTitle: 'Practice your own code',

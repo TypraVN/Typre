@@ -11,6 +11,7 @@ import {
   Users,
   Bug,
   Share2,
+  ShieldCheck,
 } from 'lucide-react'
 import { Toast, ToastStack } from './components/Toast'
 import { useTypingEngine } from './hooks/useTypingEngine'
@@ -161,6 +162,11 @@ function App() {
   const setLanguage = usePreferencesStore((s) => s.setLanguage)
   const storedTimeLimit = usePreferencesStore((s) => s.timeLimit)
   const setTimeLimit = usePreferencesStore((s) => s.setTimeLimit)
+  const strictMode = usePreferencesStore((s) => s.strictMode)
+  const setStrictMode = usePreferencesStore((s) => s.setStrictMode)
+  /** Toast báo vừa bật/tắt Strict mode giữa lượt — xem `toggleStrict`. */
+  const [strictNotice, setStrictNotice] = useState<'on' | 'off' | null>(null)
+  const strictNoticeTimerRef = useRef<number | undefined>(undefined)
 
   // Mốc đã lưu có thể không còn trong danh sách (đổi mốc giữa các phiên bản, hoặc
   // localStorage bị sửa tay). Không chặn thì không nút nào sáng mà đồng hồ vẫn chạy
@@ -248,7 +254,7 @@ function App() {
     typeChar,
     typeEnter,
     backspace,
-  } = useTypingEngine(snippet.code)
+  } = useTypingEngine(snippet.code, { strict: strictMode })
 
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
@@ -427,7 +433,7 @@ function App() {
         })
     const text = t.shareResultText
       .replace('{wpm}', String(displayStats.wpm))
-      .replace('{language}', snippet.language)
+      .replace('{language}', strictMode ? `${snippet.language} ${t.shareStrictSuffix}` : snippet.language)
 
     if (navigator.share) {
       try {
@@ -453,6 +459,22 @@ function App() {
     setFrozenStats(null)
     recordedRef.current = false
     containerRef.current?.focus()
+  }
+
+  /**
+   * Bật/tắt Strict mode. Gõ lại bài từ đầu: đổi luật giữa lượt thì accuracy nửa tính
+   * kiểu này nửa tính kiểu kia, con số ra không còn nghĩa gì.
+   */
+  const toggleStrict = () => {
+    // Chỉ báo khi lượt đang gõ dở bị bỏ: bài tự về đầu mà không nói gì thì người dùng
+    // tưởng app lỗi. Chưa gõ chữ nào hoặc đang ở màn kết quả thì chẳng mất gì để báo.
+    if (status === 'typing' && !sessionOver) {
+      window.clearTimeout(strictNoticeTimerRef.current)
+      setStrictNotice(strictMode ? 'off' : 'on')
+      strictNoticeTimerRef.current = window.setTimeout(() => setStrictNotice(null), 2500)
+    }
+    setStrictMode(!strictMode)
+    restartSame()
   }
 
   /**
@@ -680,6 +702,7 @@ function App() {
         // 'finished' = gõ hết bài; hết giờ thì `status` vẫn là 'typing'.
         completed: status === 'finished',
         custom: customOn,
+        strict: strictMode,
       })
 
       /**
@@ -881,6 +904,17 @@ function App() {
               {t.customCode}
             </button>
 
+            <button
+              type="button"
+              onClick={toggleStrict}
+              title={t.strictModeHint}
+              aria-pressed={strictMode}
+              className={`${strictMode ? TAB_BTN_ACTIVE : TAB_BTN} flex items-center gap-1.5`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              {t.strictMode}
+            </button>
+
             {/* Đang trong phòng thì nút đổi thành "rời phòng": tạo phòng mới trong khi
                 đang đua sẽ bỏ rơi những người đang ở phòng cũ mà họ không biết. */}
             <button
@@ -951,6 +985,15 @@ function App() {
                 {formatTime(remaining)}
               </div>
 
+              {/* Nói thẳng luật đang áp dụng, ngay chỗ đang nhìn: lời giải thích trong
+                  tooltip của nút không ai thấy trên điện thoại. */}
+              {strictMode && (
+                <div className="flex items-center gap-1.5 font-mono text-xs text-orange-600 dark:text-orange-400">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  {t.strictModeActive}
+                </div>
+              )}
+
               {challenge && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded border border-orange-500/50 bg-orange-500/10 text-orange-600 dark:text-orange-400 text-sm font-mono animate-fade-in">
                   <Swords className="w-4 h-4" />
@@ -1010,9 +1053,19 @@ function App() {
                 <span className="text-6xl font-bold tabular-nums">{displayStats.wpm}</span>
                 <span className="text-lg text-zinc-500">wpm</span>
               </div>
-              <div className="flex gap-6 font-mono text-sm text-zinc-500 dark:text-zinc-400">
+              <div className="flex items-center gap-6 font-mono text-sm text-zinc-500 dark:text-zinc-400">
                 <span>cpm: {displayStats.cpm}</span>
                 <span>accuracy: {displayStats.accuracy}%</span>
+                {/* Bật/tắt Strict là gõ lại từ đầu, nên cờ hiện tại luôn khớp lượt vừa xong. */}
+                {strictMode && (
+                  <span
+                    title={t.strictModeHint}
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-orange-500/50 text-xs text-orange-600 dark:text-orange-400"
+                  >
+                    <ShieldCheck className="w-3 h-3" />
+                    {t.strictMode}
+                  </span>
+                )}
               </div>
               <div className="flex gap-6 font-mono text-sm text-zinc-500 dark:text-zinc-400">
                 <span title={t.rawHint}>raw: {displayStats.rawWpm}</span>
@@ -1187,6 +1240,12 @@ function App() {
       */}
 
       <ToastStack>
+        {strictNotice && (
+          <Toast kind="info" dismissLabel={t.dismiss} onDismiss={() => setStrictNotice(null)}>
+            {strictNotice === 'on' ? t.strictModeOn : t.strictModeOff}
+          </Toast>
+        )}
+
         {/* Đăng nhập lỗi thì Supabase chỉ trả lý do trong URL rồi thôi — không hiện ra
             thì người dùng bấm đăng nhập, quay về, và không hiểu vì sao vẫn chưa vào được. */}
         {authError && (

@@ -65,17 +65,27 @@ function computeConsistency(samples: number[]): number {
   return Math.max(0, Math.min(100, (1 - cv) * 100));
 }
 
+interface EngineOptions {
+  /**
+   * Strict mode: gõ sai thì con trỏ ĐỨNG YÊN, ký tự đó tô đỏ cho tới khi gõ đúng. Mỗi lần
+   * gõ sai vẫn bị tính vào accuracy — không thì bấm bừa cho tới khi trúng cũng được 100%.
+   */
+  strict?: boolean;
+}
+
 /**
  * Một lượt gõ = ĐÚNG MỘT bài. Gõ hết bài là chốt lượt và hiện kết quả ngay, không tự
  * nối bài kế tiếp; muốn gõ nữa thì người dùng tự bấm "next snippet".
  */
-export function useTypingEngine(target: string) {
+export function useTypingEngine(target: string, { strict = false }: EngineOptions = {}) {
   const [charStatuses, setCharStatuses] = useState<CharStatus[]>(() => buildInitialStatuses(target));
   const [cursor, setCursor] = useState(0);
   const [status, setStatus] = useState<EngineStatus>('idle');
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [mistakeCounts, setMistakeCounts] = useState<Record<string, number>>({});
+  /** Số lần gõ sai ở Strict mode — các lần này không để lại ký tự 'incorrect' nào để đếm. */
+  const [strictMisses, setStrictMisses] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const soundEnabled = useSoundStore((s) => s.enabled);
 
@@ -110,6 +120,7 @@ export function useTypingEngine(target: string) {
     setStartedAt(null);
     setFinishedAt(null);
     setMistakeCounts({});
+    setStrictMisses(0);
     typedTotalRef.current = 0;
     perSecondRef.current = [];
     lastTickRef.current = { at: 0, typed: 0 };
@@ -174,6 +185,22 @@ export function useTypingEngine(target: string) {
     setMistakeCounts((prev) => ({ ...prev, [expected]: (prev[expected] ?? 0) + 1 }));
   }, []);
 
+  /** Strict mode: gõ sai thì tô đỏ ký tự đang chờ và giữ nguyên con trỏ. */
+  const rejectAtCursor = useCallback(
+    (expected: string) => {
+      setCharStatuses((prev) => {
+        const next = [...prev];
+        next[cursor] = 'incorrect';
+        return next;
+      });
+      registerMistake(expected);
+      setStrictMisses((n) => n + 1);
+      playFeedback(false);
+      typedTotalRef.current += 1;
+    },
+    [cursor, registerMistake, playFeedback],
+  );
+
   const typeChar = useCallback(
     (char: string) => {
       if (status === 'finished' || cursor >= target.length) return;
@@ -181,6 +208,10 @@ export function useTypingEngine(target: string) {
 
       const expected = target[cursor];
       const correct = char === expected;
+      if (!correct && strict) {
+        rejectAtCursor(expected);
+        return;
+      }
       const nextCursor = cursor + 1;
 
       setCharStatuses((prev) => {
@@ -195,7 +226,7 @@ export function useTypingEngine(target: string) {
       setCursor(nextCursor);
       finishIfDone(nextCursor);
     },
-    [status, cursor, target, beginIfIdle, finishIfDone, registerMistake, playFeedback],
+    [status, cursor, target, strict, beginIfIdle, finishIfDone, registerMistake, rejectAtCursor, playFeedback],
   );
 
   const typeEnter = useCallback(() => {
@@ -204,6 +235,10 @@ export function useTypingEngine(target: string) {
 
     const expected = target[cursor];
     const correct = expected === '\n';
+    if (!correct && strict) {
+      rejectAtCursor(expected);
+      return;
+    }
 
     const updates: Array<{ index: number; value: CharStatus }> = [
       { index: cursor, value: correct ? 'correct' : 'incorrect' },
@@ -228,7 +263,7 @@ export function useTypingEngine(target: string) {
 
     setCursor(nextCursor);
     finishIfDone(nextCursor);
-  }, [status, cursor, target, beginIfIdle, finishIfDone, registerMistake, playFeedback]);
+  }, [status, cursor, target, strict, beginIfIdle, finishIfDone, registerMistake, rejectAtCursor, playFeedback]);
 
   const typeTab = useCallback(() => {
     if (status === 'finished' || cursor >= target.length) return;
@@ -252,6 +287,10 @@ export function useTypingEngine(target: string) {
     }
 
     const expected = target[cursor];
+    if (strict) {
+      rejectAtCursor(expected);
+      return;
+    }
     setCharStatuses((prev) => {
       const next = [...prev];
       next[cursor] = 'incorrect';
@@ -264,10 +303,27 @@ export function useTypingEngine(target: string) {
     const nextCursor = cursor + 1;
     setCursor(nextCursor);
     finishIfDone(nextCursor);
-  }, [status, cursor, target, beginIfIdle, finishIfDone, registerMistake, playFeedback]);
+  }, [status, cursor, target, strict, beginIfIdle, finishIfDone, registerMistake, rejectAtCursor, playFeedback]);
 
   const backspace = useCallback(() => {
-    if (status === 'finished' || cursor === 0) return;
+    if (status === 'finished') return;
+
+    /*
+      Strict mode: lỗi nằm NGAY DƯỚI con trỏ. Lần backspace theo thói quen sau khi gõ sai
+      chỉ xoá dấu đỏ, không lùi — lùi là xoá mất ký tự ĐÚNG phía trước, bắt gõ lại oan.
+      Khung gõ trên điện thoại cũng cần vậy: ô nhập vẫn giữ ký tự sai, xoá nó đi phải
+      đưa bài về đúng chỗ con trỏ, không thì ô nhập và bài lệch nhau một ký tự.
+    */
+    if (charStatuses[cursor] === 'incorrect') {
+      setCharStatuses((prev) => {
+        const next = [...prev];
+        next[cursor] = 'pending';
+        return next;
+      });
+      return;
+    }
+
+    if (cursor === 0) return;
     const prevCursor = cursor - 1;
     setCharStatuses((prev) => {
       const next = [...prev];
@@ -275,7 +331,7 @@ export function useTypingEngine(target: string) {
       return next;
     });
     setCursor(prevCursor);
-  }, [status, cursor]);
+  }, [status, cursor, charStatuses]);
 
   const handleKeyDown = useCallback(
     (e: KeyLike) => {
@@ -353,7 +409,8 @@ export function useTypingEngine(target: string) {
     // Một lượt = một bài, nên `charStatuses` đã bao trọn cả lượt: không cần bộ đếm cộng dồn.
     const correctCount = charStatuses.filter((s) => s === 'correct').length;
     const incorrectCount = charStatuses.filter((s) => s === 'incorrect').length;
-    const attempted = correctCount + incorrectCount;
+    // Strict: ký tự đỏ dưới con trỏ ĐÃ nằm trong strictMisses — cộng cả hai là đếm đôi.
+    const attempted = correctCount + (strict ? strictMisses : incorrectCount);
 
     const endTime = status === 'finished' ? finishedAt : now;
     const elapsedMs = startedAt && endTime ? endTime - startedAt : 0;
@@ -374,7 +431,7 @@ export function useTypingEngine(target: string) {
       consistency: Math.round(computeConsistency(samples)),
       elapsedSeconds: Math.round(elapsedMs / 1000),
     };
-  }, [charStatuses, startedAt, finishedAt, now, status, samples]);
+  }, [charStatuses, startedAt, finishedAt, now, status, samples, strict, strictMisses]);
 
   return {
     target,

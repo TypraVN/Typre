@@ -10,10 +10,13 @@ interface PreferencesState {
   language: SnippetLanguage
   timeLimit: number
   shortcutSet: ShortcutSet
+  /** Gõ sai thì con trỏ đứng yên cho tới khi gõ đúng — xem `useTypingEngine`. */
+  strictMode: boolean
   setMode: (mode: PracticeMode) => void
   setLanguage: (language: SnippetLanguage) => void
   setTimeLimit: (timeLimit: number) => void
   setShortcutSet: (shortcutSet: ShortcutSet) => void
+  setStrictMode: (strictMode: boolean) => void
 }
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -23,10 +26,12 @@ export const usePreferencesStore = create<PreferencesState>()(
       language: 'javascript',
       timeLimit: 30,
       shortcutSet: 'vscode',
+      strictMode: false,
       setMode: (mode) => set({ mode }),
       setLanguage: (language) => set({ language }),
       setTimeLimit: (timeLimit) => set({ timeLimit }),
       setShortcutSet: (shortcutSet) => set({ shortcutSet }),
+      setStrictMode: (strictMode) => set({ strictMode }),
     }),
     {
       name: 'codetyping-preferences',
@@ -43,6 +48,7 @@ export const usePreferencesStore = create<PreferencesState>()(
         language: state.language,
         timeLimit: state.timeLimit,
         shortcutSet: state.shortcutSet,
+        strictMode: state.strictMode,
       }),
     },
   ),
