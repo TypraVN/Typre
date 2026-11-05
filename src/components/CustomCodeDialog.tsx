@@ -157,6 +157,10 @@ export function CustomCodeDialog({ initialCode, onSubmit, onClose, t }: CustomCo
             ref={areaRef}
             value={raw}
             onChange={(e) => setRaw(e.target.value)}
+            // Dán vào là đổi sang code khác: bỏ ngôn ngữ đoán từ file vừa tải, không thì
+            // dán đè một đoạn JS lên file .py vẫn bị tô màu theo Python. Chỉ cắt bớt hay
+            // sửa vài chữ trong code vừa tải thì vẫn giữ.
+            onPaste={() => setImported(null)}
             spellCheck={false}
             rows={12}
             placeholder={t.customCodePlaceholder}
