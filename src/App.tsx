@@ -405,10 +405,14 @@ function App() {
   }
 
   /** Bật chế độ gõ code của mình với đoạn code vừa dán. */
-  const startCustom = (code: string) => {
+  const startCustom = (code: string, detected?: SnippetLanguage) => {
+    // Code tải từ link GitHub mang theo ngôn ngữ đoán từ đuôi file: tô màu theo đúng nó,
+    // đừng tô file Rust bằng luật JavaScript chỉ vì người dùng đang chọn JS.
+    const lang = detected ?? language
+    if (lang !== language) setLanguage(lang)
     setDrill(null)
     setCustomCode(code)
-    setSnippet(buildCustomSnippet(code, language))
+    setSnippet(buildCustomSnippet(code, lang))
     setCustomDialogOpen(false)
     setChallenge(null)
     setFrozenStats(null)

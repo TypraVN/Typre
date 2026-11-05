@@ -48,6 +48,22 @@ export interface NormalizeResult {
   cleaned: boolean
 }
 
+/**
+ * Bỏ phần thụt lề CHUNG của mọi dòng. Đoạn code lấy từ giữa một hàm (copy một khúc, hay
+ * link GitHub `#L60-L67`) dòng nào cũng thụt sẵn vài dấu cách — không bỏ thì người gõ
+ * phải gõ cả khoảng trắng vô nghĩa ở dòng đầu. Dòng trống không tính vào phần chung.
+ */
+function dedent(code: string): string {
+  const lines = code.split('\n')
+  let common = Infinity
+  for (const line of lines) {
+    if (line.trim() === '') continue
+    common = Math.min(common, line.length - line.trimStart().length)
+  }
+  if (common === 0 || common === Infinity) return code
+  return lines.map((line) => line.slice(common)).join('\n')
+}
+
 export function normalizeCustomCode(raw: string): NormalizeResult {
   let code = raw.replace(/\r\n?/g, '\n')
 
@@ -77,6 +93,8 @@ export function normalizeCustomCode(raw: string): NormalizeResult {
     .replace(/\n{3,}/g, '\n\n')
     .replace(/^\n+/, '')
     .replace(/\n+$/, '')
+
+  code = dedent(code)
 
   const truncated = code.length > MAX_CUSTOM_CHARS
   if (truncated) {
