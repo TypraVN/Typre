@@ -70,8 +70,14 @@ export function UserStatsDialog({
   const completed = Number(totals?.completed) || 0
   const typingSeconds = Number(totals?.typingSeconds) || 0
 
-  const summary = summarize(results)
-  const bests = computeBests(results)
+  /*
+    Kỷ lục và các ô thống kê chỉ tính bài trong kho. Code tự dán và bài luyện ký hiệu do
+    người dùng chọn độ khó — dán một dòng ngắn gõ 150 wpm là thành "kỷ lục" — và màn kết
+    quả đã hứa với họ là các lượt đó không tính kỷ lục. Biểu đồ vẫn vẽ mọi lượt.
+  */
+  const libraryRuns = results.filter((r) => !r.custom && r.drill === undefined)
+  const summary = summarize(libraryRuns)
+  const bests = computeBests(libraryRuns)
   const joined = formatJoinDate(user.createdAt)
 
   // Chỉ hiện ngôn ngữ đã từng gõ — bảng 10 dòng toàn dấu "—" thì vô ích.
