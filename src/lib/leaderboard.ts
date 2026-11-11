@@ -1,6 +1,7 @@
 import { getSupabase } from './supabase'
 import type { SnippetLanguage } from '../data/types'
 import type { AppUser } from './auth'
+import { MAX_WPM, MIN_ACCURACY, type RunAction } from '../../supabase/functions/_shared/typingCore.ts'
 
 export interface ScoreRow {
   id: string
@@ -18,10 +19,23 @@ export interface ScoreRow {
   created_at: string
 }
 
-export interface SubmitScoreInput {
-  user: AppUser
+/**
+ * Một lượt gõ gửi lên để server CHẤM LẠI: bài nào, mốc nào, chế độ nào, và bản ghi từng
+ * phím kèm thời điểm. Server không nhận con số wpm/accuracy từ trình duyệt — nó tự tính
+ * từ bản ghi bằng đúng bộ luật gõ của app (`typingCore.ts`).
+ */
+export interface RunSubmission {
+  snippetId: string
   language: SnippetLanguage
   timeLimit: number
+  strict: boolean
+  /** Mã riêng của lượt gõ: gửi lại cùng lượt (bấm thử lại, mạng chập chờn) không bị ghi hai lần. */
+  runId: string
+  actions: RunAction[]
+}
+
+/** Điểm trình duyệt tự tính — chỉ dùng để chặn sớm và cho cách gửi cũ, server không tin nó. */
+export interface RunStatsInput {
   wpm: number
   cpm: number
   rawWpm: number
@@ -29,13 +43,15 @@ export interface SubmitScoreInput {
   accuracy: number
 }
 
-// Khớp với ràng buộc trong supabase/schema.sql — chặn sớm ở client để đỡ gọi mạng vô ích.
-const MIN_ACCURACY = 50
-const MAX_WPM = 300
+export interface SubmitScoreInput {
+  user: AppUser
+  run: RunSubmission
+  stats: RunStatsInput
+}
 
 export type IneligibleReason = 'low-accuracy' | 'wpm-out-of-range' | null
 
-/** Trả về lý do KHÔNG đủ điều kiện, hoặc null nếu hợp lệ. */
+/** Trả về lý do KHÔNG đủ điều kiện, hoặc null nếu hợp lệ. Cùng ngưỡng với server. */
 export function scoreIneligibleReason(wpm: number, accuracy: number): IneligibleReason {
   if (accuracy < MIN_ACCURACY) return 'low-accuracy'
   if (wpm <= 0 || wpm > MAX_WPM) return 'wpm-out-of-range'
@@ -46,26 +62,63 @@ export function isScoreEligible(wpm: number, accuracy: number): boolean {
   return scoreIneligibleReason(wpm, accuracy) === null
 }
 
-export async function submitScore(input: SubmitScoreInput): Promise<{ error: string | null }> {
-  if (!isScoreEligible(input.wpm, input.accuracy)) return { error: 'not-eligible' }
+/**
+ * Lý do server từ chối mà người chơi nên biết. Các mã khác (lỗi mạng, bài lạ…) gộp chung
+ * thành "gửi lỗi" — người chơi không làm gì được với chúng ngoài thử lại.
+ */
+export type SubmitError = 'robotic' | 'bursts' | 'not-eligible' | 'failed'
 
+/**
+ * Function chưa deploy, hoặc SQL chưa chạy: tạm gửi kiểu cũ (trình duyệt tự ghi vào bảng)
+ * để bảng xếp hạng không chết trong lúc chuyển. Chạy SQL `verify-scores.sql` xong là
+ * đường này tự đóng — quyền ghi trực tiếp bị thu hồi, chỉ còn server ghi được.
+ */
+async function legacyInsert(input: SubmitScoreInput): Promise<{ error: SubmitError | null }> {
   const supabase = await getSupabase()
-  if (!supabase) return { error: 'not-configured' }
+  if (!supabase) return { error: 'failed' }
 
   const { error } = await supabase.from('scores').insert({
     user_id: input.user.id,
     display_name: input.user.displayName,
     avatar_url: input.user.avatarUrl,
-    language: input.language,
-    time_limit: input.timeLimit,
-    wpm: input.wpm,
-    cpm: input.cpm,
-    raw_wpm: input.rawWpm,
-    consistency: input.consistency,
-    accuracy: input.accuracy,
+    language: input.run.language,
+    time_limit: input.run.timeLimit,
+    wpm: input.stats.wpm,
+    cpm: input.stats.cpm,
+    raw_wpm: input.stats.rawWpm,
+    consistency: input.stats.consistency,
+    accuracy: input.stats.accuracy,
+  })
+  return { error: error ? 'failed' : null }
+}
+
+export async function submitScore(input: SubmitScoreInput): Promise<{ error: SubmitError | null }> {
+  if (!isScoreEligible(input.stats.wpm, input.stats.accuracy)) return { error: 'not-eligible' }
+
+  const supabase = await getSupabase()
+  if (!supabase) return { error: 'failed' }
+
+  const { data, error } = await supabase.functions.invoke<{ ok: boolean; error?: string }>('submit-score', {
+    body: input.run,
   })
 
-  return { error: error ? error.message : null }
+  if (error) {
+    // 404 = function chưa deploy; lỗi fetch = không gọi được tới (chưa deploy nên chưa
+    // có CORS, hoặc mất mạng — mất mạng thì đường cũ cũng hỏng, không thiệt gì).
+    const status = (error as { context?: { status?: number } }).context?.status
+    const name = (error as { name?: string }).name
+    if (status === 404 || name === 'FunctionsFetchError') return legacyInsert(input)
+    return { error: 'failed' }
+  }
+
+  if (data?.ok) return { error: null }
+  if (data?.error === 'server-not-ready') return legacyInsert(input)
+  // Gửi lại đúng lượt đã ghi (mạng chập chờn, bấm thử lại): điểm đã nằm trên bảng rồi.
+  if (data?.error === 'duplicate') return { error: null }
+  if (data?.error === 'robotic' || data?.error === 'bursts' || data?.error === 'not-eligible') {
+    return { error: data.error }
+  }
+  return { error: 'failed' }
 }
 
 export const PAGE_SIZE = 10

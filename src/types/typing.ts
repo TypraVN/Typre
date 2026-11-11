@@ -15,4 +15,6 @@ export interface TypingStats {
    */
   consistency: number;
   elapsedSeconds: number;
+  /** Thời gian đã gõ chính xác tới mili giây — đồng hồ và điểm dùng số này, không làm tròn. */
+  elapsedMs: number;
 }

@@ -233,6 +233,15 @@ function poolFor(language: SnippetLanguage, timeLimit: number): { key: string; i
 }
 
 /**
+ * Id các bài có thể ra ở một (ngôn ngữ × mốc thời gian) — đúng rổ mà `getRandomSnippet`
+ * rút. Server dùng để kiểm điểm gửi lên: lượt 60s mà gõ bài 1 dòng của rổ 15s là không
+ * phải lượt app tạo ra (`scripts/generate-seo-pages.mjs` → `snippet-index.json`).
+ */
+export function poolIdsFor(language: SnippetLanguage, timeLimit: number): string[] {
+  return poolFor(language, timeLimit).items.map((snippet) => snippet.id)
+}
+
+/**
  * Mỗi rổ một TÚI RIÊNG (khoá theo `language-bucket`): dùng chung túi thì đổi qua lại
  * 15s/60s sẽ làm rối thứ tự và sinh ra lặp bài sớm.
  */

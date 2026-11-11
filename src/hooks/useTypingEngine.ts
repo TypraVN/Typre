@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { CharStatus, EngineStatus, TypingStats } from '../types/typing';
+import type { EngineStatus, TypingStats } from '../types/typing';
 import { useSoundStore } from '../store/useSoundStore';
 import { playCorrect, playWrong, playFinish } from '../lib/sound';
 import { isShortcutCombo } from '../lib/shortcutCombo';
+import {
+  KEY_BACKSPACE,
+  KEY_ENTER,
+  KEY_TAB,
+  applyKey,
+  initialCore,
+  isComplete,
+  statsOf,
+  type CoreState,
+  type RunAction,
+} from '../../supabase/functions/_shared/typingCore.ts';
 
 interface KeyLike {
   key: string;
@@ -44,70 +55,52 @@ const CODE_FALLBACK: Record<string, [string, string]> = {
 /** `e.key` của phím bổ trợ nhấn riêng — không phải một lần gõ ký tự. */
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock']);
 
-function buildInitialStatuses(target: string): CharStatus[] {
-  return Array(target.length).fill('pending');
-}
-
-/**
- * Độ đều tay từ tốc độ của từng giây: 100% = tốc độ y nhau suốt bài.
- * Dùng hệ số biến thiên (độ lệch chuẩn / trung bình) như Monkeytype.
- * Cần ≥ 2 mẫu mới có ý nghĩa; ít hơn thì trả 100 (chưa đủ dữ liệu để nói là không đều).
- */
-function computeConsistency(samples: number[]): number {
-  if (samples.length < 2) return 100;
-
-  const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
-  if (mean <= 0) return 0;
-
-  const variance = samples.reduce((sum, v) => sum + (v - mean) ** 2, 0) / samples.length;
-  const cv = Math.sqrt(variance) / mean;
-
-  return Math.max(0, Math.min(100, (1 - cv) * 100));
-}
-
 interface EngineOptions {
   /**
    * Strict mode: gõ sai thì con trỏ ĐỨNG YÊN, ký tự đó tô đỏ cho tới khi gõ đúng. Mỗi lần
    * gõ sai vẫn bị tính vào accuracy — không thì bấm bừa cho tới khi trúng cũng được 100%.
    */
   strict?: boolean;
+  /** Mốc thời gian. Phím tới sau mốc không tính — đúng như server chạy lại bản ghi. */
+  timeLimitMs?: number;
 }
 
 /**
  * Một lượt gõ = ĐÚNG MỘT bài. Gõ hết bài là chốt lượt và hiện kết quả ngay, không tự
  * nối bài kế tiếp; muốn gõ nữa thì người dùng tự bấm "next snippet".
+ *
+ * Luật gõ (đúng/sai, Enter tự thụt lề, Tab, Backspace, Strict) nằm ở `typingCore.ts`, dùng
+ * chung với Edge Function `submit-score`. Hook này chỉ lo phần trình duyệt: đọc phím, ghi
+ * bản ghi phím kèm thời điểm, âm thanh, đồng hồ. Điểm hiện ở màn kết quả vì vậy đúng bằng
+ * điểm server tự tính lại từ bản ghi.
  */
-export function useTypingEngine(target: string, { strict = false }: EngineOptions = {}) {
-  const [charStatuses, setCharStatuses] = useState<CharStatus[]>(() => buildInitialStatuses(target));
-  const [cursor, setCursor] = useState(0);
+export function useTypingEngine(
+  target: string,
+  { strict = false, timeLimitMs = Number.POSITIVE_INFINITY }: EngineOptions = {},
+) {
+  const [core, setCore] = useState<CoreState>(() => initialCore(target));
   const [status, setStatus] = useState<EngineStatus>('idle');
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [mistakeCounts, setMistakeCounts] = useState<Record<string, number>>({});
-  /** Số lần gõ sai ở Strict mode — các lần này không để lại ký tự 'incorrect' nào để đếm. */
-  const [strictMisses, setStrictMisses] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const soundEnabled = useSoundStore((s) => s.enabled);
 
   /**
-   * Tổng ký tự đã gõ kể cả sai — dùng cho rawWpm. Không suy ra được từ charStatuses
-   * vì backspace xoá dấu vết: gõ sai rồi sửa vẫn phải tính là đã gõ.
+   * Trạng thái THẬT, cập nhật đồng bộ ở mỗi phím. State React chỉ là bản để vẽ: hai phím
+   * tới trước khi React kịp vẽ lại (gõ rất nhanh, hay bàn phím điện thoại đẩy nhiều ký tự
+   * một lần) mà đọc từ state thì phím sau áp lên trạng thái cũ và mất phím trước.
    */
-  const typedTotalRef = useRef(0);
-  /** Tốc độ (ký tự/giây) của từng giây, để tính độ đều tay. */
-  const perSecondRef = useRef<number[]>([]);
-  const lastTickRef = useRef({ at: 0, typed: 0 });
-  const [samples, setSamples] = useState<number[]>([]);
+  const coreRef = useRef(core);
+  const startRef = useRef<number | null>(null);
+  const finishedRef = useRef(false);
+  /** Bản ghi phím của lượt này — server chạy lại đúng bản ghi này để chấm điểm. */
+  const actionsRef = useRef<RunAction[]>([]);
   /**
    * Ký tự vừa gõ từ một phím chết (`Dead`) theo vị trí phím, chờ xem lần nhấn kế tiếp có
    * phải ký tự GHÉP của chính nó không — xem nhánh `Dead` trong `handleKeyDown`.
    */
   const deadTypedRef = useRef<string | null>(null);
-  /**
-   * Strict mode: số lần gõ sai ĐANG NẰM ở chỗ con trỏ, chưa xoá. Backspace xoá hết số này
-   * trước rồi mới lùi con trỏ — xem `backspace`.
-   */
-  const strictPendingRef = useRef(0);
 
   const playFeedback = useCallback(
     (correct: boolean) => {
@@ -119,236 +112,78 @@ export function useTypingEngine(target: string, { strict = false }: EngineOption
   );
 
   const reset = useCallback(() => {
-    setCharStatuses(buildInitialStatuses(target));
-    setCursor(0);
+    const fresh = initialCore(target);
+    coreRef.current = fresh;
+    setCore(fresh);
     setStatus('idle');
     setStartedAt(null);
     setFinishedAt(null);
     setMistakeCounts({});
-    setStrictMisses(0);
-    typedTotalRef.current = 0;
-    perSecondRef.current = [];
-    lastTickRef.current = { at: 0, typed: 0 };
-    setSamples([]);
+    startRef.current = null;
+    finishedRef.current = false;
+    actionsRef.current = [];
     deadTypedRef.current = null;
-    strictPendingRef.current = 0;
   }, [target]);
 
   useEffect(() => {
     reset();
   }, [target, reset]);
 
-
+  // Nhịp đồng hồ: chỉ để vẽ lại số giây và wpm đang chạy. Điểm KHÔNG phụ thuộc nhịp này.
   useEffect(() => {
     if (status !== 'typing') return;
-
-    const id = window.setInterval(() => {
-      const t = Date.now();
-      setNow(t);
-
-      // Mỗi ~1 giây chốt 1 mẫu: số ký tự gõ được trong giây đó.
-      const last = lastTickRef.current;
-      if (last.at === 0) {
-        lastTickRef.current = { at: t, typed: typedTotalRef.current };
-        return;
-      }
-      const dt = (t - last.at) / 1000;
-      if (dt >= 1) {
-        const charsThisWindow = typedTotalRef.current - last.typed;
-        perSecondRef.current = [...perSecondRef.current, charsThisWindow / dt];
-        setSamples(perSecondRef.current);
-        lastTickRef.current = { at: t, typed: typedTotalRef.current };
-      }
-    }, 250);
-
+    const id = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(id);
   }, [status]);
 
-  const finishIfDone = useCallback(
-    (nextCursor: number) => {
-      if (nextCursor < target.length) return;
+  /**
+   * Áp MỘT phím: ghi vào bản ghi, cập nhật trạng thái, phát âm, chốt lượt khi hết bài.
+   * Mọi đường vào (bàn phím, ô nhập trên điện thoại) đều đi qua đây — bản ghi mới đủ.
+   */
+  const press = useCallback(
+    (key: string) => {
+      if (finishedRef.current) return;
 
-      // Gõ hết bài là CHỐT LƯỢT ngay, kể cả khi đồng hồ còn thời gian. Muốn gõ bài
-      // nữa thì người dùng tự bấm "next snippet".
-      setStatus('finished');
-      setFinishedAt(Date.now());
-      if (soundEnabled) playFinish();
+      const at = Date.now();
+      if (startRef.current === null) {
+        // Backspace khi chưa gõ gì không phải là bắt đầu lượt.
+        if (key === KEY_BACKSPACE) return;
+        startRef.current = at;
+        setStartedAt(at);
+        setNow(at);
+        setStatus('typing');
+      }
+
+      const t = at - startRef.current;
+      if (t > timeLimitMs) return;
+
+      const step = applyKey(coreRef.current, key, target, strict);
+      actionsRef.current.push([t, key]);
+      coreRef.current = step.state;
+      setCore(step.state);
+
+      if (step.outcome === 'wrong' && step.expected !== undefined) {
+        const expected = step.expected;
+        setMistakeCounts((prev) => ({ ...prev, [expected]: (prev[expected] ?? 0) + 1 }));
+      }
+      if (step.outcome !== 'none') playFeedback(step.outcome === 'correct');
+
+      if (isComplete(step.state, target)) {
+        finishedRef.current = true;
+        setStatus('finished');
+        setFinishedAt(at);
+        if (soundEnabled) playFinish();
+      }
     },
-    [target.length, soundEnabled],
+    [target, strict, timeLimitMs, playFeedback, soundEnabled],
   );
 
-  const beginIfIdle = useCallback(() => {
-    setStatus((prev) => {
-      if (prev !== 'idle') return prev;
-      const start = Date.now();
-      setStartedAt(start);
-      setNow(start);
-      return 'typing';
-    });
-  }, []);
+  const typeChar = useCallback((char: string) => press(char), [press]);
+  const typeEnter = useCallback(() => press(KEY_ENTER), [press]);
+  const backspace = useCallback(() => press(KEY_BACKSPACE), [press]);
 
-  const registerMistake = useCallback((expected: string) => {
-    setMistakeCounts((prev) => ({ ...prev, [expected]: (prev[expected] ?? 0) + 1 }));
-  }, []);
-
-  /** Strict mode: gõ sai thì tô đỏ ký tự đang chờ và giữ nguyên con trỏ. */
-  const rejectAtCursor = useCallback(
-    (expected: string) => {
-      setCharStatuses((prev) => {
-        const next = [...prev];
-        next[cursor] = 'incorrect';
-        return next;
-      });
-      registerMistake(expected);
-      setStrictMisses((n) => n + 1);
-      strictPendingRef.current += 1;
-      playFeedback(false);
-      typedTotalRef.current += 1;
-    },
-    [cursor, registerMistake, playFeedback],
-  );
-
-  const typeChar = useCallback(
-    (char: string) => {
-      if (status === 'finished' || cursor >= target.length) return;
-      beginIfIdle();
-
-      const expected = target[cursor];
-      const correct = char === expected;
-      if (!correct && strict) {
-        rejectAtCursor(expected);
-        return;
-      }
-      // Con trỏ sắp đi tiếp: các lần gõ sai ở chỗ cũ không còn gì để xoá.
-      strictPendingRef.current = 0;
-      const nextCursor = cursor + 1;
-
-      setCharStatuses((prev) => {
-        const next = [...prev];
-        next[cursor] = correct ? 'correct' : 'incorrect';
-        return next;
-      });
-      if (!correct) registerMistake(expected);
-      playFeedback(correct);
-      typedTotalRef.current += 1;
-
-      setCursor(nextCursor);
-      finishIfDone(nextCursor);
-    },
-    [status, cursor, target, strict, beginIfIdle, finishIfDone, registerMistake, rejectAtCursor, playFeedback],
-  );
-
-  const typeEnter = useCallback(() => {
-    if (status === 'finished' || cursor >= target.length) return;
-    beginIfIdle();
-
-    const expected = target[cursor];
-    const correct = expected === '\n';
-    if (!correct && strict) {
-      rejectAtCursor(expected);
-      return;
-    }
-    strictPendingRef.current = 0;
-
-    const updates: Array<{ index: number; value: CharStatus }> = [
-      { index: cursor, value: correct ? 'correct' : 'incorrect' },
-    ];
-
-    let nextCursor = cursor + 1;
-    if (correct) {
-      while (nextCursor < target.length && target[nextCursor] === ' ') {
-        updates.push({ index: nextCursor, value: 'auto' });
-        nextCursor += 1;
-      }
-    }
-
-    setCharStatuses((prev) => {
-      const next = [...prev];
-      for (const u of updates) next[u.index] = u.value;
-      return next;
-    });
-    if (!correct) registerMistake(expected);
-    playFeedback(correct);
-    typedTotalRef.current += 1;
-
-    setCursor(nextCursor);
-    finishIfDone(nextCursor);
-  }, [status, cursor, target, strict, beginIfIdle, finishIfDone, registerMistake, rejectAtCursor, playFeedback]);
-
-  const typeTab = useCallback(() => {
-    if (status === 'finished' || cursor >= target.length) return;
-    beginIfIdle();
-
-    let runEnd = cursor;
-    while (runEnd < target.length && target[runEnd] === ' ') runEnd += 1;
-
-    if (runEnd > cursor) {
-      strictPendingRef.current = 0;
-      setCharStatuses((prev) => {
-        const next = [...prev];
-        for (let i = cursor; i < runEnd; i += 1) next[i] = 'correct';
-        return next;
-      });
-      playFeedback(true);
-      // Tab nhảy qua cả dải thụt lề: tính đúng số ký tự đã vượt, không phải 1.
-      typedTotalRef.current += runEnd - cursor;
-      setCursor(runEnd);
-      finishIfDone(runEnd);
-      return;
-    }
-
-    const expected = target[cursor];
-    if (strict) {
-      rejectAtCursor(expected);
-      return;
-    }
-    setCharStatuses((prev) => {
-      const next = [...prev];
-      next[cursor] = 'incorrect';
-      return next;
-    });
-    registerMistake(expected);
-    playFeedback(false);
-    typedTotalRef.current += 1;
-
-    const nextCursor = cursor + 1;
-    setCursor(nextCursor);
-    finishIfDone(nextCursor);
-  }, [status, cursor, target, strict, beginIfIdle, finishIfDone, registerMistake, rejectAtCursor, playFeedback]);
-
-  const backspace = useCallback(() => {
-    if (status === 'finished') return;
-
-    /*
-      Strict mode: các lần gõ sai nằm NGAY DƯỚI con trỏ. Backspace xoá chúng trước, mỗi
-      lần một cái, xoá hết mới bỏ dấu đỏ; chỉ khi không còn lần gõ sai nào mới lùi con trỏ.
-      Lùi sớm là xoá mất ký tự ĐÚNG phía trước, bắt gõ lại oan.
-
-      Phải ĐẾM chứ không chỉ nhìn dấu đỏ: bàn phím điện thoại đang ghép chữ (Gboard) giữ
-      mọi ký tự sai trong ô nhập. Gõ sai hai lần rồi xoá cả hai, nếu lần xoá thứ hai lùi con
-      trỏ thì ô nhập còn ký tự đúng mà bài đã bỏ nó — lệch nhau một ký tự, gõ gì cũng sai.
-    */
-    if (strictPendingRef.current > 0) {
-      strictPendingRef.current -= 1;
-      if (strictPendingRef.current === 0) {
-        setCharStatuses((prev) => {
-          const next = [...prev];
-          next[cursor] = 'pending';
-          return next;
-        });
-      }
-      return;
-    }
-
-    if (cursor === 0) return;
-    const prevCursor = cursor - 1;
-    setCharStatuses((prev) => {
-      const next = [...prev];
-      next[prevCursor] = 'pending';
-      return next;
-    });
-    setCursor(prevCursor);
-  }, [status, cursor]);
+  /** Bản sao bản ghi phím của lượt vừa gõ, để gửi lên server chấm lại. */
+  const getActions = useCallback((): RunAction[] => [...actionsRef.current], []);
 
   const handleKeyDown = useCallback(
     (e: KeyLike) => {
@@ -365,17 +200,17 @@ export function useTypingEngine(target: string, { strict = false }: EngineOption
 
       if (e.key === 'Tab') {
         e.preventDefault();
-        typeTab();
+        press(KEY_TAB);
         return;
       }
       if (e.key === 'Enter') {
         e.preventDefault();
-        typeEnter();
+        press(KEY_ENTER);
         return;
       }
       if (e.key === 'Backspace') {
         e.preventDefault();
-        backspace();
+        press(KEY_BACKSPACE);
         return;
       }
       if (e.key.length === 1) {
@@ -384,7 +219,7 @@ export function useTypingEngine(target: string, { strict = false }: EngineOption
         // ra `'`): đã tính rồi, gõ nữa là thành hai. CHỈ khi tới bằng phím cách — bàn
         // phím tiếng Việt gõ `//` báo `Dead` rồi `/`, nuốt cái thứ hai là mất một lần gõ.
         if (deadTyped !== null && e.code === 'Space' && e.key === deadTyped) return;
-        typeChar(e.key);
+        press(e.key);
         return;
       }
 
@@ -410,55 +245,46 @@ export function useTypingEngine(target: string, { strict = false }: EngineOption
           ra. Không mất gì thật — con trỏ vẫn đứng đó, lần gõ kế tiếp vẫn bị chấm.
         */
         if (e.key === 'Dead') {
-          if (byPosition !== target[cursor]) return;
-          typeChar(byPosition);
+          if (byPosition !== target[coreRef.current.cursor]) return;
+          press(byPosition);
           deadTypedRef.current = byPosition;
           return;
         }
 
-        typeChar(byPosition);
+        press(byPosition);
       }
     },
-    [typeTab, typeEnter, backspace, typeChar, target, cursor],
+    [press, target],
   );
 
   const stats: TypingStats = useMemo(() => {
-    // Một lượt = một bài, nên `charStatuses` đã bao trọn cả lượt: không cần bộ đếm cộng dồn.
-    const correctCount = charStatuses.filter((s) => s === 'correct').length;
-    const incorrectCount = charStatuses.filter((s) => s === 'incorrect').length;
-    // Strict: ký tự đỏ dưới con trỏ ĐÃ nằm trong strictMisses — cộng cả hai là đếm đôi.
-    const attempted = correctCount + (strict ? strictMisses : incorrectCount);
-
+    // Hết giờ thì thời gian đã gõ dừng ĐÚNG ở mốc, không trôi theo nhịp đồng hồ — cùng
+    // cách server tính, nên điểm chốt ở màn kết quả khớp điểm trên bảng xếp hạng.
     const endTime = status === 'finished' ? finishedAt : now;
-    const elapsedMs = startedAt && endTime ? endTime - startedAt : 0;
-    const elapsedMinutes = elapsedMs / 60000;
-
-    const cpm = elapsedMinutes > 0 ? correctCount / elapsedMinutes : 0;
-    const wpm = cpm / 5;
-    const accuracy = attempted > 0 ? (correctCount / attempted) * 100 : 100;
-
-    // raw = tính trên MỌI ký tự đã gõ (kể cả sai), nên luôn ≥ wpm.
-    const rawWpm = elapsedMinutes > 0 ? typedTotalRef.current / elapsedMinutes / 5 : 0;
+    const elapsedMs = startedAt && endTime ? Math.min(endTime - startedAt, timeLimitMs) : 0;
+    const s = statsOf(core, elapsedMs, strict, actionsRef.current, target);
 
     return {
-      wpm: Math.round(wpm),
-      cpm: Math.round(cpm),
-      rawWpm: Math.round(rawWpm),
-      accuracy: Math.round(accuracy),
-      consistency: Math.round(computeConsistency(samples)),
+      wpm: s.wpm,
+      cpm: s.cpm,
+      rawWpm: s.rawWpm,
+      accuracy: s.accuracy,
+      consistency: s.consistency,
       elapsedSeconds: Math.round(elapsedMs / 1000),
+      elapsedMs,
     };
-  }, [charStatuses, startedAt, finishedAt, now, status, samples, strict, strictMisses]);
+  }, [core, startedAt, finishedAt, now, status, strict, target, timeLimitMs]);
 
   return {
     target,
-    charStatuses,
-    cursor,
+    charStatuses: core.statuses,
+    cursor: core.cursor,
     status,
     stats,
     mistakeCounts,
     handleKeyDown,
     reset,
+    getActions,
     // Cho ô nhập ẩn trên điện thoại: bàn phím ảo không gửi keydown dùng được, phải đổi
     // nội dung ô nhập thành từng thao tác — xem `TouchTypingInput` trong CodeEditorDisplay.
     typeChar,

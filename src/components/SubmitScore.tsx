@@ -1,10 +1,9 @@
 import { Suspense, useState } from 'react'
 import { lazyChunk } from '../lib/lazyChunk'
-import { submitScore, scoreIneligibleReason } from '../lib/leaderboard'
+import { submitScore, scoreIneligibleReason, type RunSubmission, type SubmitError } from '../lib/leaderboard'
 import { isLeaderboardEnabled } from '../lib/supabase'
 import { clearPendingScore, savePendingScore } from '../lib/pendingScore'
 import type { AppUser } from '../lib/auth'
-import type { SnippetLanguage } from '../data/types'
 import type { Translation } from '../i18n/translations'
 
 const SignInDialog = lazyChunk('SignInDialog', () =>
@@ -13,8 +12,8 @@ const SignInDialog = lazyChunk('SignInDialog', () =>
 
 interface SubmitScoreProps {
   user: AppUser | null
-  language: SnippetLanguage
-  timeLimit: number
+  /** Lượt vừa gõ, kèm bản ghi phím để server chấm lại. */
+  run: RunSubmission
   wpm: number
   cpm: number
   rawWpm: number
@@ -25,6 +24,8 @@ interface SubmitScoreProps {
    * 'idle' = App không gửi (chưa đăng nhập lúc đó, code tự dán…) → hiện nút như cũ.
    */
   autoState?: AutoSubmitState
+  /** Lý do lần tự gửi bị từ chối, nếu có. */
+  autoError?: SubmitError | null
   t: Translation
 }
 
@@ -32,27 +33,37 @@ type SubmitState = 'idle' | 'sending' | 'done' | 'failed'
 
 export type AutoSubmitState = SubmitState
 
+/**
+ * Server từ chối vì nhịp gõ không giống người: gửi lại cũng bị từ chối y vậy, nên không
+ * hiện nút thử lại — chỉ nói rõ vì sao.
+ */
+const FINAL_ERRORS: SubmitError[] = ['robotic', 'bursts', 'not-eligible']
+
 export function SubmitScore({
   user,
-  language,
-  timeLimit,
+  run,
   wpm,
   cpm,
   rawWpm,
   consistency,
   accuracy,
   autoState = 'idle',
+  autoError = null,
   t,
 }: SubmitScoreProps) {
   const [manualState, setState] = useState<SubmitState>('idle')
+  const [manualError, setManualError] = useState<SubmitError | null>(null)
   /*
     Lần bấm tay (nếu có) thắng: tự gửi lỗi thì nút hiện ra, người dùng bấm lại, và kết quả
     của lần bấm đó mới là thứ cần hiện. Chưa bấm thì hiện đúng trạng thái tự gửi.
   */
   const state: SubmitState = manualState !== 'idle' ? manualState : autoState
+  const error = manualState !== 'idle' ? manualError : autoError
   const [signInOpen, setSignInOpen] = useState(false)
 
   if (!isLeaderboardEnabled) return null
+
+  const stats = { wpm, cpm, rawWpm, consistency, accuracy }
 
   const ineligible = scoreIneligibleReason(wpm, accuracy)
   if (ineligible) {
@@ -67,7 +78,7 @@ export function SubmitScore({
     // Giữ điểm lại NGAY khi mở hộp thoại: đăng nhập bằng OAuth làm trang tải lại nên
     // sau đó không còn cơ hội đọc lại kết quả đang hiện trên màn hình.
     const openSignIn = () => {
-      savePendingScore({ language, timeLimit, wpm, cpm, rawWpm, consistency, accuracy })
+      savePendingScore({ run, stats })
       setSignInOpen(true)
     }
 
@@ -104,19 +115,19 @@ export function SubmitScore({
     return <div className="font-mono text-xs text-green-600 dark:text-green-400">{t.submitted}</div>
   }
 
+  if (state === 'failed' && error !== null && FINAL_ERRORS.includes(error)) {
+    return (
+      <p className="max-w-xs font-mono text-xs text-center text-red-500 dark:text-red-400">
+        {error === 'not-eligible' ? t.notEligible : t.submitRejectedTiming}
+      </p>
+    )
+  }
+
   const handleSubmit = async () => {
     setState('sending')
-    const { error } = await submitScore({
-      user,
-      language,
-      timeLimit,
-      wpm,
-      cpm,
-      rawWpm,
-      consistency,
-      accuracy,
-    })
-    setState(error ? 'failed' : 'done')
+    const result = await submitScore({ user, run, stats })
+    setManualError(result.error)
+    setState(result.error ? 'failed' : 'done')
   }
 
   return (

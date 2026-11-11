@@ -1,4 +1,4 @@
-import type { SnippetLanguage } from '../data/types'
+import type { RunStatsInput, RunSubmission } from './leaderboard'
 
 /**
  * Đăng nhập bằng OAuth/magic link luôn làm trang tải lại, nên kết quả vừa gõ biến mất
@@ -13,14 +13,13 @@ const KEY = 'codetyping-pending-score'
 // Để lâu quá thì điểm đó chẳng còn liên quan gì tới việc vừa làm — coi như không có.
 const MAX_AGE_MS = 30 * 60 * 1000
 
+/**
+ * Giữ cả bản ghi phím (`run`), không chỉ con số: server chấm lại từ bản ghi, giữ mỗi con
+ * số thì sau khi đăng nhập không còn gì để gửi.
+ */
 export interface PendingScore {
-  language: SnippetLanguage
-  timeLimit: number
-  wpm: number
-  cpm: number
-  rawWpm: number
-  consistency: number
-  accuracy: number
+  run: RunSubmission
+  stats: RunStatsInput
   savedAt: number
 }
 
@@ -59,7 +58,9 @@ export function takePendingScore(): PendingScore | null {
 
   try {
     const parsed = JSON.parse(raw) as PendingScore
-    if (typeof parsed?.wpm !== 'number' || typeof parsed?.savedAt !== 'number') return null
+    // Điểm giữ từ bản cũ (chưa có bản ghi phím) không gửi được nữa — bỏ.
+    if (!Array.isArray(parsed?.run?.actions) || typeof parsed?.stats?.wpm !== 'number') return null
+    if (typeof parsed.savedAt !== 'number') return null
     if (Date.now() - parsed.savedAt > MAX_AGE_MS) return null
     return parsed
   } catch {

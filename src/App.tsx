@@ -37,7 +37,7 @@ const ChessMode = lazyChunk('ChessMode', () =>
   import('./components/ChessMode').then((m) => ({ default: m.ChessMode })),
 )
 import { SubmitScore, type AutoSubmitState } from './components/SubmitScore'
-import { isScoreEligible, submitScore } from './lib/leaderboard'
+import { isScoreEligible, submitScore, type RunSubmission, type SubmitError } from './lib/leaderboard'
 import { isLeaderboardEnabled } from './lib/supabase'
 // Cấp độ + thành tích: chỉ tải khi người dùng bấm huy hiệu ở header.
 const ProgressDialog = lazyChunk('ProgressDialog', () =>
@@ -133,6 +133,19 @@ function displayChar(ch: string): string {
   return ch
 }
 
+/**
+ * Mã riêng cho một lượt gõ (UUID v4) — server dùng để không ghi trùng một lượt gửi hai lần.
+ * `randomUUID` chỉ có ở trình duyệt đủ mới; máy cũ thì tự dựng từ `getRandomValues`.
+ */
+function newRunId(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
 function formatTime(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60)
   const s = totalSeconds % 60
@@ -149,6 +162,10 @@ function App() {
   const recordedRef = useRef(false)
   /** Trạng thái tự gửi điểm của lượt vừa xong — xem effect ghi kết quả. */
   const [autoSubmit, setAutoSubmit] = useState<AutoSubmitState>('idle')
+  /** Lý do server từ chối lần tự gửi (nhịp gõ không giống người…), để báo đúng cho người chơi. */
+  const [autoSubmitError, setAutoSubmitError] = useState<SubmitError | null>(null)
+  /** Lượt vừa xong, kèm bản ghi phím — cho nút gửi tay và cho lần gửi sau khi đăng nhập. */
+  const [lastRun, setLastRun] = useState<RunSubmission | null>(null)
   /**
    * Số thứ tự lượt gửi. Kết quả của một lượt gửi về muộn — sau khi người dùng đã sang bài
    * khác — thì bỏ qua, không thì "đã lưu" của bài cũ hiện lên bài mới.
@@ -265,7 +282,8 @@ function App() {
     typeChar,
     typeEnter,
     backspace,
-  } = useTypingEngine(snippet.code, { strict: strictMode })
+    getActions,
+  } = useTypingEngine(snippet.code, { strict: strictMode, timeLimitMs: timeLimit * 1000 })
 
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
@@ -297,8 +315,14 @@ function App() {
   const lastAward = useHistoryStore((s) => s.lastAward)
   const progress = useHistoryStore((s) => s.progress)
 
-  const remaining = Math.max(0, timeLimit - stats.elapsedSeconds)
-  const sessionOver = status === 'finished' || remaining === 0
+  /*
+    Đồng hồ tính bằng mili giây, KHÔNG làm tròn giây. Trước đây làm tròn nên lượt 30s thật
+    ra kết thúc ở 29,5s — nửa giây cuối của ai cũng bị cắt, và điểm trình duyệt hiện lệch
+    với điểm server tính lại từ bản ghi phím.
+  */
+  const remainingMs = Math.max(0, timeLimit * 1000 - stats.elapsedMs)
+  const remaining = Math.ceil(remainingMs / 1000)
+  const sessionOver = status === 'finished' || (status === 'typing' && remainingMs === 0)
   const displayStats = frozenStats ?? stats
 
   /**
@@ -756,7 +780,7 @@ function App() {
         mistakeCounts,
         timeLimit,
         // Gõ xong sớm thì thời lượng thật ngắn hơn mốc đã chọn.
-        durationSeconds: Math.min(stats.elapsedSeconds, timeLimit),
+        durationSeconds: Math.min(Math.round(stats.elapsedMs / 1000), timeLimit),
         rawWpm: stats.rawWpm,
         consistency: stats.consistency,
         // 'finished' = gõ hết bài; hết giờ thì `status` vẫn là 'typing'.
@@ -793,20 +817,26 @@ function App() {
 
         Code tự dán KHÔNG gửi — cùng lý do với nhánh `customOn` ở màn kết quả.
       */
+      // Đóng gói lượt gõ kèm bản ghi phím: server chấm lại từ đây, cả khi gửi tự động lẫn
+      // khi người dùng bấm gửi tay hay đăng nhập xong mới gửi.
+      const run: RunSubmission = {
+        snippetId: snippet.id,
+        language: snippet.language,
+        timeLimit,
+        strict: strictMode,
+        runId: newRunId(),
+        actions: getActions(),
+      }
+      setLastRun(run)
+
       if (user && !offLibrary && isLeaderboardEnabled && isScoreEligible(stats.wpm, stats.accuracy)) {
         const token = ++submitTokenRef.current
         setAutoSubmit('sending')
-        void submitScore({
-          user,
-          language: snippet.language,
-          timeLimit,
-          wpm: stats.wpm,
-          cpm: stats.cpm,
-          rawWpm: stats.rawWpm,
-          consistency: stats.consistency,
-          accuracy: stats.accuracy,
-        }).then(({ error }) => {
-          if (token === submitTokenRef.current) setAutoSubmit(error ? 'failed' : 'done')
+        setAutoSubmitError(null)
+        void submitScore({ user, run, stats }).then(({ error }) => {
+          if (token !== submitTokenRef.current) return
+          setAutoSubmit(error ? 'failed' : 'done')
+          setAutoSubmitError(error)
         })
       }
     }
@@ -815,6 +845,8 @@ function App() {
     if (!sessionOver) {
       submitTokenRef.current += 1
       setAutoSubmit('idle')
+      setAutoSubmitError(null)
+      setLastRun(null)
     }
     /*
       CỐ Ý chỉ phụ thuộc `sessionOver`.
@@ -1239,18 +1271,20 @@ function App() {
                   {customOn ? t.customCodeNoLeaderboard : t.drillNoLeaderboard}
                 </p>
               ) : (
+              lastRun && (
               <SubmitScore
                 user={user}
-                language={snippet.language}
-                timeLimit={timeLimit}
+                run={lastRun}
                 wpm={displayStats.wpm}
                 cpm={displayStats.cpm}
                 rawWpm={displayStats.rawWpm}
                 consistency={displayStats.consistency}
                 accuracy={displayStats.accuracy}
                 autoState={autoSubmit}
+                autoError={autoSubmitError}
                 t={t}
               />
+              )
               )}
 
               {sessionTopMistakes.length > 0 && (

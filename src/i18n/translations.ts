@@ -30,7 +30,9 @@ export const translations = {
   submitting: 'submitting...',
   submitted: 'submitted to leaderboard',
   submitFailed: 'submit failed',
-  notEligible: 'need accuracy ≥ 50% to qualify',
+  notEligible: 'need accuracy ≥ 75% to qualify',
+  submitRejectedTiming:
+    'Not ranked: the keystrokes did not look like hand typing. Pasting, autocorrect and word suggestions are not allowed on the leaderboard.',
   wpmOutOfRange: 'WPM outside valid range (1–300), cannot be ranked',
   leaderboardEmpty: 'no entries yet',
   leaderboardLoading: 'loading...',

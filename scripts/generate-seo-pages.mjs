@@ -49,7 +49,12 @@ async function loadSnippetCounts() {
   })
 
   const mod = await import(`../${TMP_DIR}/snippets.mjs?t=${Date.now()}`)
-  return { snippetCounts: mod.snippetCounts, sampleSnippets: mod.sampleSnippets }
+  return {
+    snippetCounts: mod.snippetCounts,
+    sampleSnippets: mod.sampleSnippets,
+    allSnippets: mod.allSnippets,
+    poolIdsFor: mod.poolIdsFor,
+  }
 }
 
 /**
@@ -999,8 +1004,40 @@ ${FEATURE_PAGES.map((p) => `          <li><a href="/practice/${p.slug}/">${p.key
   console.log(`  index.html (${total} bai, ${pages.length + 1} lien ket noi bo)`)
 }
 
+/**
+ * `/snippet-index.json` — toàn bộ kho bài cho Edge Function `submit-score` tra cứu.
+ *
+ * Server chấm lại điểm phải biết bài người chơi vừa gõ. Đặt kho ở ĐÂY (sinh ra mỗi lần
+ * build site) thay vì nhúng vào function: thêm bài mới chỉ cần deploy site như mọi khi,
+ * không ai phải nhớ deploy lại function — quên là mọi điểm gõ bài mới bị từ chối.
+ *
+ * Không lộ gì mới: mọi bài vốn đã nằm sẵn trong bundle JS của app.
+ *
+ *   snippets: { id: [ngôn ngữ, code] }
+ *   pools:    { "ngôn ngữ|mốc": [id, ...] }  — rổ bài của từng mốc, xem `poolIdsFor`.
+ */
+const TIME_LIMITS = [15, 30, 60]
+
+function buildSnippetIndex(allSnippets, poolIdsFor) {
+  const snippets = {}
+  const languages = new Set()
+  for (const { language, snippet } of allSnippets()) {
+    snippets[snippet.id] = [language, snippet.code]
+    languages.add(language)
+  }
+
+  const pools = {}
+  for (const language of languages) {
+    for (const timeLimit of TIME_LIMITS) {
+      pools[`${language}|${timeLimit}`] = poolIdsFor(language, timeLimit)
+    }
+  }
+
+  return { version: 1, snippets, pools }
+}
+
 async function main() {
-  const { snippetCounts, sampleSnippets } = await loadSnippetCounts()
+  const { snippetCounts, sampleSnippets, allSnippets, poolIdsFor } = await loadSnippetCounts()
 
   for (const page of LANGUAGE_PAGES) {
     const counts = snippetCounts(page.id)
@@ -1084,6 +1121,10 @@ async function main() {
   const llmsPages = LANGUAGE_PAGES.filter((page) => snippetCounts(page.id).total > 0)
   writeFileSync(`${DIST}/llms.txt`, renderLlmsTxt(llmsPages, snippetCounts, SHORTCUT_PAGES), 'utf8')
   console.log(`  llms.txt (${llmsPages.length} ngon ngu)`)
+
+  const index = buildSnippetIndex(allSnippets, poolIdsFor)
+  writeFileSync(`${DIST}/snippet-index.json`, JSON.stringify(index), 'utf8')
+  console.log(`  snippet-index.json (${Object.keys(index.snippets).length} bai)`)
   console.log(`  sitemap.xml (${(sitemap.match(/<loc>/g) ?? []).length} URL)`)
 
   rmSync(TMP_DIR, { recursive: true, force: true })

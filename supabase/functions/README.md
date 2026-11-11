@@ -1,5 +1,54 @@
 # Edge Functions
 
+## `submit-score` — server chấm lại điểm trước khi lên bảng xếp hạng
+
+Trước đây trình duyệt tự ghi điểm vào bảng `scores`, nên ai đăng nhập cũng gửi thẳng được
+"250 wpm" qua API mà không gõ chữ nào. Giờ trình duyệt chỉ gửi **bản ghi từng phím** kèm
+thời điểm; function chạy lại bản ghi bằng đúng bộ luật gõ của app
+(`_shared/typingCore.ts`), tự tính wpm/accuracy, loại lượt có nhịp gõ không giống người
+(script gõ đều, dán code, bàn phím tự chèn cả từ), rồi mới ghi.
+
+Kho bài function tra cứu là `https://www.typre.dev/snippet-index.json`, sinh ra mỗi lần
+build site — thêm bài mới **không** cần deploy lại function.
+
+Làm **đúng thứ tự** dưới đây. Trong lúc chưa làm xong, app tự gửi điểm theo cách cũ nên
+bảng xếp hạng không bị gián đoạn.
+
+### 1. Deploy function
+
+```bash
+npx supabase functions deploy submit-score --no-verify-jwt
+```
+
+`--no-verify-jwt`: function tự hỏi Supabase Auth xem token là của ai (để lấy đúng
+`user_id`), và cần trả lời được request `OPTIONS` của trình duyệt — request đó không mang
+token nên cổng kiểm JWT sẽ chặn nó.
+
+Không cần đặt Secret nào: `SUPABASE_URL` và `SUPABASE_SERVICE_ROLE_KEY` Supabase tự đặt.
+
+### 2. Chạy SQL
+
+SQL Editor → chạy `../verify-scores.sql`. File này:
+
+- thêm cột `verified`, `snippet_id`, `strict`, `run_id` vào `scores` — 513 điểm cũ giữ
+  nguyên, `verified = false` (chưa xác minh);
+- **thu hồi quyền ghi trực tiếp** của người dùng: từ đây chỉ function ghi được điểm.
+
+### 3. Thử
+
+Đăng nhập trên typre.dev, gõ một lượt bằng tay (accuracy ≥ 75%). Màn kết quả phải hiện
+**"submitted to leaderboard"**, và dòng mới trong bảng `scores` có `verified = true`.
+
+Không lên bảng thì xem **Edge Functions** → `submit-score` → **Logs**:
+
+| Log báo | Nghĩa |
+|---|---|
+| `từ chối ...: robotic` | nhịp phím đều tăm tắp — script, không phải người |
+| `từ chối ...: bursts` | quá nhiều phím tới cùng lúc — dán code hoặc bàn phím tự chèn cả từ |
+| `từ chối ...: not-eligible` | accuracy dưới 75% hoặc wpm ngoài 1–300 |
+| `từ chối ...: unknown-snippet` / `wrong-pool` | bài không có trong kho, hoặc sai rổ mốc thời gian |
+| `ghi điểm lỗi ...` | lỗi ghi vào bảng — đọc thông báo lỗi kèm theo |
+
 ## `welcome-email` — gửi thư chào người đăng ký mới
 
 Gửi một lá thư chào khi có người đăng ký. Trước đây gửi tay; function này làm đúng việc

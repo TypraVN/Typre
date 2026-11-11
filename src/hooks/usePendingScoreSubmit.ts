@@ -28,20 +28,11 @@ export function usePendingScoreSubmit(user: AppUser | null) {
     if (!pending) return
 
     let cancelled = false
-    setNotice({ status: 'sending', wpm: pending.wpm })
+    setNotice({ status: 'sending', wpm: pending.stats.wpm })
 
-    submitScore({
-      user,
-      language: pending.language,
-      timeLimit: pending.timeLimit,
-      wpm: pending.wpm,
-      cpm: pending.cpm,
-      rawWpm: pending.rawWpm,
-      consistency: pending.consistency,
-      accuracy: pending.accuracy,
-    }).then(({ error }) => {
+    submitScore({ user, run: pending.run, stats: pending.stats }).then(({ error }) => {
       if (cancelled) return
-      setNotice({ status: error ? 'failed' : 'done', wpm: pending.wpm })
+      setNotice({ status: error ? 'failed' : 'done', wpm: pending.stats.wpm })
     })
 
     return () => {
