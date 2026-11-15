@@ -77,6 +77,32 @@ export function parseSubmission(body: unknown): Submission | null {
   }
 }
 
+export type InsertFailure = 'duplicate' | 'server-not-ready' | 'insert-failed'
+
+/**
+ * Đọc lỗi PostgREST trả về khi ghi điểm.
+ *
+ * CHỈ trùng `run_id` mới là "lượt này đã ghi rồi". PostgREST trả 409 cho cả lỗi khoá
+ * ngoại (23503) và mọi unique khác — coi hết 409 là trùng thì người chơi thấy
+ * "submitted" trong khi không có dòng nào được ghi.
+ */
+export function classifyInsertFailure(text: string): InsertFailure {
+  if (text.includes('23505') && text.includes('run_id')) return 'duplicate'
+  // Chưa chạy `verify-scores.sql` nên chưa có các cột mới.
+  if (text.includes('PGRST204') || text.includes('42703')) return 'server-not-ready'
+  return 'insert-failed'
+}
+
+/** Mã lỗi Postgres/PostgREST trong thân lỗi (vd `23503`), để trả về cho trình duyệt. */
+export function insertErrorCode(text: string): string | null {
+  try {
+    const code = (JSON.parse(text) as { code?: unknown }).code
+    return typeof code === 'string' ? code.slice(0, 20) : null
+  } catch {
+    return null
+  }
+}
+
 export function verifyRun(
   sub: Submission,
   index: SnippetIndex,

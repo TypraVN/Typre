@@ -13,7 +13,13 @@
  * Mọi câu trả lời nghiệp vụ đều là 200 + `{ ok, error }`: trình duyệt cần đọc được LÝ DO
  * (vd nhịp gõ như bot) để nói với người chơi, mà mã lỗi HTTP thì supabase-js nuốt mất thân.
  */
-import { parseSubmission, verifyRun, type SnippetIndex } from './verify.ts'
+import {
+  classifyInsertFailure,
+  insertErrorCode,
+  parseSubmission,
+  verifyRun,
+  type SnippetIndex,
+} from './verify.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -135,9 +141,10 @@ Deno.serve(async (req) => {
   ).slice(0, 60)
   const avatarUrl = profile?.avatar_url ?? meta.avatar_url ?? meta.picture ?? null
 
-  const insertRes = await fetch(`${supabaseUrl}/rest/v1/scores`, {
+  // `return=representation`: đọc lại dòng vừa ghi — chỉ báo "đã ghi" khi thấy nó thật.
+  const insertRes = await fetch(`${supabaseUrl}/rest/v1/scores?select=id`, {
     method: 'POST',
-    headers: { ...rest, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    headers: { ...rest, 'Content-Type': 'application/json', Prefer: 'return=representation' },
     body: JSON.stringify({
       user_id: user.id,
       display_name: displayName,
@@ -156,15 +163,30 @@ Deno.serve(async (req) => {
     }),
   })
 
+  const tag = `${user.id} ${score.language} ${score.timeLimit}s ${score.snippetId} ${score.wpm}wpm`
+  const text = await insertRes.text()
+
   if (!insertRes.ok) {
-    const text = await insertRes.text()
-    // Trùng `run_id`: lượt này đã được ghi ở lần gửi trước (mạng chập chờn, bấm lại).
-    if (insertRes.status === 409 || text.includes('23505')) return reply({ ok: false, error: 'duplicate' })
-    // Chưa chạy `verify-scores.sql` nên chưa có các cột mới.
-    if (text.includes('PGRST204') || text.includes('42703')) return reply({ ok: false, error: 'server-not-ready' })
-    console.error(`ghi điểm lỗi ${insertRes.status}: ${text}`)
-    return reply({ ok: false, error: 'insert-failed' })
+    const failure = classifyInsertFailure(text)
+    if (failure === 'duplicate') {
+      console.log(`trùng lượt ${tag}`)
+      return reply({ ok: false, error: 'duplicate' })
+    }
+    console.error(`ghi điểm lỗi ${insertRes.status} ${tag}: ${text}`)
+    return reply({ ok: false, error: failure, detail: insertErrorCode(text) ?? `http-${insertRes.status}` })
   }
 
-  return reply({ ok: true, wpm: score.wpm, accuracy: score.accuracy })
+  let id: string | null = null
+  try {
+    id = ((JSON.parse(text) as Array<{ id?: string }>)[0]?.id as string | undefined) ?? null
+  } catch {
+    id = null
+  }
+  if (!id) {
+    console.error(`ghi điểm không thấy dòng ${insertRes.status} ${tag}: ${text}`)
+    return reply({ ok: false, error: 'insert-failed', detail: 'no-row' })
+  }
+
+  console.log(`đã ghi ${tag} id=${id}`)
+  return reply({ ok: true, id, wpm: score.wpm, accuracy: score.accuracy })
 })

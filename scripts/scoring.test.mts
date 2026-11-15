@@ -17,7 +17,13 @@ import {
   scoreRun,
   type RunAction,
 } from '../supabase/functions/_shared/typingCore.ts'
-import { parseSubmission, verifyRun, type SnippetIndex } from '../supabase/functions/submit-score/verify.ts'
+import {
+  classifyInsertFailure,
+  insertErrorCode,
+  parseSubmission,
+  verifyRun,
+  type SnippetIndex,
+} from '../supabase/functions/submit-score/verify.ts'
 
 let passed = 0
 const failures: string[] = []
@@ -178,6 +184,22 @@ check('thoi diem giam dan', parseSubmission({ ...good, actions: [[10, 'a'], [5, 
 check('phim nhieu ky tu', parseSubmission({ ...good, actions: [[0, 'ab']] }), null)
 check('moc thoi gian la', parseSubmission({ ...good, timeLimit: 45, actions: [[0, 'a']] }), null)
 check('runId sai', parseSubmission({ ...good, runId: 'abc', actions: [[0, 'a']] }), null)
+
+// ── Lỗi khi ghi điểm ─────────────────────────────────────────────────────────
+// Thân lỗi thật của PostgREST. Chỉ trùng `run_id` mới được báo "đã ghi rồi".
+const DUP_RUN =
+  '{"code":"23505","details":"Key (run_id)=(3f2b8a5e-1c4d-4e6f-8a9b-0c1d2e3f4a5b) already exists.","hint":null,"message":"duplicate key value violates unique constraint \\"scores_run_id_key\\""}'
+const FK =
+  '{"code":"23503","details":"Key (user_id)=(x) is not present in table \\"users\\".","hint":null,"message":"insert or update on table \\"scores\\" violates foreign key constraint \\"scores_user_id_fkey\\""}'
+const CHECK =
+  '{"code":"23514","details":null,"hint":null,"message":"new row for relation \\"scores\\" violates check constraint \\"scores_language_check\\""}'
+const NO_COLUMN = '{"code":"PGRST204","details":null,"hint":null,"message":"Could not find the \'run_id\' column"}'
+check('trung run_id: duplicate', classifyInsertFailure(DUP_RUN), 'duplicate')
+check('loi khoa ngoai 409: KHONG phai duplicate', classifyInsertFailure(FK), 'insert-failed')
+check('loi check constraint', classifyInsertFailure(CHECK), 'insert-failed')
+check('chua chay SQL', classifyInsertFailure(NO_COLUMN), 'server-not-ready')
+check('ma loi doc duoc', insertErrorCode(FK), '23503')
+check('than loi khong phai JSON', insertErrorCode('<html>502</html>'), null)
 
 console.log(`\n${passed}/${passed + failures.length} ca dat`)
 

@@ -98,7 +98,12 @@ export async function submitScore(input: SubmitScoreInput): Promise<{ error: Sub
   const supabase = await getSupabase()
   if (!supabase) return { error: 'failed' }
 
-  const { data, error } = await supabase.functions.invoke<{ ok: boolean; error?: string }>('submit-score', {
+  const { data, error } = await supabase.functions.invoke<{
+    ok: boolean
+    id?: string
+    error?: string
+    detail?: string
+  }>('submit-score', {
     body: input.run,
   })
 
@@ -107,11 +112,18 @@ export async function submitScore(input: SubmitScoreInput): Promise<{ error: Sub
     // có CORS, hoặc mất mạng — mất mạng thì đường cũ cũng hỏng, không thiệt gì).
     const status = (error as { context?: { status?: number } }).context?.status
     const name = (error as { name?: string }).name
+    console.warn('[submit-score] không gọi được function', status ?? name)
     if (status === 404 || name === 'FunctionsFetchError') return legacyInsert(input)
     return { error: 'failed' }
   }
 
-  if (data?.ok) return { error: null }
+  // Ghi chú cho người sửa lỗi: kết quả thật của server nằm trong console trình duyệt.
+  if (data?.ok && data.id) {
+    console.info('[submit-score] đã ghi', data.id)
+    return { error: null }
+  }
+  console.warn('[submit-score] server trả', data)
+  if (data?.ok) return { error: 'failed' }
   if (data?.error === 'server-not-ready') return legacyInsert(input)
   // Gửi lại đúng lượt đã ghi (mạng chập chờn, bấm thử lại): điểm đã nằm trên bảng rồi.
   if (data?.error === 'duplicate') return { error: null }
