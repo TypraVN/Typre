@@ -14,6 +14,7 @@ import {
   readShortcutsParam,
 } from './lib/toolParam'
 import { capturePendingInviteFromUrl } from './lib/invite'
+import { CHESS_ENABLED } from './features'
 import { usePreferencesStore } from './store/usePreferencesStore'
 import { startErrorCapture } from './lib/report'
 
@@ -109,9 +110,12 @@ if (shortcutsFromLandingPage) {
   clearShortcutsParam()
 }
 
-/** Cùng cơ chế, cho trang giới thiệu chế độ cờ (`/practice/chess/`). */
+/**
+ * Cùng cơ chế, cho trang giới thiệu chế độ cờ (`/practice/chess/`). Cờ đang tắt thì link
+ * cũ vẫn được dọn tham số, chỉ là ở lại màn gõ code.
+ */
 if (readChessParam()) {
-  usePreferencesStore.getState().setMode('chess')
+  if (CHESS_ENABLED) usePreferencesStore.getState().setMode('chess')
   clearChessParam()
 }
 

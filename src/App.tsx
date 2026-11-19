@@ -36,6 +36,7 @@ const Leaderboard = lazyChunk('Leaderboard', () =>
 const ChessMode = lazyChunk('ChessMode', () =>
   import('./components/ChessMode').then((m) => ({ default: m.ChessMode })),
 )
+import { CHESS_ENABLED } from './features'
 import { SubmitScore, type AutoSubmitState } from './components/SubmitScore'
 import { isScoreEligible, submitScore, type RunSubmission, type SubmitError } from './lib/leaderboard'
 import { isLeaderboardEnabled } from './lib/supabase'
@@ -872,7 +873,9 @@ function App() {
             <LevelBadge xp={xp} onClick={() => setProgressOpen(true)} t={t} />
 
             <div className="flex gap-2">
-              {(['code', 'shortcuts', 'chess', 'leaderboard'] as const).map((m) => (
+              {(['code', 'shortcuts', 'chess', 'leaderboard'] as const)
+                .filter((m) => m !== 'chess' || CHESS_ENABLED)
+                .map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -1347,7 +1350,7 @@ function App() {
         </>
       )}
 
-      {mode === 'chess' && (
+      {mode === 'chess' && CHESS_ENABLED && (
         <Suspense
           fallback={<div className="font-mono text-sm text-zinc-500">{t.leaderboardLoading}</div>}
         >

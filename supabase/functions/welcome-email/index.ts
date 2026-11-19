@@ -67,8 +67,9 @@ function buildHtml(name: string): string {
       real code, brackets and operators included.
     </li>
     <li>
-      <a href="${SITE}/practice/chess/" style="color:#f97316">Chess</a>, where you move a piece by
-      typing a valid command in that same language.
+      The <a href="${SITE}/practice/vscode-shortcuts/" style="color:#f97316">VS Code</a> or
+      <a href="${SITE}/practice/vim-shortcuts/" style="color:#f97316">Vim</a> shortcut drills,
+      to stop reaching for the mouse.
     </li>
   </ul>
 
@@ -98,8 +99,9 @@ people like you are what keep it moving forward.
 Two things worth trying first:
 
 - A 30-second run in the language you write most: ${SITE}/
-- Chess, where you move a piece by typing a valid command in that same language:
-  ${SITE}/practice/chess/
+- The VS Code or Vim shortcut drills, to stop reaching for the mouse:
+  ${SITE}/practice/vscode-shortcuts/
+  ${SITE}/practice/vim-shortcuts/
 
 If you have any feedback, ideas for features, or run into a problem, just reply to this
 email. It comes straight to me and I read every one.

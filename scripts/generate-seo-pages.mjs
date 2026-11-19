@@ -21,6 +21,13 @@ const SHORTCUTS_TMP_DIR = 'node_modules/.typre-seo-shortcuts'
 const CHESS_TMP_DIR = 'node_modules/.typre-seo-chess'
 
 /**
+ * Cùng công tắc với app (`src/features.ts`). Cờ đang cất thì không sinh trang cờ và
+ * không trang nào, kể cả sitemap và llms.txt, còn trỏ tới nó.
+ */
+const CHESS_ENABLED = JSON.parse(readFileSync('src/features.json', 'utf8')).chess === true
+const chessLink = (html) => (CHESS_ENABLED ? [html] : [])
+
+/**
  * Nạp dữ liệu bài để lấy SỐ THẬT.
  *
  * Node không import trực tiếp file .ts được, nên nhờ chính Vite dịch một lần ra ESM tạm.
@@ -791,8 +798,7 @@ ${ANALYTICS}
 
         <h2>Not a language</h2>
         <ul class="others">
-          <li><a href="/practice/${CHESS_PAGE.slug}/">Play chess by typing code</a></li>
-${FEATURE_PAGES.map((p) => `          <li><a href="/practice/${p.slug}/">${p.keyword}</a></li>`).join('\n')}
+${chessLink(`          <li><a href="/practice/${CHESS_PAGE.slug}/">Play chess by typing code</a></li>\n`).join('')}${FEATURE_PAGES.map((p) => `          <li><a href="/practice/${p.slug}/">${p.keyword}</a></li>`).join('\n')}
           <li><a href="/practice/vscode-shortcuts/">VS Code shortcuts</a></li>
           <li><a href="/practice/vim-shortcuts/">Vim shortcuts</a></li>
         </ul>
@@ -833,7 +839,7 @@ function renderLlmsTxt(pages, countsFor, toolPages) {
 
   const toolLinks = [
     ...FEATURE_PAGES.map((p) => `- [${p.keyword}](${SITE}/practice/${p.slug}/): ${p.description}`),
-    `- [${CHESS_PAGE.keyword}](${SITE}/practice/${CHESS_PAGE.slug}/): ${CHESS_PAGE.description}`,
+    ...chessLink(`- [${CHESS_PAGE.keyword}](${SITE}/practice/${CHESS_PAGE.slug}/): ${CHESS_PAGE.description}`),
     ...toolPages.map((p) => `- [${p.keyword}](${SITE}/practice/${p.slug}/)`),
   ].join('\n')
 
@@ -849,12 +855,11 @@ Typre runs in the browser at [typre.dev](${SITE}/), works offline, and needs no 
 - Snippets include everyday framework code: React, Next.js, Express, FastAPI, Django, pandas, Spring Boot, ASP.NET Core, Gin, Axum, Tailwind and HTMX, among others.
 - Timed runs of 15, 30 or 60 seconds. Each run measures WPM, accuracy, raw WPM and consistency.
 - Snippets are shuffled so none repeats before a full round, even across reloads.
-- Leaderboards per language and run length, for all time, this week and today. Signing in is only needed to post scores and to play rated online chess.
+- Leaderboards per language and run length, for all time, this week and today. Signing in is only needed to post scores${CHESS_ENABLED ? ' and to play rated online chess' : ''}.
 - Real-time races against a friend on the same snippet, and challenge links to beat a specific score.
 - Practice on your own code: paste up to 3,000 characters from your project.
 - Keyboard shortcut drills for VS Code and Vim.
-- Chess where every move is typed as a valid command in the language being practised.
-- Works with any OS keyboard layout (QWERTY, Dvorak, Colemak, European layouts with AltGr and dead keys), and on phones and tablets with the on-screen keyboard. A physical keyboard is still the best way to build speed.
+${chessLink('- Chess where every move is typed as a valid command in the language being practised.\n').join('')}- Works with any OS keyboard layout (QWERTY, Dvorak, Colemak, European layouts with AltGr and dead keys), and on phones and tablets with the on-screen keyboard. A physical keyboard is still the best way to build speed.
 
 ## Practice by language
 
@@ -877,7 +882,7 @@ function renderSitemap(pages, toolPages) {
     `${SITE}/practice/`,
     ...pages.map((p) => `${SITE}/practice/${p.slug}/`),
     ...toolPages.map((p) => `${SITE}/practice/${p.slug}/`),
-    `${SITE}/practice/${CHESS_PAGE.slug}/`,
+    ...chessLink(`${SITE}/practice/${CHESS_PAGE.slug}/`),
     ...FEATURE_PAGES.map((p) => `${SITE}/practice/${p.slug}/`),
   ]
 
@@ -980,8 +985,7 @@ function patchIndexHtml(snippetCounts) {
         <ul>
 ${pages.map(linkFor).join('\n')}
           <li><a href="/practice/">All ${pages.length} languages in one place</a></li>
-          <li><a href="/practice/${CHESS_PAGE.slug}/">Play chess by typing code</a></li>
-${FEATURE_PAGES.map((p) => `          <li><a href="/practice/${p.slug}/">${p.keyword}</a></li>`).join('\n')}
+${chessLink(`          <li><a href="/practice/${CHESS_PAGE.slug}/">Play chess by typing code</a></li>\n`).join('')}${FEATURE_PAGES.map((p) => `          <li><a href="/practice/${p.slug}/">${p.keyword}</a></li>`).join('\n')}
         </ul>
         `
 
@@ -1080,17 +1084,21 @@ async function main() {
    * Trang cờ dùng CHÍNH danh sách ngôn ngữ của các trang trên, và chỉ lấy những trang có
    * bài thật — để bảng cú pháp không bao giờ liệt kê một ngôn ngữ mà app không cho chọn.
    */
-  const chessLanguages = LANGUAGE_PAGES.filter((page) => snippetCounts(page.id).total > 0)
-  const examplesFor = await loadChessExamples()
-  const chessDir = `${DIST}/practice/${CHESS_PAGE.slug}`
+  if (CHESS_ENABLED) {
+    const chessLanguages = LANGUAGE_PAGES.filter((page) => snippetCounts(page.id).total > 0)
+    const examplesFor = await loadChessExamples()
+    const chessDir = `${DIST}/practice/${CHESS_PAGE.slug}`
 
-  mkdirSync(chessDir, { recursive: true })
-  writeFileSync(
-    `${chessDir}/index.html`,
-    renderChessPage(CHESS_PAGE, chessLanguages, examplesFor),
-    'utf8',
-  )
-  console.log(`  /practice/${CHESS_PAGE.slug}/  (${chessLanguages.length} ngon ngu)`)
+    mkdirSync(chessDir, { recursive: true })
+    writeFileSync(
+      `${chessDir}/index.html`,
+      renderChessPage(CHESS_PAGE, chessLanguages, examplesFor),
+      'utf8',
+    )
+    console.log(`  /practice/${CHESS_PAGE.slug}/  (${chessLanguages.length} ngon ngu)`)
+  } else {
+    console.log(`  /practice/${CHESS_PAGE.slug}/  (dang tat, khong sinh)`)
+  }
 
   /**
    * Trang tính năng. `related` là các trang tính năng CÒN LẠI cộng trang cờ — cùng nhóm
@@ -1102,7 +1110,7 @@ async function main() {
         slug: p.slug,
         label: p.keyword,
       })),
-      { slug: CHESS_PAGE.slug, label: CHESS_PAGE.keyword },
+      ...chessLink({ slug: CHESS_PAGE.slug, label: CHESS_PAGE.keyword }),
     ]
     const dir = `${DIST}/practice/${page.slug}`
 

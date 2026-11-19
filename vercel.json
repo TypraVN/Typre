@@ -1,5 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    { "source": "/practice/chess", "destination": "/", "permanent": false },
+    { "source": "/practice/chess/", "destination": "/", "permanent": false }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",
