@@ -34,7 +34,7 @@ export interface RunSubmission {
   actions: RunAction[]
 }
 
-/** Điểm trình duyệt tự tính — chỉ dùng để chặn sớm và cho cách gửi cũ, server không tin nó. */
+/** Điểm trình duyệt tự tính — chỉ dùng để chặn sớm, server không tin nó. */
 export interface RunStatsInput {
   wpm: number
   cpm: number
@@ -69,29 +69,10 @@ export function isScoreEligible(wpm: number, accuracy: number): boolean {
 export type SubmitError = 'robotic' | 'bursts' | 'not-eligible' | 'failed'
 
 /**
- * Function chưa deploy, hoặc SQL chưa chạy: tạm gửi kiểu cũ (trình duyệt tự ghi vào bảng)
- * để bảng xếp hạng không chết trong lúc chuyển. Chạy SQL `verify-scores.sql` xong là
- * đường này tự đóng — quyền ghi trực tiếp bị thu hồi, chỉ còn server ghi được.
+ * Gửi lượt gõ cho Edge Function `submit-score` chấm lại và ghi. Đây là đường DUY NHẤT:
+ * bảng `scores` không có policy INSERT cho trình duyệt, nên không có cách gửi dự phòng —
+ * server không gọi được thì báo "gửi lỗi" để người chơi bấm thử lại.
  */
-async function legacyInsert(input: SubmitScoreInput): Promise<{ error: SubmitError | null }> {
-  const supabase = await getSupabase()
-  if (!supabase) return { error: 'failed' }
-
-  const { error } = await supabase.from('scores').insert({
-    user_id: input.user.id,
-    display_name: input.user.displayName,
-    avatar_url: input.user.avatarUrl,
-    language: input.run.language,
-    time_limit: input.run.timeLimit,
-    wpm: input.stats.wpm,
-    cpm: input.stats.cpm,
-    raw_wpm: input.stats.rawWpm,
-    consistency: input.stats.consistency,
-    accuracy: input.stats.accuracy,
-  })
-  return { error: error ? 'failed' : null }
-}
-
 export async function submitScore(input: SubmitScoreInput): Promise<{ error: SubmitError | null }> {
   if (!isScoreEligible(input.stats.wpm, input.stats.accuracy)) return { error: 'not-eligible' }
 
@@ -108,12 +89,9 @@ export async function submitScore(input: SubmitScoreInput): Promise<{ error: Sub
   })
 
   if (error) {
-    // 404 = function chưa deploy; lỗi fetch = không gọi được tới (chưa deploy nên chưa
-    // có CORS, hoặc mất mạng — mất mạng thì đường cũ cũng hỏng, không thiệt gì).
     const status = (error as { context?: { status?: number } }).context?.status
     const name = (error as { name?: string }).name
     console.warn('[submit-score] không gọi được function', status ?? name)
-    if (status === 404 || name === 'FunctionsFetchError') return legacyInsert(input)
     return { error: 'failed' }
   }
 
@@ -124,7 +102,6 @@ export async function submitScore(input: SubmitScoreInput): Promise<{ error: Sub
   }
   console.warn('[submit-score] server trả', data)
   if (data?.ok) return { error: 'failed' }
-  if (data?.error === 'server-not-ready') return legacyInsert(input)
   // Gửi lại đúng lượt đã ghi (mạng chập chờn, bấm thử lại): điểm đã nằm trên bảng rồi.
   if (data?.error === 'duplicate') return { error: null }
   if (data?.error === 'robotic' || data?.error === 'bursts' || data?.error === 'not-eligible') {

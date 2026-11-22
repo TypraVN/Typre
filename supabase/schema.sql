@@ -48,17 +48,14 @@ create policy "scores_public_read"
   to anon, authenticated
   using (true);
 
--- CHỈ người đã đăng nhập gửi được điểm, và CHỈ gửi được cho chính mình.
--- `auth.uid() = user_id` là chốt chặn mạo danh: không thể gửi điểm dưới tên người khác.
+-- KHÔNG có policy INSERT nào cho trình duyệt: chỉ Edge Function `submit-score` ghi được
+-- điểm (chấm lại từ bản ghi phím, ghi bằng service role — bỏ qua RLS). Xem
+-- `verify-scores.sql`.
+--
+-- Trước đây file này tạo policy `scores_insert_own` cho người dùng tự ghi. Chạy lại bản
+-- cũ đó là mở lại đường gửi thẳng một con số bất kỳ lên bảng — đã xảy ra thật: 13 điểm
+-- chưa xác minh lọt vào ngày 15/11/2026. Nên ở đây chỉ còn lệnh XOÁ, chạy lại an toàn.
 drop policy if exists "scores_public_insert" on public.scores;
 drop policy if exists "scores_insert_own" on public.scores;
-create policy "scores_insert_own"
-  on public.scores for insert
-  to authenticated
-  with check (
-    auth.uid() = user_id
-    and accuracy >= 50           -- chặn rác: gõ sai quá nửa thì không lên bảng
-    and wpm <= 300               -- chặn điểm phi lý
-  );
 
--- Không có policy UPDATE/DELETE => không ai sửa/xoá được điểm, kể cả của chính mình.
+-- UPDATE (chỉ tên/avatar) và DELETE điểm của chính mình: xem `migration-account-features.sql`.
