@@ -10,6 +10,7 @@
  *
  * Biến môi trường cần đặt (Dashboard → Edge Functions → Secrets):
  *   RESEND_API_KEY            khoá API của Resend
+ *   WELCOME_WEBHOOK_SECRET    chuỗi bí mật; webhook gửi kèm trong header `x-webhook-secret`
  *   WELCOME_EMAIL_FROM        (tuỳ chọn) mặc định onboarding@resend.dev của Resend
  *   WELCOME_EMAIL_REPLY_TO    (tuỳ chọn) địa chỉ nhận thư trả lời
  *
@@ -21,12 +22,22 @@
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
 
-const SITE = 'https://typre.dev'
+const SITE = 'https://www.typre.dev'
 
-interface ProfileRow {
+const SUBJECT = 'Thank you for being one of the first members on Typre!'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+interface ClaimedProfile {
   id: string
   display_name: string | null
-  welcome_sent_at: string | null
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
 
 function escapeHtml(text: string): string {
@@ -35,6 +46,14 @@ function escapeHtml(text: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+}
+
+/** So sánh chuỗi bí mật không lộ độ dài khớp qua thời gian chạy. */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
 }
 
 /**
@@ -49,41 +68,28 @@ function firstName(displayName: string | null): string {
 }
 
 function buildHtml(name: string): string {
+  const p = 'margin:0 0 16px'
   return `<div style="font-family:-apple-system,Segoe UI,sans-serif;font-size:15px;line-height:1.6;color:#18181b;max-width:560px">
-  <p style="margin:0 0 16px">Hi ${escapeHtml(name)},</p>
+  <p style="${p}">Hi ${escapeHtml(name)},</p>
 
-  <p style="margin:0 0 16px">Thank you so much for signing up for <strong>Typre</strong>!</p>
+  <p style="${p}">Thank you so much for signing up for <strong>Typre</strong>!</p>
 
-  <p style="margin:0 0 16px">
-    Being one of the very first users means a lot. Typre is still being built, and early
-    people like you are what keep it moving forward.
+  <p style="${p}">
+    Being one of the very first early users means a lot to us. As we are constantly
+    improving the platform to deliver the best typing and learning experience, your early
+    presence and support are what keep us moving forward.
   </p>
 
-  <p style="margin:0 0 16px">Two things worth trying first:</p>
-
-  <ul style="margin:0 0 16px;padding-left:20px">
-    <li style="margin-bottom:6px">
-      A <a href="${SITE}/" style="color:#f97316">30-second run</a> in the language you write most —
-      real code, brackets and operators included.
-    </li>
-    <li>
-      The <a href="${SITE}/practice/vscode-shortcuts/" style="color:#f97316">VS Code</a> or
-      <a href="${SITE}/practice/vim-shortcuts/" style="color:#f97316">Vim</a> shortcut drills,
-      to stop reaching for the mouse.
-    </li>
-  </ul>
-
-  <p style="margin:0 0 16px">
-    If you have any feedback, ideas for features, or run into a problem, just reply to this
-    email. It comes straight to me and I read every one.
+  <p style="${p}">
+    If you have any feedback, ideas for new features, or run into any issues while using
+    Typre, please feel free to reply directly to this email. We'd love to hear your thoughts!
   </p>
 
-  <p style="margin:0 0 4px">Thanks again for joining early,</p>
-  <p style="margin:0 0 16px"><strong>Nhat — Typre</strong></p>
+  <p style="${p}">Thanks again for joining us early on this journey.</p>
 
-  <p style="margin:0;font-size:13px;color:#71717a">
-    <a href="${SITE}" style="color:#71717a">typre.dev</a>
-  </p>
+  <p style="margin:0 0 4px">Best regards,</p>
+  <p style="margin:0 0 4px"><strong>Typre Team</strong></p>
+  <p style="margin:0"><em><a href="${SITE}/" style="color:#f97316">Typre Website</a></em></p>
 </div>`
 }
 
@@ -93,64 +99,57 @@ function buildText(name: string): string {
 
 Thank you so much for signing up for Typre!
 
-Being one of the very first users means a lot. Typre is still being built, and early
-people like you are what keep it moving forward.
+Being one of the very first early users means a lot to us. As we are constantly improving
+the platform to deliver the best typing and learning experience, your early presence and
+support are what keep us moving forward.
 
-Two things worth trying first:
+If you have any feedback, ideas for new features, or run into any issues while using
+Typre, please feel free to reply directly to this email. We'd love to hear your thoughts!
 
-- A 30-second run in the language you write most: ${SITE}/
-- The VS Code or Vim shortcut drills, to stop reaching for the mouse:
-  ${SITE}/practice/vscode-shortcuts/
-  ${SITE}/practice/vim-shortcuts/
+Thanks again for joining us early on this journey.
 
-If you have any feedback, ideas for features, or run into a problem, just reply to this
-email. It comes straight to me and I read every one.
-
-Thanks again for joining early,
-Nhat - Typre
-${SITE}
+Best regards,
+Typre Team
+${SITE}/
 `
 }
 
 Deno.serve(async (req) => {
   const apiKey = Deno.env.get('RESEND_API_KEY')
+  const secret = Deno.env.get('WELCOME_WEBHOOK_SECRET')
   const from = Deno.env.get('WELCOME_EMAIL_FROM') ?? 'Typre <onboarding@resend.dev>'
   const replyTo = Deno.env.get('WELCOME_EMAIL_REPLY_TO')
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
   // Thiếu cấu hình thì nói rõ thiếu cái gì. Trả về 500 chung chung là lát nữa ngồi đoán.
-  if (!apiKey || !supabaseUrl || !serviceKey) {
-    return new Response(
-      JSON.stringify({ error: 'thiếu RESEND_API_KEY / SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } },
+  if (!apiKey || !secret || !supabaseUrl || !serviceKey) {
+    console.error('thiếu cấu hình')
+    return json(
+      { error: 'thiếu RESEND_API_KEY / WELCOME_WEBHOOK_SECRET / SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY' },
+      500,
     )
   }
 
-  let row: ProfileRow
-  try {
-    const payload = await req.json()
-    // Database Webhook gửi dạng { type, table, record, old_record }
-    row = payload.record as ProfileRow
-    if (!row?.id) throw new Error('payload không có record.id')
-  } catch (error) {
-    return new Response(JSON.stringify({ error: String(error) }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+  /*
+    Chỉ webhook của mình mới được gọi. Function deploy với `--no-verify-jwt` nên địa chỉ
+    này ai cũng gọi được — không chặn thì người ngoài biết `id` của ai là bắt Typre gửi
+    thư tới hộp thư người đó, từ chính tên miền typre.dev.
+  */
+  if (!safeEqual(req.headers.get('x-webhook-secret') ?? '', secret)) {
+    console.warn('sai x-webhook-secret')
+    return json({ error: 'unauthorized' }, 401)
   }
 
-  /*
-    Đã gửi rồi thì thôi.
-
-    Webhook của Supabase GỬI LẠI khi lần gọi trước lỗi mạng hay hết giờ — kể cả khi thư
-    thật ra đã đi rồi. Không chặn ở đây thì người mới đăng ký nhận hai, ba lá thư chào
-    giống hệt nhau, đúng ấn tượng đầu tiên tệ nhất có thể tạo ra.
-  */
-  if (row.welcome_sent_at) {
-    return new Response(JSON.stringify({ ok: true, skipped: 'đã gửi trước đó' }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
+  let userId: string
+  try {
+    const payload = await req.json()
+    // Database Webhook gửi dạng { type, table, record, old_record }. Chỉ lấy `id`: mọi
+    // thứ khác đọc lại từ database, không tin nội dung request.
+    userId = String(payload?.record?.id ?? '')
+    if (!UUID_RE.test(userId)) throw new Error('payload không có record.id hợp lệ')
+  } catch (error) {
+    return json({ error: String(error) }, 400)
   }
 
   const adminHeaders = {
@@ -158,35 +157,64 @@ Deno.serve(async (req) => {
     Authorization: `Bearer ${serviceKey}`,
     'Content-Type': 'application/json',
   }
+  const profileUrl = `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`
+
+  /*
+    GIÀNH lượt gửi trong database trước khi gửi: chỉ đặt `welcome_sent_at` khi nó còn
+    trống. Hai lần gọi cùng lúc (webhook gọi lại vì hết giờ) thì chỉ một lần đặt được —
+    lần kia nhận về 0 dòng và dừng. Không ai được gửi thư hai lần cho cùng một người.
+  */
+  const claimRes = await fetch(`${profileUrl}&welcome_sent_at=is.null&select=id,display_name`, {
+    method: 'PATCH',
+    headers: { ...adminHeaders, Prefer: 'return=representation' },
+    body: JSON.stringify({ welcome_sent_at: new Date().toISOString() }),
+  })
+
+  if (!claimRes.ok) {
+    const detail = await claimRes.text()
+    // 42703 = chưa chạy `add-welcome-email.sql` (thiếu cột `welcome_sent_at`).
+    console.error('không giành được lượt gửi', detail)
+    return json({ error: 'không ghi được welcome_sent_at', detail }, 500)
+  }
+
+  const claimed = (await claimRes.json()) as ClaimedProfile[]
+  if (claimed.length === 0) {
+    console.log(`bỏ qua ${userId}: đã gửi trước đó`)
+    return json({ ok: true, skipped: 'đã gửi trước đó' })
+  }
+
+  /** Gửi hỏng thì trả lại lượt, để lần gọi sau còn gửi được. */
+  const release = () =>
+    fetch(profileUrl, {
+      method: 'PATCH',
+      headers: { ...adminHeaders, Prefer: 'return=minimal' },
+      body: JSON.stringify({ welcome_sent_at: null }),
+    })
 
   // Email nằm ở `auth.users`, không có trong `profiles`.
-  const userRes = await fetch(`${supabaseUrl}/auth/v1/admin/users/${row.id}`, {
+  const userRes = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
     headers: adminHeaders,
   })
 
   if (!userRes.ok) {
     const detail = await userRes.text()
-    return new Response(JSON.stringify({ error: 'không đọc được auth.users', detail }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    await release()
+    console.error('không đọc được auth.users', detail)
+    return json({ error: 'không đọc được auth.users', detail }, 502)
   }
 
-  const user = (await userRes.json()) as { email?: string }
-  const to = user.email
+  const to = ((await userRes.json()) as { email?: string }).email
 
   /*
     Không có email thì KHÔNG phải lỗi: đăng nhập bằng OAuth có thể không trả email nếu
-    người dùng từ chối chia sẻ. Trả 200 để webhook đừng gọi lại mãi một dòng không bao
-    giờ gửi được.
+    người dùng từ chối chia sẻ. Giữ nguyên mốc đã giành — gọi lại cũng không gửi được.
   */
   if (!to) {
-    return new Response(JSON.stringify({ ok: true, skipped: 'tài khoản không có email' }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
+    console.log(`bỏ qua ${userId}: tài khoản không có email`)
+    return json({ ok: true, skipped: 'tài khoản không có email' })
   }
 
-  const name = firstName(row.display_name)
+  const name = firstName(claimed[0].display_name)
 
   const sendRes = await fetch(RESEND_ENDPOINT, {
     method: 'POST',
@@ -198,7 +226,7 @@ Deno.serve(async (req) => {
       from,
       to: [to],
       ...(replyTo ? { reply_to: replyTo } : {}),
-      subject: 'Thank you for being one of the first on Typre',
+      subject: SUBJECT,
       html: buildHtml(name),
       text: buildText(name),
     }),
@@ -206,24 +234,11 @@ Deno.serve(async (req) => {
 
   if (!sendRes.ok) {
     const detail = await sendRes.text()
-    return new Response(JSON.stringify({ error: 'Resend từ chối', detail }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    await release()
+    console.error('Resend từ chối', detail)
+    return json({ error: 'Resend từ chối', detail }, 502)
   }
 
-  /*
-    Ghi mốc SAU KHI gửi thành công, và lỗi ở bước này KHÔNG làm hỏng cả lượt gọi: thư đã
-    đi rồi, báo lỗi về cho webhook chỉ khiến nó gọi lại và gửi thêm lá nữa.
-  */
-  const markRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${row.id}`, {
-    method: 'PATCH',
-    headers: { ...adminHeaders, Prefer: 'return=minimal' },
-    body: JSON.stringify({ welcome_sent_at: new Date().toISOString() }),
-  })
-
-  return new Response(
-    JSON.stringify({ ok: true, marked: markRes.ok }),
-    { headers: { 'Content-Type': 'application/json' } },
-  )
+  console.log(`đã gửi thư chào cho ${userId}`)
+  return json({ ok: true })
 })

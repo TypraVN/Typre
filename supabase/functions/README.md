@@ -61,7 +61,8 @@ chưa xác minh tên miền, Resend **chỉ cho gửi tới đúng email đã đ
 Resend** — nghĩa là mọi thư chào sẽ bị từ chối, người dùng không nhận được gì.
 
 Resend → **Domains** → **Add Domain** → `typre.dev` → thêm các bản ghi DNS nó đưa vào
-DNS của tên miền (Vercel → Domains → `typre.dev` → DNS Records) → chờ **Verified**.
+DNS của tên miền (Namecheap → Domain List → `typre.dev` → **Advanced DNS**) → chờ
+**Verified**.
 
 Các bản ghi đó gồm SPF và DKIM: thiếu chúng thì thư có gửi đi cũng rơi vào spam.
 
@@ -79,6 +80,7 @@ Dashboard → **Edge Functions** → **Secrets**:
 | Tên | Giá trị |
 |---|---|
 | `RESEND_API_KEY` | dùng lại khoá `re_...` của `report-email` |
+| `WELCOME_WEBHOOK_SECRET` | một chuỗi ngẫu nhiên dài (vd. tạo bằng password manager) — dán lại y hệt ở bước 4 |
 | `WELCOME_EMAIL_FROM` | `Typre <hello@typre.dev>` — phải thuộc tên miền đã xác minh ở bước 0 |
 | `WELCOME_EMAIL_REPLY_TO` | *(tuỳ chọn)* email thật của anh, để người ta bấm Reply là thư về thẳng hộp thư |
 
@@ -88,10 +90,11 @@ cho mọi Edge Function.
 ### 3. Deploy function
 
 ```bash
-npx supabase functions deploy welcome-email --no-verify-jwt
+npx -y supabase functions deploy welcome-email --no-verify-jwt --yes
 ```
 
-`--no-verify-jwt` bắt buộc, cùng lý do với `report-email`.
+`--no-verify-jwt` bắt buộc, cùng lý do với `report-email`. Thay vào đó function tự kiểm
+header `x-webhook-secret` — sai hoặc thiếu là trả 401, không gửi gì.
 
 ### 4. Nối Database Webhook
 
@@ -105,6 +108,7 @@ Dashboard → **Database** → **Webhooks** → **Create a new hook**:
 | Type | **Supabase Edge Functions** |
 | Edge Function | `welcome-email` |
 | Method | `POST` |
+| HTTP Headers | thêm `x-webhook-secret` = đúng chuỗi `WELCOME_WEBHOOK_SECRET` ở bước 2 |
 
 Gắn vào `profiles` chứ không phải `auth.users`: Database Webhook chỉ chạy được trên
 schema `public`. App tự tạo dòng `profiles` ngay lần đăng nhập đầu tiên, nên đó là mốc
@@ -123,6 +127,8 @@ Không thấy thư thì xem **Edge Functions** → `welcome-email` → **Logs**:
 | Log báo | Nguyên nhân |
 |---|---|
 | `Resend từ chối` + `You can only send testing emails to...` | chưa xong bước 0 |
+| `sai x-webhook-secret` | header ở bước 4 khác secret ở bước 2 |
+| `không giành được lượt gửi` + `42703` | chưa chạy SQL ở bước 1 |
 | `không đọc được auth.users` | thiếu quyền service role — deploy lại function |
 | `skipped: đã gửi trước đó` | đúng như thiết kế, tài khoản này đã nhận thư rồi |
 | `skipped: tài khoản không có email` | đăng nhập OAuth nhưng không chia sẻ email |
